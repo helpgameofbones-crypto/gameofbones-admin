@@ -7,6 +7,18 @@
     {
       "path": "/api/low-stock",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/birthday-emails",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/order-reminders",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/review-requests",
+      "schedule": "0 6 * * *"
     }
   ]
 }
