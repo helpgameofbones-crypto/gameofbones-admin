@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
   try {
     const order = await req.json()
 
-    // Save or update customer
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('id, total_orders, total_spent')
@@ -45,7 +44,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Save order
     const { data: savedOrder, error } = await supabase
       .from('orders')
       .insert({
@@ -69,7 +67,6 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    // Send notification emails
     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,31 +78,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-```
-
-4. Press **Ctrl + S**
-
----
-
-## Step 3 — Deploy the Update
-
-In VS Code terminal run these commands one by one:
-```
-git add .
-```
-```
-git commit -m "Add email notifications and order API"
-```
-```
-git push origin main
-```
-
-Vercel will automatically redeploy in 2 minutes.
-
----
-
-## Step 4 — Test It
-
-Once deployed, go to your browser and open:
-```
-https://gameofbones-admin.vercel.app/api/orders
