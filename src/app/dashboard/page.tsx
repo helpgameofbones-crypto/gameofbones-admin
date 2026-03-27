@@ -1,5 +1,4 @@
-Open src/app/dashboard/page.tsx, press Ctrl+A then Delete, paste this entire code:
-tsx'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
