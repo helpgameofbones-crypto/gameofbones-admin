@@ -8,14 +8,14 @@ const supabase = createClient(
 )
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<any[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
-  const [filterCity, setFilterCity]   = useState('')
-  const [filterState, setFilterState] = useState('')
+  const [customers, setCustomers]     = useState<any[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
   const [filterSegment, setFilterSegment] = useState('all')
-  const [selected, setSelected]   = useState<any>(null)
-  const [orders, setOrders]       = useState<any[]>([])
+  const [selected, setSelected]       = useState<any>(null)
+  const [orders, setOrders]           = useState<any[]>([])
+  const [editNote, setEditNote]       = useState('')
+  const [savingNote, setSavingNote]   = useState(false)
 
   useEffect(() => { fetchCustomers() }, [])
 
@@ -23,7 +23,7 @@ export default function CustomersPage() {
     const { data } = await supabase
       .from('customers')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('total_spent', { ascending: false })
     setCustomers(data || [])
     setLoading(false)
   }
@@ -37,74 +37,119 @@ export default function CustomersPage() {
     setOrders(data || [])
   }
 
+  async function saveNote(customerId: string) {
+    setSavingNote(true)
+    await supabase
+      .from('customers')
+      .update({ notes: editNote })
+      .eq('id', customerId)
+    setSavingNote(false)
+    setSelected({ ...selected, notes: editNote })
+    fetchCustomers()
+  }
+
+  async function toggleBlacklist(customerId: string, current: boolean) {
+    await supabase
+      .from('customers')
+      .update({ is_blacklisted: !current })
+      .eq('id', customerId)
+    fetchCustomers()
+    if (selected?.id === customerId) {
+      setSelected({ ...selected, is_blacklisted: !current })
+    }
+  }
+
   function exportCSV() {
     const rows = [
-      ['Name', 'Phone', 'Email', 'City', 'State', 'Pincode', 'Total Orders', 'Total Spent', 'Joined'],
+      ['Name','Phone','Email','City','State','Total Orders','Total Spent','Segment','Joined'],
       ...filtered.map(c => [
         c.name, c.phone, c.email || '',
-        c.city || '', c.state || '', c.pincode || '',
+        c.city || '', c.state || '',
         c.total_orders, c.total_spent,
+        getSegment(c),
         new Date(c.created_at).toLocaleDateString('en-IN')
       ])
     ]
     const csv = rows.map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
     a.download = 'customers.csv'
     a.click()
   }
 
-  const allCities  = [...new Set(customers.map(c => c.city).filter(Boolean))]
-  const allStates  = [...new Set(customers.map(c => c.state).filter(Boolean))]
+  function getSegment(c: any) {
+    if (c.is_blacklisted) return 'Blacklisted'
+    if (c.total_spent >= 5000) return 'VIP'
+    if (c.total_orders > 3) return 'Loyal'
+    if (c.total_orders > 1) return 'Repeat'
+    if (c.total_orders === 1) return 'New'
+    return 'Inactive'
+  }
+
+  function getSegmentStyle(segment: string) {
+    const styles: Record<string, { bg: string; color: string }> = {
+      VIP:         { bg: '#fef3c7', color: '#92400e' },
+      Loyal:       { bg: '#dcfce7', color: '#166534' },
+      Repeat:      { bg: '#dbeafe', color: '#1e40af' },
+      New:         { bg: '#f3f4f6', color: '#374151' },
+      Inactive:    { bg: '#f9fafb', color: '#9ca3af' },
+      Blacklisted: { bg: '#fef2f2', color: '#ef4444' },
+    }
+    return styles[segment] || styles.Inactive
+  }
+
+  const allCities = [...new Set(customers.map(c => c.city).filter(Boolean))]
 
   const filtered = customers.filter(c => {
-    const matchSearch  = !search || 
+    const matchSearch = !search ||
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search) ||
       c.email?.toLowerCase().includes(search.toLowerCase())
-    const matchCity    = !filterCity  || c.city === filterCity
-    const matchState   = !filterState || c.state === filterState
+    const seg = getSegment(c)
     const matchSegment =
-      filterSegment === 'all'        ? true :
-      filterSegment === 'repeat'     ? c.total_orders > 1 :
-      filterSegment === 'new'        ? c.total_orders === 1 :
-      filterSegment === 'vip'        ? c.total_spent >= 2000 :
-      filterSegment === 'inactive'   ? c.total_orders === 0 : true
-    return matchSearch && matchCity && matchState && matchSegment
+      filterSegment === 'all'         ? true :
+      filterSegment === 'vip'         ? seg === 'VIP' :
+      filterSegment === 'loyal'       ? seg === 'Loyal' :
+      filterSegment === 'repeat'      ? seg === 'Repeat' :
+      filterSegment === 'new'         ? seg === 'New' :
+      filterSegment === 'inactive'    ? seg === 'Inactive' :
+      filterSegment === 'blacklisted' ? seg === 'Blacklisted' : true
+    return matchSearch && matchSegment
   })
 
   const totalRevenue  = filtered.reduce((s, c) => s + (c.total_spent || 0), 0)
-  const repeatCount   = filtered.filter(c => c.total_orders > 1).length
-  const vipCount      = filtered.filter(c => c.total_spent >= 2000).length
-  const avgOrderValue = filtered.length
-    ? Math.round(totalRevenue / filtered.reduce((s, c) => s + (c.total_orders || 0), 0) || 0)
-    : 0
+  const vipCount      = customers.filter(c => c.total_spent >= 5000).length
+  const repeatCount   = customers.filter(c => c.total_orders > 1).length
+  const blacklistCount = customers.filter(c => c.is_blacklisted).length
+
+  const navLinks = [
+    { label: 'Dashboard',  href: '/dashboard' },
+    { label: 'Orders',     href: '/orders' },
+    { label: 'Products',   href: '/products' },
+    { label: 'Customers',  href: '/customers' },
+    { label: 'Coupons',    href: '/coupons' },
+    { label: 'Banners',    href: '/banners' },
+    { label: 'Analytics',  href: '/analytics' },
+    { label: 'Inventory',  href: '/inventory' },
+  ]
 
   return (
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
-
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
           <span className="text-2xl">🐾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs text-white/50">Admin Panel</div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
           </div>
         </div>
-        <nav className="flex gap-1">
-          {[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Orders',    href: '/orders' },
-            { label: 'Products',  href: '/products' },
-            { label: 'Customers', href: '/customers' },
-            { label: 'Coupons',   href: '/coupons' },
-            { label: 'Banners',   href: '/banners' },
-          ].map(item => (
+        <nav className="flex gap-1 flex-wrap">
+          {navLinks.map(item => (
             <a key={item.href} href={item.href}
-              className="px-3 py-2 rounded text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
+              style={{ color: 'rgba(255,255,255,0.8)' }}>
               {item.label}
             </a>
           ))}
@@ -112,78 +157,60 @@ export default function CustomersPage() {
       </div>
 
       <div className="p-6 max-w-7xl mx-auto">
-
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: '#1a1008' }}>Customers</h1>
-          <button onClick={exportCSV}
-            className="text-white text-sm px-4 py-2 rounded-lg font-medium"
-            style={{ background: '#1a1008' }}>
-            Export CSV
-          </button>
-        </div>
-
-        {/* Segment stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Total Customers', value: filtered.length,                    icon: '👤', color: '#8b5cf6' },
-            { label: 'Repeat Customers', value: repeatCount,                       icon: '🔄', color: '#10b981' },
-            { label: 'VIP (₹2000+)',     value: vipCount,                          icon: '⭐', color: '#f59e0b' },
-            { label: 'Avg Order Value',  value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '💰', color: '#3b82f6' },
-          ].map(card => (
-            <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="text-xl mb-1">{card.icon}</div>
-              <div className="text-xl font-bold" style={{ color: card.color }}>{card.value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{card.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Customers</h1>
+          <div className="flex gap-3">
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search name, phone, email..."
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm w-64 focus:outline-none bg-white"
+              style={{ color: '#111827' }}
             />
-            <select value={filterSegment} onChange={e => setFilterSegment(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="all">All Customers</option>
-              <option value="new">New (1 order)</option>
-              <option value="repeat">Repeat (2+ orders)</option>
-              <option value="vip">VIP (₹2000+ spent)</option>
-              <option value="inactive">Inactive (0 orders)</option>
-            </select>
-            <select value={filterState} onChange={e => setFilterState(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">All States</option>
-              {allStates.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={filterCity} onChange={e => setFilterCity(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">All Cities</option>
-              {allCities.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <button onClick={exportCSV}
+              className="text-white text-sm px-4 py-2 rounded-lg font-medium"
+              style={{ background: '#1a1008' }}>
+              Export CSV
+            </button>
           </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Total Customers',  value: customers.length, icon: '👤', color: '#8b5cf6' },
+            { label: 'VIP (₹5000+)',     value: vipCount,         icon: '⭐', color: '#f59e0b' },
+            { label: 'Repeat Buyers',    value: repeatCount,      icon: '🔄', color: '#10b981' },
+            { label: 'Blacklisted',      value: blacklistCount,   icon: '🚫', color: '#ef4444' },
+          ].map(card => (
+            <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="text-xl mb-1">{card.icon}</div>
+              <div className="text-xl font-bold" style={{ color: card.color }}>
+                {loading ? '...' : card.value}
+              </div>
+              <div className="text-xs" style={{ color: '#6b7280', marginTop: 2 }}>{card.label}</div>
+            </div>
+          ))}
         </div>
 
         {/* Segment tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {[
-            { key: 'all',      label: 'All' },
-            { key: 'new',      label: 'New Customers' },
-            { key: 'repeat',   label: 'Repeat Buyers' },
-            { key: 'vip',      label: 'VIP' },
-            { key: 'inactive', label: 'Inactive' },
+            { key: 'all',         label: 'All' },
+            { key: 'vip',         label: '⭐ VIP' },
+            { key: 'loyal',       label: 'Loyal (4+ orders)' },
+            { key: 'repeat',      label: 'Repeat' },
+            { key: 'new',         label: 'New' },
+            { key: 'inactive',    label: 'Inactive' },
+            { key: 'blacklisted', label: '🚫 Blacklisted' },
           ].map(seg => (
             <button key={seg.key} onClick={() => setFilterSegment(seg.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                filterSegment === seg.key
-                  ? 'text-white'
-                  : 'bg-white border border-gray-200 text-gray-600'
-              }`}
-              style={filterSegment === seg.key ? { background: '#1a1008' } : {}}>
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+              style={{
+                background: filterSegment === seg.key ? '#1a1008' : 'white',
+                color: filterSegment === seg.key ? 'white' : '#6b7280',
+                border: '1px solid #e5e7eb'
+              }}>
               {seg.label}
             </button>
           ))}
@@ -194,8 +221,9 @@ export default function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Customer', 'Phone', 'Location', 'Orders', 'Total Spent', 'Segment', 'Joined', 'Action'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+                {['Customer','Phone','Location','Orders','Total Spent','Segment','Action'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
+                    style={{ color: '#6b7280' }}>
                     {h}
                   </th>
                 ))}
@@ -203,23 +231,28 @@ export default function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No customers found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No customers found</td></tr>
               ) : filtered.map(customer => {
-                const isVIP    = customer.total_spent >= 2000
-                const isRepeat = customer.total_orders > 1
-                const isNew    = customer.total_orders === 1
+                const segment = getSegment(customer)
+                const segStyle = getSegmentStyle(segment)
                 return (
-                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={customer.id} className="hover:bg-gray-50"
+                    style={{ background: customer.is_blacklisted ? '#fef2f2' : 'white' }}>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-800">{customer.name}</div>
-                      <div className="text-xs text-gray-400">{customer.email}</div>
+                      <div className="font-medium" style={{ color: '#111827' }}>{customer.name}</div>
+                      <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.email}</div>
+                      {customer.notes && (
+                        <div className="text-xs mt-0.5 italic" style={{ color: '#c8973a' }}>
+                          📝 {customer.notes.slice(0, 40)}{customer.notes.length > 40 ? '...' : ''}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{customer.phone}</td>
+                    <td className="px-4 py-3" style={{ color: '#6b7280' }}>{customer.phone}</td>
                     <td className="px-4 py-3">
-                      <div className="text-gray-600">{customer.city}</div>
-                      <div className="text-xs text-gray-400">{customer.state} {customer.pincode}</div>
+                      <div style={{ color: '#6b7280' }}>{customer.city}</div>
+                      <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.state}</div>
                     </td>
                     <td className="px-4 py-3 font-bold text-center" style={{ color: '#1a1008' }}>
                       {customer.total_orders}
@@ -228,20 +261,20 @@ export default function CustomersPage() {
                       ₹{customer.total_spent?.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1 flex-wrap">
-                        {isVIP    && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-medium">VIP</span>}
-                        {isRepeat && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-medium">Repeat</span>}
-                        {isNew    && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-medium">New</span>}
-                        {!isVIP && !isRepeat && !isNew && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">Inactive</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {new Date(customer.created_at).toLocaleDateString('en-IN')}
+                      <span className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{ background: segStyle.bg, color: segStyle.color }}>
+                        {segment}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => { setSelected(customer); fetchCustomerOrders(customer.id) }}
-                        className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        onClick={() => {
+                          setSelected(customer)
+                          setEditNote(customer.notes || '')
+                          fetchCustomerOrders(customer.id)
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ background: '#f3f4f6', color: '#374151' }}>
                         View
                       </button>
                     </td>
@@ -255,40 +288,92 @@ export default function CustomersPage() {
 
       {/* Customer detail modal */}
       {selected && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-screen overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div>
-                <div className="font-bold text-lg">{selected.name}</div>
-                <div className="text-sm text-gray-500">{selected.phone} · {selected.email}</div>
+                <div className="font-bold text-lg" style={{ color: '#111827' }}>{selected.name}</div>
+                <div className="text-sm" style={{ color: '#9ca3af' }}>{selected.phone} · {selected.email}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-light">✕</button>
+                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Total Orders</div>
-                  <div className="text-xl font-bold" style={{ color: '#1a1008' }}>{selected.total_orders}</div>
+
+            <div className="p-6 space-y-5">
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold" style={{ color: '#1a1008' }}>{selected.total_orders}</div>
+                  <div className="text-xs" style={{ color: '#6b7280' }}>Total Orders</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Total Spent</div>
-                  <div className="text-xl font-bold" style={{ color: '#10b981' }}>
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold" style={{ color: '#10b981' }}>
                     ₹{selected.total_spent?.toLocaleString('en-IN')}
                   </div>
+                  <div className="text-xs" style={{ color: '#6b7280' }}>Total Spent</div>
                 </div>
               </div>
+
+              {/* Address */}
               <div>
-                <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Address</div>
-                <div className="text-sm text-gray-700">
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Address</div>
+                <div className="text-sm" style={{ color: '#374151', lineHeight: 1.7 }}>
                   {selected.address_line1}<br />
                   {selected.city}, {selected.state} — {selected.pincode}
                 </div>
               </div>
+
+              {/* Notes */}
               <div>
-                <div className="text-xs font-semibold text-gray-500 uppercase mb-3">Order History</div>
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>
+                  Internal Notes
+                </div>
+                <textarea
+                  value={editNote}
+                  onChange={e => setEditNote(e.target.value)}
+                  placeholder="Add private notes about this customer..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                  style={{ color: '#111827' }}
+                />
+                <button onClick={() => saveNote(selected.id)}
+                  disabled={savingNote}
+                  className="mt-2 text-xs px-3 py-1.5 rounded-lg font-medium text-white disabled:opacity-50"
+                  style={{ background: '#1a1008' }}>
+                  {savingNote ? 'Saving...' : 'Save Note'}
+                </button>
+              </div>
+
+              {/* Blacklist */}
+              <div className="flex items-center justify-between p-3 rounded-lg"
+                style={{ background: selected.is_blacklisted ? '#fef2f2' : '#f9fafb' }}>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: '#111827' }}>
+                    {selected.is_blacklisted ? '🚫 Customer is Blacklisted' : 'Blacklist Customer'}
+                  </div>
+                  <div className="text-xs" style={{ color: '#6b7280' }}>
+                    {selected.is_blacklisted
+                      ? 'COD orders will be blocked for this customer'
+                      : 'Block this customer from placing COD orders'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleBlacklist(selected.id, selected.is_blacklisted)}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
+                  style={{ background: selected.is_blacklisted ? '#10b981' : '#ef4444' }}>
+                  {selected.is_blacklisted ? 'Remove' : 'Blacklist'}
+                </button>
+              </div>
+
+              {/* Order history */}
+              <div>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>
+                  Order History
+                </div>
                 {orders.length === 0 ? (
-                  <div className="text-sm text-gray-400">No orders found</div>
+                  <div className="text-sm" style={{ color: '#9ca3af' }}>No orders found</div>
                 ) : orders.map(order => (
                   <div key={order.id} className="border border-gray-100 rounded-lg p-3 mb-2">
                     <div className="flex justify-between items-start">
@@ -296,20 +381,24 @@ export default function CustomersPage() {
                         <div className="font-mono font-bold text-sm" style={{ color: '#c8973a' }}>
                           {order.ref}
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>
                           {new Date(order.created_at).toLocaleDateString('en-IN')}
                         </div>
-                        <div className="text-xs text-gray-600 mt-1">
+                        <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
                           {(order.items || []).map((i: any) => `${i.qty}× ${i.name}`).join(', ')}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-sm">₹{order.grand_total?.toLocaleString('en-IN')}</div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.status === 'rto' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                        <div className="font-bold text-sm" style={{ color: '#111827' }}>
+                          ₹{order.grand_total?.toLocaleString('en-IN')}
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full capitalize"
+                          style={{
+                            background: order.status === 'delivered' ? '#dcfce7' :
+                              order.status === 'rto' ? '#fef2f2' : '#dbeafe',
+                            color: order.status === 'delivered' ? '#166534' :
+                              order.status === 'rto' ? '#ef4444' : '#1e40af'
+                          }}>
                           {order.status}
                         </span>
                       </div>
