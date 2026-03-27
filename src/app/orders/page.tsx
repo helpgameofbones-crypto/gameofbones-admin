@@ -54,6 +54,7 @@ export default function OrdersPage() {
   async function updateStatus(orderId: string, newStatus: string) {
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId)
     await supabase.from('order_status_log').insert({ order_id: orderId, status: newStatus })
+    await supabase.from('activity_log').insert({ action: 'order updated to ' + newStatus, entity_type: 'order', entity_id: orderId, entity_name: orderId })
     fetchOrders()
     if (selected?.id === orderId) setSelected({ ...selected, status: newStatus })
   }
