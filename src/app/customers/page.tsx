@@ -8,14 +8,20 @@ const supabase = createClient(
 )
 
 export default function CustomersPage() {
-  const [customers, setCustomers]     = useState<any[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
+  const [customers, setCustomers]         = useState<any[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [search, setSearch]               = useState('')
   const [filterSegment, setFilterSegment] = useState('all')
-  const [selected, setSelected]       = useState<any>(null)
-  const [orders, setOrders]           = useState<any[]>([])
-  const [editNote, setEditNote]       = useState('')
-  const [savingNote, setSavingNote]   = useState(false)
+  const [selected, setSelected]           = useState<any>(null)
+  const [orders, setOrders]               = useState<any[]>([])
+  const [editNote, setEditNote]           = useState('')
+  const [savingNote, setSavingNote]       = useState(false)
+  const [showAddModal, setShowAddModal]   = useState(false)
+  const [saving, setSaving]               = useState(false)
+  const [newCustomer, setNewCustomer]     = useState({
+    name: '', phone: '', email: '',
+    address_line1: '', city: '', state: '', pincode: ''
+  })
 
   useEffect(() => { fetchCustomers() }, [])
 
@@ -28,35 +34,47 @@ export default function CustomersPage() {
     setLoading(false)
   }
 
-  async function fetchCustomerOrders(customerId: string) {
+  async function fetchCustomerOrders(phone: string) {
     const { data } = await supabase
       .from('orders')
       .select('*')
-      .eq('customer_id', customerId)
+      .eq('customer_phone', phone)
       .order('created_at', { ascending: false })
     setOrders(data || [])
   }
 
   async function saveNote(customerId: string) {
     setSavingNote(true)
-    await supabase
-      .from('customers')
-      .update({ notes: editNote })
-      .eq('id', customerId)
+    await supabase.from('customers').update({ notes: editNote }).eq('id', customerId)
     setSavingNote(false)
     setSelected({ ...selected, notes: editNote })
     fetchCustomers()
   }
 
   async function toggleBlacklist(customerId: string, current: boolean) {
-    await supabase
-      .from('customers')
-      .update({ is_blacklisted: !current })
-      .eq('id', customerId)
+    await supabase.from('customers').update({ is_blacklisted: !current }).eq('id', customerId)
     fetchCustomers()
-    if (selected?.id === customerId) {
-      setSelected({ ...selected, is_blacklisted: !current })
-    }
+    if (selected?.id === customerId) setSelected({ ...selected, is_blacklisted: !current })
+  }
+
+  async function addCustomer() {
+    if (!newCustomer.name || !newCustomer.phone) return
+    setSaving(true)
+    await supabase.from('customers').insert({
+      name:          newCustomer.name,
+      phone:         newCustomer.phone,
+      email:         newCustomer.email,
+      address_line1: newCustomer.address_line1,
+      city:          newCustomer.city,
+      state:         newCustomer.state,
+      pincode:       newCustomer.pincode,
+      total_orders:  0,
+      total_spent:   0,
+    })
+    setSaving(false)
+    setShowAddModal(false)
+    setNewCustomer({ name: '', phone: '', email: '', address_line1: '', city: '', state: '', pincode: '' })
+    fetchCustomers()
   }
 
   function exportCSV() {
@@ -79,10 +97,10 @@ export default function CustomersPage() {
   }
 
   function getSegment(c: any) {
-    if (c.is_blacklisted) return 'Blacklisted'
+    if (c.is_blacklisted)    return 'Blacklisted'
     if (c.total_spent >= 5000) return 'VIP'
-    if (c.total_orders > 3) return 'Loyal'
-    if (c.total_orders > 1) return 'Repeat'
+    if (c.total_orders > 3)  return 'Loyal'
+    if (c.total_orders > 1)  return 'Repeat'
     if (c.total_orders === 1) return 'New'
     return 'Inactive'
   }
@@ -98,8 +116,6 @@ export default function CustomersPage() {
     }
     return styles[segment] || styles.Inactive
   }
-
-  const allCities = [...new Set(customers.map(c => c.city).filter(Boolean))]
 
   const filtered = customers.filter(c => {
     const matchSearch = !search ||
@@ -118,9 +134,8 @@ export default function CustomersPage() {
     return matchSearch && matchSegment
   })
 
-  const totalRevenue  = filtered.reduce((s, c) => s + (c.total_spent || 0), 0)
-  const vipCount      = customers.filter(c => c.total_spent >= 5000).length
-  const repeatCount   = customers.filter(c => c.total_orders > 1).length
+  const vipCount       = customers.filter(c => c.total_spent >= 5000).length
+  const repeatCount    = customers.filter(c => c.total_orders > 1).length
   const blacklistCount = customers.filter(c => c.is_blacklisted).length
 
   const navLinks = [
@@ -167,6 +182,11 @@ export default function CustomersPage() {
               className="border border-gray-200 rounded-lg px-4 py-2 text-sm w-64 focus:outline-none bg-white"
               style={{ color: '#111827' }}
             />
+            <button onClick={() => setShowAddModal(true)}
+              className="text-white text-sm px-4 py-2 rounded-lg font-medium"
+              style={{ background: '#c8973a' }}>
+              + Add Customer
+            </button>
             <button onClick={exportCSV}
               className="text-white text-sm px-4 py-2 rounded-lg font-medium"
               style={{ background: '#1a1008' }}>
@@ -175,13 +195,12 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total Customers',  value: customers.length, icon: '👤', color: '#8b5cf6' },
-            { label: 'VIP (₹5000+)',     value: vipCount,         icon: '⭐', color: '#f59e0b' },
-            { label: 'Repeat Buyers',    value: repeatCount,      icon: '🔄', color: '#10b981' },
-            { label: 'Blacklisted',      value: blacklistCount,   icon: '🚫', color: '#ef4444' },
+            { label: 'Total Customers', value: customers.length, icon: '👤', color: '#8b5cf6' },
+            { label: 'VIP (₹5000+)',    value: vipCount,         icon: '⭐', color: '#f59e0b' },
+            { label: 'Repeat Buyers',   value: repeatCount,      icon: '🔄', color: '#10b981' },
+            { label: 'Blacklisted',     value: blacklistCount,   icon: '🚫', color: '#ef4444' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <div className="text-xl mb-1">{card.icon}</div>
@@ -193,7 +212,6 @@ export default function CustomersPage() {
           ))}
         </div>
 
-        {/* Segment tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {[
             { key: 'all',         label: 'All' },
@@ -216,7 +234,6 @@ export default function CustomersPage() {
           ))}
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
@@ -235,7 +252,7 @@ export default function CustomersPage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No customers found</td></tr>
               ) : filtered.map(customer => {
-                const segment = getSegment(customer)
+                const segment  = getSegment(customer)
                 const segStyle = getSegmentStyle(segment)
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50"
@@ -271,7 +288,7 @@ export default function CustomersPage() {
                         onClick={() => {
                           setSelected(customer)
                           setEditNote(customer.notes || '')
-                          fetchCustomerOrders(customer.id)
+                          fetchCustomerOrders(customer.phone)
                         }}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ background: '#f3f4f6', color: '#374151' }}>
@@ -286,7 +303,57 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* Customer detail modal */}
+      {/* Add Customer Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="font-bold text-lg" style={{ color: '#111827' }}>Add New Customer</div>
+              <button onClick={() => setShowAddModal(false)}
+                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {[
+                { label: 'Full Name *',  key: 'name',          placeholder: 'Rahul Sharma' },
+                { label: 'Phone *',      key: 'phone',         placeholder: '9876543210' },
+                { label: 'Email',        key: 'email',         placeholder: 'rahul@email.com' },
+                { label: 'Address',      key: 'address_line1', placeholder: 'Street address' },
+                { label: 'City',         key: 'city',          placeholder: 'Mumbai' },
+                { label: 'State',        key: 'state',         placeholder: 'Maharashtra' },
+                { label: 'Pincode',      key: 'pincode',       placeholder: '400001' },
+              ].map(field => (
+                <div key={field.key}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                    {field.label}
+                  </label>
+                  <input
+                    value={newCustomer[field.key as keyof typeof newCustomer]}
+                    onChange={e => setNewCustomer({ ...newCustomer, [field.key]: e.target.value })}
+                    placeholder={field.placeholder}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ color: '#111827' }}
+                  />
+                </div>
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium"
+                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  Cancel
+                </button>
+                <button onClick={addCustomer} disabled={saving}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                  style={{ background: '#1a1008' }}>
+                  {saving ? 'Saving...' : 'Add Customer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Detail Modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -301,8 +368,6 @@ export default function CustomersPage() {
             </div>
 
             <div className="p-6 space-y-5">
-
-              {/* Stats */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold" style={{ color: '#1a1008' }}>{selected.total_orders}</div>
@@ -316,7 +381,6 @@ export default function CustomersPage() {
                 </div>
               </div>
 
-              {/* Address */}
               <div>
                 <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Address</div>
                 <div className="text-sm" style={{ color: '#374151', lineHeight: 1.7 }}>
@@ -325,11 +389,8 @@ export default function CustomersPage() {
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
-                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>
-                  Internal Notes
-                </div>
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Internal Notes</div>
                 <textarea
                   value={editNote}
                   onChange={e => setEditNote(e.target.value)}
@@ -346,7 +407,6 @@ export default function CustomersPage() {
                 </button>
               </div>
 
-              {/* Blacklist */}
               <div className="flex items-center justify-between p-3 rounded-lg"
                 style={{ background: selected.is_blacklisted ? '#fef2f2' : '#f9fafb' }}>
                 <div>
@@ -355,8 +415,8 @@ export default function CustomersPage() {
                   </div>
                   <div className="text-xs" style={{ color: '#6b7280' }}>
                     {selected.is_blacklisted
-                      ? 'COD orders will be blocked for this customer'
-                      : 'Block this customer from placing COD orders'}
+                      ? 'COD orders blocked for this customer'
+                      : 'Block this customer from COD orders'}
                   </div>
                 </div>
                 <button
@@ -367,20 +427,15 @@ export default function CustomersPage() {
                 </button>
               </div>
 
-              {/* Order history */}
               <div>
-                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>
-                  Order History
-                </div>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>Order History</div>
                 {orders.length === 0 ? (
                   <div className="text-sm" style={{ color: '#9ca3af' }}>No orders found</div>
                 ) : orders.map(order => (
                   <div key={order.id} className="border border-gray-100 rounded-lg p-3 mb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-mono font-bold text-sm" style={{ color: '#c8973a' }}>
-                          {order.ref}
-                        </div>
+                        <div className="font-mono font-bold text-sm" style={{ color: '#c8973a' }}>{order.ref}</div>
                         <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>
                           {new Date(order.created_at).toLocaleDateString('en-IN')}
                         </div>
