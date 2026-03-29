@@ -61,6 +61,7 @@ export default function DashboardPage() {
     { label: 'Activity Log',     href: '/activity',           icon: '📝', color: '#374151' },
     { label: 'Expenses',         href: '/expenses',           icon: '💸', color: '#ef4444' },
     { label: 'Marketing',        href: '/marketing',          icon: '📡', color: '#1877f2' },
+    { label: 'NPS Survey',       href: '/nps',                icon: '⭐', color: '#f59e0b' },
   ]
 
   return (
@@ -189,5 +190,6 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 
