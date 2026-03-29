@@ -63,6 +63,7 @@ export default function DashboardPage() {
     { label: 'Marketing',        href: '/marketing',          icon: '📡', color: '#1877f2' },
     { label: 'NPS Survey',       href: '/nps',                icon: '⭐', color: '#f59e0b' },
     { label: 'Returns',          href: '/returns',            icon: '↩️', color: '#ef4444' },
+    { label: 'Product Mgmt',     href: '/product-management', icon: '🦴', color: '#c8973a' },
   ]
 
   return (
@@ -191,6 +192,7 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 
 
