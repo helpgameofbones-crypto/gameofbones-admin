@@ -59,6 +59,7 @@ export default function DashboardPage() {
     { label: 'Banners',          href: '/banners',            icon: '🖼️', color: '#8b5cf6' },
     { label: 'Abandoned Carts',  href: '/abandoned-carts',   icon: '🛒', color: '#ef4444' },
     { label: 'Activity Log',     href: '/activity',           icon: '📝', color: '#374151' },
+    { label: 'Expenses',         href: '/expenses',           icon: '💸', color: '#ef4444' },
   ]
 
   return (
@@ -187,3 +188,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
