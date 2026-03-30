@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -9,6 +9,8 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const order = await req.json()
+
+    if (order.payment_method === 'cod' && order.grand_total > 1500) { return NextResponse.json({ error: 'COD not available for orders above Rs 1500. Please pay online.' }, { status: 400 }) }
 
     const { data: existingCustomer } = await supabase
       .from('customers')
@@ -78,3 +80,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+
