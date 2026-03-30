@@ -68,6 +68,7 @@ export default function DashboardPage() {
     { label: 'Gamification',     href: '/gamification',       icon: '🎡', color: '#f59e0b' },
     { label: 'Campaigns+',       href: '/campaigns-hub',      icon: '🪔', color: '#f59e0b' },
     { label: 'Delhivery',        href: '/delhivery',          icon: '🚚', color: '#10b981' },
+    { label: 'Razorpay',         href: '/razorpay',           icon: '💳', color: '#3b82f6' },
   ]
 
   return (
@@ -196,6 +197,7 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 
 
