@@ -67,9 +67,6 @@ export default function DashboardPage() {
     { label: 'Cust Intel',        href: '/customer-intelligence', icon: '🧠', color: '#8b5cf6' },
     { label: 'Gamification',     href: '/gamification',       icon: '🎡', color: '#f59e0b' },
     { label: 'Campaigns+',       href: '/campaigns-hub',      icon: '🪔', color: '#f59e0b' },
-    { label: 'Cust Intel',        href: '/customer-intelligence', icon: '🧠', color: '#8b5cf6' },
-    { label: 'Gamification',     href: '/gamification',       icon: '🎡', color: '#f59e0b' },
-    { label: 'Campaigns+',       href: '/campaigns-hub',      icon: '🪔', color: '#f59e0b' },
   ]
 
   return (
@@ -198,6 +195,7 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
 
 
