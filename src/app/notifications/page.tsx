@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Bell, Package, AlertTriangle, TrendingDown, RefreshCw, CheckCheck, ShoppingCart, Users, X } from 'lucide-react'
@@ -46,7 +46,7 @@ export default function NotificationsPage() {
       type: 'orders',
       priority: 'high',
       title: `${newOrders.length} new order${newOrders.length > 1 ? 's' : ''} today`,
-      description: `₹${newOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} in revenue today`,
+      description: `â‚¹${newOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} in revenue today`,
       action: 'View Orders',
       actionHref: '/orders',
       time: 'Today',
@@ -71,7 +71,7 @@ export default function NotificationsPage() {
   }
 
   // Low stock
-  const lowStock = products.filter(p => (p.stock_quantity || 0) <= (p.low_stock_threshold || 10) && (p.stock_quantity || 0) > 0)
+  const lowStock = products.filter(p => p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity > 0 && p.stock_quantity <= (p.low_stock_threshold || 10))
   if (lowStock.length > 0) {
     alerts.push({
       id: 'low-stock',
@@ -85,7 +85,7 @@ export default function NotificationsPage() {
   }
 
   // Out of stock
-  const outOfStock = products.filter(p => (p.stock_quantity || 0) === 0)
+  const outOfStock = products.filter(p => p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity === 0)
   if (outOfStock.length > 0) {
     alerts.push({
       id: 'out-of-stock',
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
       type: 'danger',
       priority: 'medium',
       title: `${rtoOrders.length} RTO order${rtoOrders.length > 1 ? 's' : ''}`,
-      description: `₹${rtoOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} worth of returned shipments`,
+      description: `â‚¹${rtoOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} worth of returned shipments`,
       action: 'View RTO',
       actionHref: '/rto',
     })
@@ -238,7 +238,7 @@ export default function NotificationsPage() {
                     {alert.action && (
                       <a href={alert.actionHref}
                         className="inline-block mt-2 text-xs font-medium text-orange-600 hover:text-orange-700 underline">
-                        {alert.action} →
+                        {alert.action} â†’
                       </a>
                     )}
                   </div>

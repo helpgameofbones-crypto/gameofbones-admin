@@ -8,23 +8,34 @@ const supabase = createClient(
 )
 
 export default function DashboardPage() {
-  const [stats, setStats]     = useState({ orders: 0, revenue: 0, customers: 0, pending: 0 })
-  const [recent, setRecent]   = useState<any[]>([])
+  const [stats, setStats] = useState({ orders: 0, revenue: 0, customers: 0, pending: 0 })
+  const [recent, setRecent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [weekRevenue, setWeekRevenue] = useState(0)
+  const [monthRevenue, setMonthRevenue] = useState(0)
 
   useEffect(() => { fetchStats() }, [])
 
   async function fetchStats() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const weekAgo = new Date(Date.now() - 7 * 86400000)
+    const monthAgo = new Date(Date.now() - 30 * 86400000)
+
     const { data: orders } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
     const { count: customers } = await supabase.from('customers').select('*', { count: 'exact', head: true })
-    const all       = orders || []
+
+    const all = orders || []
     const todayOrds = all.filter(o => new Date(o.created_at) >= today)
-    const revenue   = todayOrds.reduce((s, o) => s + (o.grand_total || 0), 0)
-    const pending   = all.filter(o => ['placed','confirmed','packed','labelled','pickup_ready'].includes(o.status)).length
+    const revenue = todayOrds.reduce((s, o) => s + (o.grand_total || 0), 0)
+    const pending = all.filter(o => ['placed','confirmed','packed','labelled','pickup_ready'].includes(o.status)).length
+    const weekRev = all.filter(o => new Date(o.created_at) >= weekAgo).reduce((s, o) => s + (o.grand_total || 0), 0)
+    const monthRev = all.filter(o => new Date(o.created_at) >= monthAgo).reduce((s, o) => s + (o.grand_total || 0), 0)
+
     setStats({ orders: todayOrds.length, revenue, customers: customers || 0, pending })
-    setRecent(all.slice(0, 10))
+    setWeekRevenue(weekRev)
+    setMonthRevenue(monthRev)
+    setRecent(all.slice(0, 15))
     setLoading(false)
   }
 
@@ -37,171 +48,121 @@ export default function DashboardPage() {
     dispatched:   { bg: '#cffafe', color: '#155e75' },
     delivered:    { bg: '#dcfce7', color: '#166534' },
     rto:          { bg: '#fef2f2', color: '#ef4444' },
+    cancelled:    { bg: '#f3f4f6', color: '#6b7280' },
   }
-
-  const allPages = [
-    { label: 'Orders',           href: '/orders',             icon: '📦', color: '#3b82f6' },
-    { label: 'Products',         href: '/products',           icon: '🦴', color: '#c8973a' },
-    { label: 'Customers',        href: '/customers',          icon: '👤', color: '#8b5cf6' },
-    { label: 'Analytics',        href: '/analytics',          icon: '📊', color: '#10b981' },
-    { label: 'Adv Analytics',    href: '/analytics-advanced', icon: '🔥', color: '#ef4444' },
-    { label: 'Finance',          href: '/finance',            icon: '💰', color: '#10b981' },
-    { label: 'Loyalty',          href: '/loyalty',            icon: '⭐', color: '#f59e0b' },
-    { label: 'Operations',       href: '/operations',         icon: '🏭', color: '#6b7280' },
-    { label: 'Promotions',       href: '/promotions',         icon: '⚡', color: '#f59e0b' },
-    { label: 'Inventory',        href: '/inventory',          icon: '📋', color: '#f59e0b' },
-    { label: 'RTO Risk',         href: '/rto',                icon: '↩️', color: '#ef4444' },
-    { label: 'Bulk Export',      href: '/bulk-export',        icon: '📤', color: '#6b7280' },
-    { label: 'Campaigns',        href: '/campaigns',          icon: '📢', color: '#8b5cf6' },
-    { label: 'Tasks',            href: '/tasks',              icon: '✅', color: '#10b981' },
-    { label: 'Invoices',         href: '/invoices',           icon: '🧾', color: '#c8973a' },
-    { label: 'Coupons',          href: '/coupons',            icon: '🏷️', color: '#3b82f6' },
-    { label: 'Banners',          href: '/banners',            icon: '🖼️', color: '#8b5cf6' },
-    { label: 'Abandoned Carts',  href: '/abandoned-carts',   icon: '🛒', color: '#ef4444' },
-    { label: 'Activity Log',     href: '/activity',           icon: '📝', color: '#374151' },
-    { label: 'Expenses',         href: '/expenses',           icon: '💸', color: '#ef4444' },
-    { label: 'Marketing',        href: '/marketing',          icon: '📡', color: '#1877f2' },
-    { label: 'NPS Survey',       href: '/nps',                icon: '⭐', color: '#f59e0b' },
-    { label: 'Returns',          href: '/returns',            icon: '↩️', color: '#ef4444' },
-    { label: 'Product Mgmt',     href: '/product-management', icon: '🦴', color: '#c8973a' },
-    { label: 'Cust Intel',        href: '/customer-intelligence', icon: '🧠', color: '#8b5cf6' },
-    { label: 'Gamification',     href: '/gamification',       icon: '🎡', color: '#f59e0b' },
-    { label: 'Campaigns+',       href: '/campaigns-hub',      icon: '🪔', color: '#f59e0b' },
-    { label: 'Delhivery',        href: '/delhivery',          icon: '🚚', color: '#10b981' },
-    { label: 'Razorpay',         href: '/razorpay',           icon: '💳', color: '#3b82f6' },
-    { label: 'Production',      href: '/production',        icon: '🏭', color: '#ef4444' },
-    { label: 'Cohort Analysis',  href: '/cohort-analysis',   icon: '📊', color: '#8b5cf6' },
-    { label: 'Hour Analysis',    href: '/hour-analysis',      icon: '🕐', color: '#3b82f6' },
-    { label: 'Duplicate Orders', href: '/duplicate-orders',   icon: '⚠️', color: '#ef4444' },
-    { label: 'COD Tracker',      href: '/cod-tracker',        icon: '📞', color: '#10b981' },
-    { label: 'Notifications',    href: '/notifications',      icon: '🔔', color: '#f59e0b' },
-    { label: 'Order Timeline',   href: '/order-timeline',     icon: '⏱️', color: '#8b5cf6' },
-    { label: 'Delivery Est.',    href: '/delivery-estimator', icon: '📅', color: '#10b981' },
-    { label: 'Order Notes',      href: '/order-notes',        icon: '📝', color: '#6b7280' },
-    { label: 'Refund Tracker',   href: '/refund-tracker',     icon: '💸', color: '#ef4444' },
-    { label: 'Cancellations',    href: '/cancellation-tracker', icon: '❌', color: '#ef4444' },
-    { label: 'Team Access',      href: '/team-access',        icon: '👥', color: '#8b5cf6' },
-    { label: 'Audit Trail',      href: '/audit-trail',        icon: '🛡️', color: '#374151' },
-    { label: 'Product Affinity', href: '/product-affinity',   icon: '🔗', color: '#10b981' },
-    { label: 'Bulk Invoices',    href: '/bulk-invoices',      icon: '📦', color: '#c8973a' },
-    { label: 'City Heatmap',     href: '/city-heatmap',       icon: '🗺️', color: '#3b82f6' },
-    { label: 'Reorder Alerts',  href: '/reorder-alerts',    icon: '🔔', color: '#10b981' },
-  ]
 
   return (
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
 
-      <div className="text-white px-6 py-4 flex items-center justify-between"
-        style={{ background: '#1a1008' }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
-          <div>
-            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
+      {/* Top Bar */}
+      <div className="px-6 py-4 flex items-center justify-between" style={{ background: '#1a1008' }}>
+        <div>
+          <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Dashboard</div>
+          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/tasks" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, textDecoration: 'none' }}>✅ Tasks</a>
-          <a href="/activity" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, textDecoration: 'none' }}>📝 Activity</a>
-          <a href="/orders" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, textDecoration: 'none' }}>📦 Orders</a>
+          <a href="/notifications" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>🔔 Alerts</a>
+          <a href="/orders" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>📦 Orders</a>
+          <a href="/tasks" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>✅ Tasks</a>
         </div>
       </div>
 
       <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6" style={{ color: '#111827' }}>Dashboard</h1>
 
+        {/* Today Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: "Today's Orders",  value: stats.orders,                                 icon: '📦', color: '#3b82f6' },
-            { label: 'Total Revenue',   value: '₹' + stats.revenue.toLocaleString('en-IN'),  icon: '💰', color: '#10b981' },
-            { label: 'Total Customers', value: stats.customers,                              icon: '👥', color: '#8b5cf6' },
-            { label: 'Pending Orders',  value: stats.pending,                                icon: '⏳', color: '#f59e0b' },
+            { label: "Today's Orders",  value: loading ? '...' : stats.orders,                                icon: '📦', color: '#3b82f6', bg: '#eff6ff' },
+            { label: "Today's Revenue", value: loading ? '...' : '₹' + stats.revenue.toLocaleString('en-IN'), icon: '💰', color: '#10b981', bg: '#f0fdf4' },
+            { label: 'Total Customers', value: loading ? '...' : stats.customers,                             icon: '👥', color: '#8b5cf6', bg: '#f5f3ff' },
+            { label: 'Pending Orders',  value: loading ? '...' : stats.pending,                               icon: '⏳', color: '#f59e0b', bg: '#fffbeb' },
           ].map(card => (
-            <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <div className="text-3xl mb-3">{card.icon}</div>
-              <div className="text-2xl font-bold" style={{ color: card.color }}>
-                {loading ? '...' : card.value}
-              </div>
-              <div className="text-sm mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+            <div key={card.label} className="rounded-2xl p-5 shadow-sm border border-gray-100" style={{ background: card.bg }}>
+              <div className="text-3xl mb-2">{card.icon}</div>
+              <div className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+              <div className="text-sm mt-1 text-gray-500">{card.label}</div>
             </div>
           ))}
         </div>
 
-        <h2 className="font-bold mb-3 text-lg" style={{ color: '#111827' }}>All Pages</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
-          {allPages.map(link => (
-            <a key={link.href} href={link.href}
+        {/* Revenue Summary */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Last 7 Days Revenue</div>
+            <div className="text-3xl font-bold text-gray-900">₹{loading ? '...' : weekRevenue.toLocaleString('en-IN')}</div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Last 30 Days Revenue</div>
+            <div className="text-3xl font-bold text-gray-900">₹{loading ? '...' : monthRevenue.toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {[
+            { label: 'New Order',        href: '/orders',          icon: '➕', desc: 'Add manual order' },
+            { label: 'COD Tracker',      href: '/cod-tracker',     icon: '📞', desc: 'Confirm COD calls' },
+            { label: 'Reorder Alerts',   href: '/reorder-alerts',  icon: '🔔', desc: 'Send reminders' },
+            { label: 'Production',       href: '/production',      icon: '🏭', desc: 'Log a batch' },
+          ].map(action => (
+            <a key={action.href} href={action.href}
               className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
               style={{ textDecoration: 'none' }}>
-              <div className="text-2xl mb-2">{link.icon}</div>
-              <div className="font-medium text-sm" style={{ color: link.color }}>
-                {link.label}
-              </div>
+              <div className="text-2xl mb-1">{action.icon}</div>
+              <div className="font-semibold text-sm text-gray-900">{action.label}</div>
+              <div className="text-xs text-gray-400 mt-0.5">{action.desc}</div>
             </a>
           ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Recent Orders */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-bold" style={{ color: '#111827' }}>Recent Orders</h2>
-            <a href="/orders" style={{ color: '#c8973a', fontSize: 14, textDecoration: 'none' }}>
-              View all →
-            </a>
+            <h2 className="font-bold text-gray-900">Recent Orders</h2>
+            <a href="/orders" style={{ color: '#c8973a', fontSize: 14, textDecoration: 'none' }}>View all →</a>
           </div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {['Order Ref','Customer','Total','Payment','Status','Date'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
-                    {h}
-                  </th>
+                {['Order','Customer','Total','Payment','Status','Date'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
-                    Loading...
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
               ) : recent.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
-                    No orders yet. Orders will appear here when customers place them.
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No orders yet</td></tr>
               ) : recent.map(order => {
                 const sc = STATUS_COLORS[order.status] || { bg: '#f3f4f6', color: '#374151' }
                 return (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-mono font-bold text-sm" style={{ color: '#c8973a' }}>
-                      {order.ref}
+                      {order.ref || order.order_number}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
+                      <div className="font-medium text-gray-900">{order.customer_name}</div>
+                      <div className="text-xs text-gray-400">{order.customer_phone}</div>
                     </td>
-                    <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
-                      Rs {order.grand_total?.toLocaleString('en-IN')}
+                    <td className="px-4 py-3 font-bold text-gray-900">
+                      ₹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{
-                          background: order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7',
-                          color: order.payment_method === 'cod' ? '#92400e' : '#166534'
-                        }}>
+                        style={{ background: order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7', color: order.payment_method === 'cod' ? '#92400e' : '#166534' }}>
                         {order.payment_method?.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium capitalize"
                         style={{ background: sc.bg, color: sc.color }}>
-                        {order.status?.replace('_',' ')}
+                        {order.status?.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                    <td className="px-4 py-3 text-xs text-gray-400">
                       {new Date(order.created_at).toLocaleDateString('en-IN')}
                     </td>
                   </tr>
@@ -214,10 +175,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
