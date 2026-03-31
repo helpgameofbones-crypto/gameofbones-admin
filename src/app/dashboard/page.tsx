@@ -69,6 +69,7 @@ export default function DashboardPage() {
     { label: 'Campaigns+',       href: '/campaigns-hub',      icon: '🪔', color: '#f59e0b' },
     { label: 'Delhivery',        href: '/delhivery',          icon: '🚚', color: '#10b981' },
     { label: 'Razorpay',         href: '/razorpay',           icon: '💳', color: '#3b82f6' },
+    { label: 'Production',      href: '/production',        icon: '🏭', color: '#ef4444' },
   ]
 
   return (
@@ -197,7 +198,6 @@ export default function DashboardPage() {
     </div>
   )
 }
-
 
 
 
