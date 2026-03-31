@@ -80,6 +80,11 @@ export default function DashboardPage() {
     { label: 'Order Notes',      href: '/order-notes',        icon: '📝', color: '#6b7280' },
     { label: 'Refund Tracker',   href: '/refund-tracker',     icon: '💸', color: '#ef4444' },
     { label: 'Cancellations',    href: '/cancellation-tracker', icon: '❌', color: '#ef4444' },
+    { label: 'Team Access',      href: '/team-access',        icon: '👥', color: '#8b5cf6' },
+    { label: 'Audit Trail',      href: '/audit-trail',        icon: '🛡️', color: '#374151' },
+    { label: 'Product Affinity', href: '/product-affinity',   icon: '🔗', color: '#10b981' },
+    { label: 'Bulk Invoices',    href: '/bulk-invoices',      icon: '📦', color: '#c8973a' },
+    { label: 'City Heatmap',     href: '/city-heatmap',       icon: '🗺️', color: '#3b82f6' },
   ]
 
   return (
@@ -208,7 +213,6 @@ export default function DashboardPage() {
     </div>
   )
 }
-
 
 
 
