@@ -85,6 +85,7 @@ export default function DashboardPage() {
     { label: 'Product Affinity', href: '/product-affinity',   icon: '🔗', color: '#10b981' },
     { label: 'Bulk Invoices',    href: '/bulk-invoices',      icon: '📦', color: '#c8973a' },
     { label: 'City Heatmap',     href: '/city-heatmap',       icon: '🗺️', color: '#3b82f6' },
+    { label: 'Reorder Alerts',  href: '/reorder-alerts',    icon: '🔔', color: '#10b981' },
   ]
 
   return (
@@ -213,7 +214,6 @@ export default function DashboardPage() {
     </div>
   )
 }
-
 
 
 
