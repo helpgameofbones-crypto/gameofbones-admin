@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/app/lib/supabase'
 import { Plus, X, ChevronDown, ChevronUp, Download, BarChart2, Clock, TrendingUp, Package } from 'lucide-react'
 
 export default function ProductionPage() {
