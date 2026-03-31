@@ -70,6 +70,11 @@ export default function DashboardPage() {
     { label: 'Delhivery',        href: '/delhivery',          icon: '🚚', color: '#10b981' },
     { label: 'Razorpay',         href: '/razorpay',           icon: '💳', color: '#3b82f6' },
     { label: 'Production',      href: '/production',        icon: '🏭', color: '#ef4444' },
+    { label: 'Cohort Analysis',  href: '/cohort-analysis',   icon: '📊', color: '#8b5cf6' },
+    { label: 'Hour Analysis',    href: '/hour-analysis',      icon: '🕐', color: '#3b82f6' },
+    { label: 'Duplicate Orders', href: '/duplicate-orders',   icon: '⚠️', color: '#ef4444' },
+    { label: 'COD Tracker',      href: '/cod-tracker',        icon: '📞', color: '#10b981' },
+    { label: 'Notifications',    href: '/notifications',      icon: '🔔', color: '#f59e0b' },
   ]
 
   return (
@@ -198,7 +203,6 @@ export default function DashboardPage() {
     </div>
   )
 }
-
 
 
 
