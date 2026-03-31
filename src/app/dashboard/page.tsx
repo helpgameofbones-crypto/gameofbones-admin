@@ -75,6 +75,11 @@ export default function DashboardPage() {
     { label: 'Duplicate Orders', href: '/duplicate-orders',   icon: '⚠️', color: '#ef4444' },
     { label: 'COD Tracker',      href: '/cod-tracker',        icon: '📞', color: '#10b981' },
     { label: 'Notifications',    href: '/notifications',      icon: '🔔', color: '#f59e0b' },
+    { label: 'Order Timeline',   href: '/order-timeline',     icon: '⏱️', color: '#8b5cf6' },
+    { label: 'Delivery Est.',    href: '/delivery-estimator', icon: '📅', color: '#10b981' },
+    { label: 'Order Notes',      href: '/order-notes',        icon: '📝', color: '#6b7280' },
+    { label: 'Refund Tracker',   href: '/refund-tracker',     icon: '💸', color: '#ef4444' },
+    { label: 'Cancellations',    href: '/cancellation-tracker', icon: '❌', color: '#ef4444' },
   ]
 
   return (
@@ -203,7 +208,6 @@ export default function DashboardPage() {
     </div>
   )
 }
-
 
 
 
