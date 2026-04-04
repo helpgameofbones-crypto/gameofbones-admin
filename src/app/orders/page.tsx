@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -210,6 +210,12 @@ export default function OrdersPage() {
     { label: 'RTO Risk',  href: '/rto' },
   ]
 
+  async function deleteOrder(id: string, ref: string) {
+    if (!confirm('Delete order ' + ref + '? This cannot be undone.')) return
+    await supabase.from('orders').delete().eq('id', id)
+    fetchOrders()
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
       <div className="text-white px-6 py-4 flex items-center justify-between"
@@ -410,6 +416,11 @@ export default function OrdersPage() {
                           className="text-xs px-2 py-1 rounded"
                           style={{ background: '#f3f4f6', color: '#374151' }}>
                           View
+                        </button>
+                        <button onClick={() => deleteOrder(order.id, order.ref)}
+                          className="text-xs px-2 py-1 rounded"
+                          style={{ background: '#fee2e2', color: '#dc2626' }}>
+                          Delete
                         </button>
                         <button onClick={() => printPackingSlip(order)}
                           className="text-xs px-2 py-1 rounded"
