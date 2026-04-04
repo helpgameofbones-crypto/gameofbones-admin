@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -7,27 +7,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+const MAX_IMAGES = 5
+const MAX_VIDEOS = 2
+
 export default function ProductsPage() {
-  const [products, setProducts]     = useState<any[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [selected, setSelected]     = useState<any>(null)
-  const [search, setSearch]         = useState('')
-  const [saving, setSaving]         = useState(false)
-  const [uploading, setUploading]   = useState(false)
-  const [msg, setMsg]               = useState('')
-  const [tab, setTab]               = useState('all')
-  const [showAddProduct, setShowAddProduct] = useState(false)
-
-  const [editForm, setEditForm] = useState({
-    name: '', price: '', cost_price: '', stock: '',
-    reorder_level: '', best_before_days: '', is_active: true,
-  })
-
-  const [newProduct, setNewProduct] = useState({
-    name: '', sku: '', category: 'chew', price: '', cost_price: '',
-    stock: '100', weight_grams: '',
-    sizes: [{ label: '', price: '', cost_price: '', stock: '100', weight_grams: '' }]
-  })
+  const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [tab, setTab] = useState('all')
+  const [editing, setEditing] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [addingNew, setAddingNew] = useState(false)
+  const [newForm, setNewForm] = useState({ name: '', price: '', stock: '100', sku: '', category: '', description: '' })
 
   useEffect(() => { fetchProducts() }, [])
 
@@ -35,108 +28,105 @@ export default function ProductsPage() {
     setLoading(true)
     const { data } = await supabase
       .from('products')
-      .select('*, product_sizes(*)')
+      .select('*')
       .order('name')
     setProducts(data || [])
     setLoading(false)
   }
 
+  function openEdit(p: any) {
+    setEditing({
+      ...p,
+      images: p.images || [],
+      videos: p.videos || [],
+      image_url: p.image_url || '',
+      sizes: p.sizes || [
+        { label: '60g', price: p.price || 0, cost: 0, stock: p.stock || 100 },
+        { label: '120g', price: Math.round((p.price || 0) * 1.9), cost: 0, stock: 100 },
+        { label: '180g', price: Math.round((p.price || 0) * 2.8), cost: 0, stock: 100 },
+        { label: '240g', price: Math.round((p.price || 0) * 3.7), cost: 0, stock: 100 },
+      ],
+    })
+    setMsg('')
+  }
+
   async function saveProduct() {
-    if (!selected) return
+    if (!editing) return
     setSaving(true)
-    await supabase.from('products').update({
-      name:             editForm.name,
-      price:            parseFloat(editForm.price) || 0,
-      cost_price:       parseFloat(editForm.cost_price) || 0,
-      stock:            parseInt(editForm.stock) || 0,
-      reorder_level:    parseInt(editForm.reorder_level) || 10,
-      best_before_days: parseInt(editForm.best_before_days) || 365,
-      is_active:        editForm.is_active,
-    }).eq('id', selected.id)
-    await supabase.from('activity_log').insert({
-      action: 'product updated', entity_type: 'product',
-      entity_id: selected.id, entity_name: editForm.name,
-    })
+    const { error } = await supabase.from('products').update({
+      name: editing.name,
+      description: editing.description,
+      price: parseFloat(editing.price) || 0,
+      mrp: parseFloat(editing.mrp) || 0,
+      cost_price: parseFloat(editing.cost_price) || 0,
+      stock: parseInt(editing.stock) || 0,
+      reorder_level: parseInt(editing.reorder_level) || 10,
+      best_before_days: parseInt(editing.best_before_days) || 365,
+      is_active: editing.is_active,
+      is_bestseller: editing.is_bestseller,
+      image_url: editing.image_url,
+      images: editing.images,
+      videos: editing.videos,
+    }).eq('id', editing.id)
     setSaving(false)
-    setMsg('✅ Product saved!')
+    if (error) { setMsg('❌ ' + error.message); return }
+    setMsg('✅ Saved!')
     fetchProducts()
     setTimeout(() => setMsg(''), 3000)
   }
 
-  async function addNewProduct() {
-    if (!newProduct.name || !newProduct.price) {
-      setMsg('❌ Please fill in name and price')
-      return
-    }
-    setSaving(true)
+  async function uploadFile(file: File, type: 'image' | 'video', slot: number) {
+    if (!editing) return
+    const key = `${type}-${slot}`
+    setUploading(key)
+    const ext = file.name.split('.').pop()
+    const filename = `${editing.id}/${type}-${slot}-${Date.now()}.${ext}`
+    const bucket = type === 'image' ? 'product-images' : 'product-videos'
 
-    const { data: product, error } = await supabase.from('products').insert({
-      name:         newProduct.name,
-      sku:          newProduct.sku,
-      category:     newProduct.category,
-      filter:       newProduct.category,
-      price:        parseFloat(newProduct.price) || 0,
-      cost_price:   parseFloat(newProduct.cost_price) || 0,
-      stock:        parseInt(newProduct.stock) || 100,
-      weight_grams: parseInt(newProduct.weight_grams) || 0,
-      is_active:    true,
-    }).select().single()
+    const { error: upErr } = await supabase.storage.from(bucket).upload(filename, file, { upsert: true })
+    if (upErr) { setMsg('❌ Upload failed: ' + upErr.message); setUploading(null); return }
 
-    if (error) {
-      setMsg('❌ Error: ' + error.message)
-      setSaving(false)
-      return
-    }
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filename)
+    const publicUrl = urlData.publicUrl
 
-    // Insert sizes
-    const validSizes = newProduct.sizes.filter(s => s.label && s.price)
-    if (validSizes.length > 0) {
-      await supabase.from('product_sizes').insert(
-        validSizes.map(s => ({
-          product_id:   product.id,
-          label:        s.label,
-          price:        parseFloat(s.price) || 0,
-          cost_price:   parseFloat(s.cost_price) || 0,
-          stock:        parseInt(s.stock) || 100,
-          weight_grams: parseInt(s.weight_grams) || 0,
-        }))
-      )
-    }
-
-    await supabase.from('activity_log').insert({
-      action: 'product created', entity_type: 'product',
-      entity_id: product.id, entity_name: newProduct.name,
-    })
-
-    setSaving(false)
-    setShowAddProduct(false)
-    setNewProduct({
-      name: '', sku: '', category: 'chew', price: '', cost_price: '',
-      stock: '100', weight_grams: '',
-      sizes: [{ label: '', price: '', cost_price: '', stock: '100', weight_grams: '' }]
-    })
-    setMsg('✅ Product added!')
-    fetchProducts()
-    setTimeout(() => setMsg(''), 3000)
-  }
-
-  async function uploadImage(file: File) {
-    if (!selected) return
-    setUploading(true)
-    const ext      = file.name.split('.').pop()
-    const filename = `${selected.id}.${ext}`
-    const { error } = await supabase.storage.from('product-images').upload(filename, file, { upsert: true })
-    if (!error) {
-      const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(filename)
-      await supabase.from('products').update({ image_url: urlData.publicUrl }).eq('id', selected.id)
-      setSelected({ ...selected, image_url: urlData.publicUrl })
-      fetchProducts()
-      setMsg('✅ Image uploaded!')
-      setTimeout(() => setMsg(''), 3000)
+    if (type === 'image') {
+      const newImages = [...(editing.images || [])]
+      newImages[slot] = publicUrl
+      // First image is always the main image_url
+      const newEditing = { ...editing, images: newImages, image_url: newImages[0] || editing.image_url }
+      setEditing(newEditing)
+      // Save immediately
+      await supabase.from('products').update({ images: newImages, image_url: newImages[0] || editing.image_url }).eq('id', editing.id)
     } else {
-      setMsg('❌ Upload failed: ' + error.message)
+      const newVideos = [...(editing.videos || [])]
+      newVideos[slot] = publicUrl
+      setEditing({ ...editing, videos: newVideos })
+      await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
     }
-    setUploading(false)
+
+    setMsg('✅ Uploaded!')
+    setUploading(null)
+    fetchProducts()
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  async function removeMedia(type: 'image' | 'video', slot: number) {
+    if (!editing) return
+    if (type === 'image') {
+      const newImages = [...(editing.images || [])]
+      newImages[slot] = ''
+      const firstImage = newImages.find(Boolean) || ''
+      setEditing({ ...editing, images: newImages, image_url: firstImage })
+      await supabase.from('products').update({ images: newImages, image_url: firstImage }).eq('id', editing.id)
+    } else {
+      const newVideos = [...(editing.videos || [])]
+      newVideos[slot] = ''
+      setEditing({ ...editing, videos: newVideos })
+      await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
+    }
+    setMsg('✅ Removed')
+    fetchProducts()
+    setTimeout(() => setMsg(''), 2000)
   }
 
   async function toggleActive(id: string, current: boolean) {
@@ -144,598 +134,322 @@ export default function ProductsPage() {
     fetchProducts()
   }
 
-  async function updateSizePrice(sizeId: string, price: number) {
-    await supabase.from('product_sizes').update({ price }).eq('id', sizeId)
-    fetchProducts()
-  }
-
-  async function updateSizeStock(sizeId: string, stock: number) {
-    await supabase.from('product_sizes').update({ stock }).eq('id', sizeId)
-    fetchProducts()
-  }
-
-  async function updateSizeCostPrice(sizeId: string, cost_price: number) {
-    await supabase.from('product_sizes').update({ cost_price }).eq('id', sizeId)
-    fetchProducts()
-  }
-
-  function addSizeRow() {
-    setNewProduct({
-      ...newProduct,
-      sizes: [...newProduct.sizes, { label: '', price: '', cost_price: '', stock: '100', weight_grams: '' }]
+  async function addProduct() {
+    const { error } = await supabase.from('products').insert({
+      name: newForm.name,
+      price: parseFloat(newForm.price) || 0,
+      stock: parseInt(newForm.stock) || 100,
+      sku: newForm.sku,
+      category: newForm.category,
+      description: newForm.description,
+      is_active: true,
+      images: [],
+      videos: [],
     })
-  }
-
-  function updateSizeRow(index: number, field: string, value: string) {
-    const sizes = [...newProduct.sizes]
-    sizes[index] = { ...sizes[index], [field]: value }
-    setNewProduct({ ...newProduct, sizes })
-  }
-
-  function removeSizeRow(index: number) {
-    const sizes = newProduct.sizes.filter((_, i) => i !== index)
-    setNewProduct({ ...newProduct, sizes })
+    if (error) { setMsg('❌ ' + error.message); return }
+    setAddingNew(false)
+    setNewForm({ name: '', price: '', stock: '100', sku: '', category: '', description: '' })
+    fetchProducts()
   }
 
   const filtered = products.filter(p => {
-    const matchSearch = !search ||
-      p.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(search.toLowerCase())
-    const matchTab =
-      tab === 'all'      ? true :
-      tab === 'low'      ? p.stock <= (p.reorder_level || 10) && p.stock > 0 :
-      tab === 'out'      ? p.stock === 0 :
-      tab === 'inactive' ? !p.is_active : true
+    const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
+    const matchTab = tab === 'all' ? true : tab === 'low' ? (p.stock <= (p.reorder_level || 10) && p.stock > 0) : tab === 'out' ? p.stock === 0 : true
     return matchSearch && matchTab
   })
 
-  const lowStockCount = products.filter(p => p.stock <= (p.reorder_level || 10) && p.stock > 0 && p.is_active).length
-  const outOfStock    = products.filter(p => p.stock === 0 && p.is_active).length
-
-  const navLinks = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Orders',    href: '/orders' },
-    { label: 'Products',  href: '/products' },
-    { label: 'Inventory', href: '/inventory' },
-    { label: 'Finance',   href: '/finance' },
-    { label: 'Analytics', href: '/analytics' },
-  ]
+  const lowCount = products.filter(p => p.stock <= (p.reorder_level || 10) && p.stock > 0 && p.is_active).length
+  const outCount = products.filter(p => p.stock === 0 && p.is_active).length
 
   return (
-    <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
-      <div className="text-white px-6 py-4 flex items-center justify-between"
-        style={{ background: '#1a1008' }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+    <div style={{ minHeight: '100vh', background: '#f9f6f2', fontFamily: 'Inter, sans-serif' }}>
+      {/* Header */}
+      <div style={{ background: '#1a1008', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 24 }}>🐾</span>
           <div>
-            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
+            <div style={{ fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
           </div>
         </div>
-        <nav className="flex gap-1 flex-wrap">
-          {navLinks.map(item => (
-            <a key={item.href} href={item.href}
-              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
-              style={{ color: 'rgba(255,255,255,0.8)' }}>
-              {item.label}
-            </a>
+        <nav style={{ display: 'flex', gap: 4 }}>
+          {[['Dashboard','/dashboard'],['Orders','/orders'],['Products','/products'],['Inventory','/inventory'],['Finance','/finance'],['Analytics','/analytics']].map(([label, href]) => (
+            <a key={href} href={href} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, color: href === '/products' ? '#1a1008' : 'rgba(255,255,255,0.7)', background: href === '/products' ? '#c8973a' : 'transparent', textDecoration: 'none' }}>{label}</a>
           ))}
         </nav>
       </div>
 
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Products</h1>
-          <div className="flex gap-3">
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="border border-gray-200 rounded-lg px-4 py-2 text-sm w-64 focus:outline-none bg-white"
-              style={{ color: '#111827' }}
-            />
-            <button onClick={() => setShowAddProduct(true)}
-              className="text-white text-sm px-4 py-2 rounded-lg font-medium"
-              style={{ background: '#c8973a' }}>
+      <div style={{ padding: '32px 24px', maxWidth: 1200, margin: '0 auto' }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#1a1008', margin: 0 }}>Products</h1>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
+              style={{ padding: '9px 14px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 13, width: 220, outline: 'none', background: 'white' }} />
+            <button onClick={() => setAddingNew(true)}
+              style={{ background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               + Add Product
             </button>
           </div>
         </div>
 
-        {msg && (
-          <div className="mb-4 px-4 py-3 rounded-lg text-sm"
-            style={{
-              background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('✅') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`
-            }}>
-            {msg}
-          </div>
-        )}
-
-        {(lowStockCount > 0 || outOfStock > 0) && (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {outOfStock > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-                <span className="text-2xl">🔴</span>
-                <div>
-                  <div className="font-bold" style={{ color: '#ef4444' }}>{outOfStock} products out of stock</div>
-                  <div className="text-xs" style={{ color: '#9ca3af' }}>Need immediate restocking</div>
-                </div>
-              </div>
-            )}
-            {lowStockCount > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3">
-                <span className="text-2xl">🟡</span>
-                <div>
-                  <div className="font-bold" style={{ color: '#f59e0b' }}>{lowStockCount} products low on stock</div>
-                  <div className="text-xs" style={{ color: '#9ca3af' }}>Below reorder level</div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {[
-            { key: 'all',      label: `All (${products.length})` },
-            { key: 'low',      label: `⚠️ Low (${lowStockCount})` },
-            { key: 'out',      label: `🔴 Out (${outOfStock})` },
-            { key: 'inactive', label: `Inactive (${products.filter(p => !p.is_active).length})` },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-              style={{
-                background: tab === t.key ? '#1a1008' : 'white',
-                color: tab === t.key ? 'white' : '#6b7280',
-                border: '1px solid #e5e7eb'
-              }}>
-              {t.label}
-            </button>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[['all', `All (${products.length})`], ['low', `⚠ Low (${lowCount})`], ['out', `🔴 Out (${outCount})`]].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)}
+              style={{ padding: '7px 16px', borderRadius: 20, border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                background: tab === key ? '#1a1008' : '#e5ddd0', color: tab === key ? 'white' : '#5a4a3a' }}>{label}</button>
           ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                {['Product','SKU','Price','COGS','Margin','Stock','Status','Action'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>{h}</th>
+        {/* Products table */}
+        <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9f6f2', borderBottom: '1px solid #e5ddd0' }}>
+                {['Product', 'Price', 'Stock', 'Status', 'Media', 'Action'].map(h => (
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#8a7a6a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No products found</td></tr>
-              ) : filtered.map(product => {
-                const margin  = product.cost_price > 0
-                  ? Math.round(((product.price - product.cost_price) / product.price) * 100)
-                  : null
-                const isLow   = product.stock <= (product.reorder_level || 10) && product.stock > 0
-                const isOut   = product.stock === 0
-                return (
-                  <tr key={product.id} className="hover:bg-gray-50"
-                    style={{ background: isOut ? '#fef2f2' : isLow ? '#fefce8' : 'white' }}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                            style={{ background: '#f3f4f6' }}>🦴</div>
-                        )}
-                        <div className="font-medium" style={{ color: '#111827' }}>{product.name}</div>
+                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#8a7a6a' }}>Loading...</td></tr>
+              ) : filtered.map(p => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f0ebe3' }}>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {p.image_url
+                        ? <img src={p.image_url} alt={p.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddd0' }} />
+                        : <div style={{ width: 40, height: 40, background: '#f0ebe3', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🦴</div>
+                      }
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1a1008', fontSize: 14 }}>{p.name}</div>
+                        <div style={{ fontSize: 11, color: '#8a7a6a' }}>{p.category || '—'}</div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#6b7280' }}>{product.sku}</td>
-                    <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>₹{product.price}</td>
-                    <td className="px-4 py-3" style={{ color: '#6b7280' }}>
-                      {product.cost_price > 0 ? `₹${product.cost_price}` : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {margin !== null ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            background: margin >= 50 ? '#dcfce7' : margin >= 30 ? '#fef3c7' : '#fef2f2',
-                            color: margin >= 50 ? '#166534' : margin >= 30 ? '#92400e' : '#ef4444'
-                          }}>
-                          {margin}%
-                        </span>
-                      ) : <span style={{ color: '#9ca3af' }}>—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-lg"
-                        style={{ color: isOut ? '#ef4444' : isLow ? '#f59e0b' : '#10b981' }}>
-                        {product.stock}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{
-                          background: product.is_active ? '#dcfce7' : '#f3f4f6',
-                          color: product.is_active ? '#166534' : '#6b7280'
-                        }}>
-                        {product.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button onClick={() => {
-                          setSelected(product)
-                          setEditForm({
-                            name:             product.name,
-                            price:            product.price,
-                            cost_price:       product.cost_price || '',
-                            stock:            product.stock,
-                            reorder_level:    product.reorder_level || 10,
-                            best_before_days: product.best_before_days || 365,
-                            is_active:        product.is_active,
-                          })
-                          setMsg('')
-                        }}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ background: '#f3f4f6', color: '#374151' }}>
-                          Edit
-                        </button>
-                        <button onClick={() => toggleActive(product.id, product.is_active)}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{
-                            background: product.is_active ? '#fef2f2' : '#dcfce7',
-                            color: product.is_active ? '#ef4444' : '#166534'
-                          }}>
-                          {product.is_active ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1a1008' }}>₹{p.price}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ fontWeight: 700, color: p.stock === 0 ? '#dc2626' : p.stock <= (p.reorder_level || 10) ? '#d97706' : '#16a34a', fontSize: 15 }}>{p.stock}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: p.is_active ? '#dcfce7' : '#fee2e2', color: p.is_active ? '#16a34a' : '#dc2626' }}>
+                      {p.is_active ? 'Active' : 'Hidden'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#8a7a6a' }}>
+                    {(p.images || []).filter(Boolean).length} img · {(p.videos || []).filter(Boolean).length} vid
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => openEdit(p)} style={{ padding: '5px 12px', background: '#f0ebe3', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#1a1008' }}>Edit</button>
+                      <button onClick={() => toggleActive(p.id, p.is_active)} style={{ padding: '5px 12px', background: p.is_active ? '#fee2e2' : '#dcfce7', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: p.is_active ? '#dc2626' : '#16a34a' }}>
+                        {p.is_active ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add Product Modal */}
-      {showAddProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
-              <div className="font-bold text-lg" style={{ color: '#111827' }}>Add New Product</div>
-              <button onClick={() => setShowAddProduct(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Product Name *</label>
-                  <input value={newProduct.name}
-                    onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
-                    placeholder="Chicken Jerky"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>SKU</label>
-                  <input value={newProduct.sku}
-                    onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })}
-                    placeholder="GOB-G-JER"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Category</label>
-                  <select value={newProduct.category}
-                    onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}>
-                    <option value="chew">Chew</option>
-                    <option value="jerky">Jerky</option>
-                    <option value="organ">Organ</option>
-                    <option value="fish">Fish</option>
-                    <option value="wholeprey">Whole Prey</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Base Price (₹) *</label>
-                  <input type="number" value={newProduct.price}
-                    onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                    placeholder="299"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Base COGS (₹)</label>
-                  <input type="number" value={newProduct.cost_price}
-                    onChange={e => setNewProduct({ ...newProduct, cost_price: e.target.value })}
-                    placeholder="120"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Base Stock</label>
-                  <input type="number" value={newProduct.stock}
-                    onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
-                    placeholder="100"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ color: '#111827' }}
-                  />
-                </div>
-              </div>
+      {/* EDIT MODAL */}
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 16px', overflowY: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 700, padding: 32, position: 'relative' }}>
+            {/* Close */}
+            <button onClick={() => setEditing(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8a7a6a' }}>✕</button>
 
-              {/* Sizes */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold uppercase" style={{ color: '#374151' }}>
-                    Size Variants
-                  </label>
-                  <button onClick={addSizeRow}
-                    className="text-xs px-3 py-1 rounded font-medium"
-                    style={{ background: '#f3f4f6', color: '#374151' }}>
-                    + Add Size
-                  </button>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 24 }}>{editing.name}</h2>
+
+            {/* ── IMAGES SECTION ── */}
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Images (up to 5)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                {Array.from({ length: MAX_IMAGES }).map((_, i) => {
+                  const url = editing.images?.[i]
+                  const isUploading = uploading === `image-${i}`
+                  return (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <label style={{ display: 'block', cursor: 'pointer' }}>
+                        <div style={{ width: '100%', aspectRatio: '1', border: '2px dashed #e5ddd0', borderRadius: 8, overflow: 'hidden', background: url ? 'transparent' : '#f9f6f2', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                          {url
+                            ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : isUploading
+                              ? <div style={{ fontSize: 11, color: '#8a7a6a', textAlign: 'center' }}>Uploading...</div>
+                              : <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: 24 }}>📷</div>
+                                  <div style={{ fontSize: 10, color: '#8a7a6a', marginTop: 4 }}>Add Photo {i + 1}</div>
+                                </div>
+                          }
+                        </div>
+                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                          onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'image', i)} />
+                      </label>
+                      {url && (
+                        <button onClick={() => removeMedia('image', i)}
+                          style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                      )}
+                      {i === 0 && url && (
+                        <div style={{ position: 'absolute', bottom: 4, left: 4, background: '#c8973a', color: 'white', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3 }}>MAIN</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 8 }}>First image is the main product image shown on website</div>
+            </div>
+
+            {/* ── VIDEOS SECTION ── */}
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Videos (up to 2)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {Array.from({ length: MAX_VIDEOS }).map((_, i) => {
+                  const url = editing.videos?.[i]
+                  const isUploading = uploading === `video-${i}`
+                  return (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <label style={{ display: 'block', cursor: 'pointer' }}>
+                        <div style={{ border: '2px dashed #e5ddd0', borderRadius: 8, overflow: 'hidden', background: '#f9f6f2', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 100 }}>
+                          {url
+                            ? <video src={url} controls style={{ width: '100%', borderRadius: 4, maxHeight: 140 }} />
+                            : isUploading
+                              ? <div style={{ textAlign: 'center', color: '#8a7a6a', fontSize: 12 }}>Uploading...</div>
+                              : <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: 28 }}>🎥</div>
+                                  <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 6 }}>Add Video {i + 1}</div>
+                                  <div style={{ fontSize: 10, color: '#b0a090', marginTop: 2 }}>MP4, MOV, up to 50MB</div>
+                                </div>
+                          }
+                        </div>
+                        <input type="file" accept="video/*" style={{ display: 'none' }}
+                          onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'video', i)} />
+                      </label>
+                      {url && (
+                        <button onClick={() => removeMedia('video', i)}
+                          style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ── PRODUCT DETAILS ── */}
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              {[
+                ['Product Name', 'name', 'text'],
+                ['Selling Price (₹)', 'price', 'number'],
+                ['Base COGS (₹)', 'cost_price', 'number'],
+                ['Stock', 'stock', 'number'],
+                ['Reorder Level', 'reorder_level', 'number'],
+                ['Best Before (days)', 'best_before_days', 'number'],
+              ].map(([label, field, type]) => (
+                <div key={field}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 5 }}>{label}</label>
+                  <input type={type} value={editing[field] ?? ''} onChange={e => setEditing({ ...editing, [field]: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {['Size Label','Selling Price (₹)','COGS (₹)','Stock','Weight (g)',''].map(h => (
-                          <th key={h} className="text-left px-3 py-2 font-semibold uppercase"
-                            style={{ color: '#6b7280' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {newProduct.sizes.map((size, i) => (
-                        <tr key={i} style={{ borderTop: '1px solid #f3f4f6' }}>
-                          {[
-                            { key: 'label',        placeholder: '60g' },
-                            { key: 'price',        placeholder: '329' },
-                            { key: 'cost_price',   placeholder: '130' },
-                            { key: 'stock',        placeholder: '100' },
-                            { key: 'weight_grams', placeholder: '60' },
-                          ].map(field => (
-                            <td key={field.key} className="px-2 py-1.5">
-                              <input
-                                value={(size as any)[field.key]}
-                                onChange={e => updateSizeRow(i, field.key, e.target.value)}
-                                placeholder={field.placeholder}
-                                className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none"
-                                style={{ color: '#111827' }}
-                              />
-                            </td>
-                          ))}
-                          <td className="px-2 py-1.5">
-                            {newProduct.sizes.length > 1 && (
-                              <button onClick={() => removeSizeRow(i)}
-                                className="text-xs px-2 py-1 rounded"
-                                style={{ background: '#fef2f2', color: '#ef4444' }}>
-                                ✕
-                              </button>
-                            )}
+              ))}
+            </div>
+
+            {/* Toggles */}
+            <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+              {[['Product Active', 'is_active'], ['Bestseller', 'is_bestseller']].map(([label, field]) => (
+                <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <div onClick={() => setEditing({ ...editing, [field]: !editing[field] })}
+                    style={{ width: 44, height: 24, borderRadius: 12, background: editing[field] ? '#16a34a' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', position: 'absolute', top: 3, left: editing[field] ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1008' }}>{label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Size pricing */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 10 }}>Size Pricing, COGS & Stock</div>
+              <div style={{ border: '1px solid #e5ddd0', borderRadius: 8, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f9f6f2' }}>
+                      {['Size', 'Sell Price', 'COGS', 'Margin', 'Stock'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#8a7a6a', textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(editing.sizes || []).map((s: any, i: number) => {
+                      const margin = s.price && s.cost ? Math.round(((s.price - s.cost) / s.price) * 100) : null
+                      return (
+                        <tr key={i} style={{ borderTop: '1px solid #f0ebe3' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1a1008', fontSize: 13 }}>{s.label}</td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <input type="number" value={s.price || ''} onChange={e => {
+                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, price: parseFloat(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
+                            }} style={{ width: 80, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <input type="number" placeholder="Cost" value={s.cost || ''} onChange={e => {
+                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, cost: parseFloat(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
+                            }} style={{ width: 80, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
+                          </td>
+                          <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, color: margin && margin > 50 ? '#16a34a' : margin && margin > 30 ? '#d97706' : '#dc2626' }}>
+                            {margin !== null ? `${margin}%` : '—'}
+                          </td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <input type="number" value={s.stock || ''} onChange={e => {
+                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, stock: parseInt(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
+                            }} style={{ width: 70, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                  COGS = Cost of Goods Sold. Enter your buying cost per size for accurate profit tracking.
-                </p>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
+            </div>
 
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowAddProduct(false)}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
-                  Cancel
-                </button>
-                <button onClick={addNewProduct} disabled={saving}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-                  style={{ background: '#1a1008' }}>
-                  {saving ? 'Adding...' : 'Add Product'}
-                </button>
-              </div>
+            {/* Msg + Save */}
+            {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: msg.startsWith('❌') ? '#fee2e2' : '#dcfce7', color: msg.startsWith('❌') ? '#dc2626' : '#16a34a', fontSize: 13, fontWeight: 600, marginBottom: 16 }}>{msg}</div>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditing(null)} style={{ padding: '10px 20px', background: '#f0ebe3', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#5a4a3a' }}>Cancel</button>
+              <button onClick={saveProduct} disabled={saving}
+                style={{ padding: '10px 24px', background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Saving...' : 'Save Product'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Product Modal */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-screen overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
-              <div className="font-bold text-lg" style={{ color: '#111827' }}>{selected.name}</div>
-              <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {msg && (
-                <div className="px-4 py-3 rounded-lg text-sm"
-                  style={{
-                    background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-                    color: msg.startsWith('✅') ? '#166534' : '#ef4444',
-                  }}>
-                  {msg}
+      {/* ADD PRODUCT MODAL */}
+      {addingNew && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 500, padding: 32 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 20 }}>Add New Product</h2>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {[['Product Name *', 'name', 'text'], ['Selling Price (₹) *', 'price', 'number'], ['Initial Stock', 'stock', 'number'], ['SKU', 'sku', 'text'], ['Category', 'category', 'text']].map(([label, field, type]) => (
+                <div key={field}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 4 }}>{label}</label>
+                  <input type={type} value={(newForm as any)[field]} onChange={e => setNewForm({ ...newForm, [field]: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
-              )}
-
-              {/* Image upload */}
+              ))}
               <div>
-                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Product Image</div>
-                <div className="flex items-center gap-4">
-                  {selected.image_url ? (
-                    <img src={selected.image_url} alt={selected.name}
-                      className="w-20 h-20 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl flex items-center justify-center text-3xl"
-                      style={{ background: '#f3f4f6' }}>🦴</div>
-                  )}
-                  <label className="cursor-pointer">
-                    <div className="text-sm px-4 py-2 rounded-lg font-medium text-white inline-block"
-                      style={{ background: uploading ? '#9ca3af' : '#c8973a' }}>
-                      {uploading ? 'Uploading...' : '📷 Upload Image'}
-                    </div>
-                    <input type="file" accept="image/*" className="hidden" disabled={uploading}
-                      onChange={e => { const file = e.target.files?.[0]; if (file) uploadImage(file) }}
-                    />
-                  </label>
-                </div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 4 }}>Description</label>
+                <textarea value={newForm.description} onChange={e => setNewForm({ ...newForm, description: e.target.value })} rows={3}
+                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>
-
-              {/* Basic info */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Product Name',      key: 'name',             type: 'text' },
-                  { label: 'Selling Price (₹)', key: 'price',            type: 'number' },
-                  { label: 'Base COGS (₹)',     key: 'cost_price',       type: 'number' },
-                  { label: 'Stock',             key: 'stock',            type: 'number' },
-                  { label: 'Reorder Level',     key: 'reorder_level',    type: 'number' },
-                  { label: 'Best Before (days)', key: 'best_before_days', type: 'number' },
-                ].map(field => (
-                  <div key={field.key}>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
-                      {field.label}
-                    </label>
-                    <input type={field.type}
-                      value={editForm[field.key as keyof typeof editForm] as string}
-                      onChange={e => setEditForm({ ...editForm, [field.key]: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                      style={{ color: '#111827' }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Margin preview */}
-              {editForm.cost_price && editForm.price && (
-                <div className="p-3 rounded-lg" style={{ background: '#f9f6f2' }}>
-                  <div className="text-xs font-semibold mb-1" style={{ color: '#374151' }}>Margin Preview</div>
-                  <div className="flex justify-between text-sm">
-                    <span style={{ color: '#6b7280' }}>Profit per unit</span>
-                    <span className="font-bold" style={{ color: '#10b981' }}>
-                      ₹{(parseFloat(editForm.price) - parseFloat(editForm.cost_price)).toFixed(0)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span style={{ color: '#6b7280' }}>Margin %</span>
-                    <span className="font-bold" style={{ color: '#10b981' }}>
-                      {Math.round(((parseFloat(editForm.price) - parseFloat(editForm.cost_price)) / parseFloat(editForm.price)) * 100)}%
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Active toggle */}
-              <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: '#f9fafb' }}>
-                <div>
-                  <div className="text-sm font-medium" style={{ color: '#111827' }}>Product Active</div>
-                  <div className="text-xs" style={{ color: '#6b7280' }}>Inactive products hidden from website</div>
-                </div>
-                <button onClick={() => setEditForm({ ...editForm, is_active: !editForm.is_active })}
-                  className="w-12 h-6 rounded-full transition-colors relative"
-                  style={{ background: editForm.is_active ? '#10b981' : '#d1d5db' }}>
-                  <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all"
-                    style={{ left: editForm.is_active ? '26px' : '2px' }} />
-                </button>
-              </div>
-
-              {/* Sizes with COGS */}
-              {selected.product_sizes?.length > 0 && (
-                <div>
-                  <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>
-                    Size Pricing, COGS & Stock
-                  </div>
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {['Size','Sell Price','COGS','Margin','Stock'].map(h => (
-                            <th key={h} className="text-left px-3 py-2 font-semibold uppercase"
-                              style={{ color: '#6b7280' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selected.product_sizes.map((size: any) => {
-                          const margin = size.cost_price > 0
-                            ? Math.round(((size.price - size.cost_price) / size.price) * 100)
-                            : null
-                          return (
-                            <tr key={size.id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                              <td className="px-3 py-2 font-medium" style={{ color: '#374151' }}>{size.label}</td>
-                              <td className="px-3 py-2">
-                                <input type="number" defaultValue={size.price}
-                                  onBlur={e => {
-                                    const val = parseFloat(e.target.value)
-                                    if (!isNaN(val) && val !== size.price) updateSizePrice(size.id, val)
-                                  }}
-                                  className="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none"
-                                  style={{ color: '#111827' }}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <input type="number" defaultValue={size.cost_price || ''}
-                                  placeholder="Cost"
-                                  onBlur={e => {
-                                    const val = parseFloat(e.target.value)
-                                    if (!isNaN(val)) updateSizeCostPrice(size.id, val)
-                                  }}
-                                  className="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none"
-                                  style={{ color: '#111827' }}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                {margin !== null ? (
-                                  <span className="px-1.5 py-0.5 rounded text-xs font-medium"
-                                    style={{
-                                      background: margin >= 50 ? '#dcfce7' : margin >= 30 ? '#fef3c7' : '#fef2f2',
-                                      color: margin >= 50 ? '#166534' : margin >= 30 ? '#92400e' : '#ef4444'
-                                    }}>
-                                    {margin}%
-                                  </span>
-                                ) : <span style={{ color: '#9ca3af' }}>—</span>}
-                              </td>
-                              <td className="px-3 py-2">
-                                <input type="number" defaultValue={size.stock}
-                                  onBlur={e => {
-                                    const val = parseInt(e.target.value)
-                                    if (!isNaN(val) && val !== size.stock) updateSizeStock(size.id, val)
-                                  }}
-                                  className="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none"
-                                  style={{ color: '#111827' }}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setSelected(null)}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
-                  Cancel
-                </button>
-                <button onClick={saveProduct} disabled={saving}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-                  style={{ background: '#1a1008' }}>
-                  {saving ? 'Saving...' : 'Save Product'}
-                </button>
-              </div>
+            </div>
+            {msg && <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontSize: 13 }}>{msg}</div>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button onClick={() => setAddingNew(false)} style={{ padding: '10px 20px', background: '#f0ebe3', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#5a4a3a' }}>Cancel</button>
+              <button onClick={addProduct} style={{ padding: '10px 24px', background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Add Product</button>
             </div>
           </div>
         </div>
