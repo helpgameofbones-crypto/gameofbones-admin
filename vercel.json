@@ -1,1 +1,0 @@
-﻿{"crons":[{"path":"/api/daily-sales","schedule":"30 2 * * *"},{"path":"/api/abandoned-cart-followup","schedule":"0 * * * *"},{"path":"/api/customer-segments","schedule":"0 3 * * *"},{"path":"/api/dog-birthday","schedule":"30 2 * * *"}]}
