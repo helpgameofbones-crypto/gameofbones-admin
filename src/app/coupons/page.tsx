@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -68,7 +68,7 @@ export default function CouponsPage() {
 
   const typeLabel: Record<string, string> = {
     percent:      '% Off',
-    fixed:        '₹ Off',
+    fixed:        'â‚¹ Off',
     free_shipping: 'Free Shipping',
     free_product: 'Free Product',
   }
@@ -79,7 +79,7 @@ export default function CouponsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs text-white/50">Admin Panel</div>
@@ -134,12 +134,12 @@ export default function CouponsPage() {
                 <div>
                   <div className="font-bold text-gray-800">
                     {coupon.type === 'percent'       && `${coupon.value}% off`}
-                    {coupon.type === 'fixed'         && `₹${coupon.value} off`}
+                    {coupon.type === 'fixed'         && `â‚¹${coupon.value} off`}
                     {coupon.type === 'free_shipping' && 'Free Shipping'}
                     {coupon.type === 'free_product'  && 'Free Product'}
                   </div>
                   <div className="text-xs text-gray-500 mt-1 space-x-3">
-                    {coupon.min_order > 0 && <span>Min order ₹{coupon.min_order}</span>}
+                    {coupon.min_order > 0 && <span>Min order â‚¹{coupon.min_order}</span>}
                     {coupon.max_uses && <span>Max {coupon.max_uses} uses</span>}
                     {coupon.valid_until && <span>Expires {new Date(coupon.valid_until).toLocaleDateString('en-IN')}</span>}
                   </div>
@@ -179,7 +179,7 @@ export default function CouponsPage() {
                 {editing.id ? 'Edit Coupon' : 'Create Coupon'}
               </h2>
               <button onClick={() => setEditing(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-light">✕</button>
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light">âœ•</button>
             </div>
 
             <div className="p-6 space-y-4">
@@ -215,7 +215,7 @@ export default function CouponsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Value {editing.type === 'percent' ? '(%)' : '(₹)'}
+                    Value {editing.type === 'percent' ? '(%)' : '(â‚¹)'}
                   </label>
                   <input type="number"
                     value={editing.value || ''}
@@ -229,7 +229,7 @@ export default function CouponsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Min Order (₹)
+                    Min Order (â‚¹)
                   </label>
                   <input type="number"
                     value={editing.min_order || ''}
