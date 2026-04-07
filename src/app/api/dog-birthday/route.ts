@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('dog_birthdays')
       .select('*')
-      .ilike('phone', \%\\);
+      .ilike('phone', `%${phoneLast10}`);
 
     if (error) throw error;
 
