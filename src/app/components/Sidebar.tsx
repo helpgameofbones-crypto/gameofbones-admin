@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -77,7 +77,6 @@ export default function Sidebar() {
         left: 0,
       }}
     >
-      {/* Header */}
       <div style={{ padding: '0 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
           <span style={{ fontSize: '24px' }}>🐾</span>
@@ -97,7 +96,6 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Navigation */}
       <nav style={{ padding: '0 8px' }}>
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -132,5 +130,3 @@ export default function Sidebar() {
     </aside>
   )
 }
-
-
