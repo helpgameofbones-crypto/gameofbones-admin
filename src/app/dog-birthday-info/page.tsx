@@ -2,13 +2,24 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
+interface Birthday {
+  id: string;
+  owner_name: string;
+  dog_name: string;
+  birthday: string;
+  phone: string;
+  email: string;
+  discount_percent: number;
+  last_discount_sent: string | null;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export default function DogBirthdayInfo() {
-  const [birthdays, setBirthdays] = useState([]);
+  const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -24,7 +35,7 @@ export default function DogBirthdayInfo() {
         .order('birthday', { ascending: true });
 
       if (error) throw error;
-      setBirthdays(data || []);
+      setBirthdays((data as Birthday[]) || []);
     } catch (error) {
       console.error('Error fetching birthdays:', error);
     } finally {
