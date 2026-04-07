@@ -18,8 +18,7 @@ export default function Sidebar() {
     { icon: '📤', label: 'Bulk Export', href: '/bulk-export' },
     { icon: '📄', label: 'Bulk Invoices', href: '/bulk-invoices' },
     { icon: '📢', label: 'Campaigns', href: '/campaigns' },
-    { icon: '🎨', label: 'Campaigns+'
-    { icon: '💰', label: 'Cashflow', href: '/cashflow' },, href: '/campaigns-hub' },
+    { icon: '🎨', label: 'Campaigns+', href: '/campaigns-hub' },
     { icon: '💰', label: 'Cashflow', href: '/cashflow' },
     { icon: '❌', label: 'Cancellations', href: '/cancellation-tracker' },
     { icon: '🗺️', label: 'City Heatmap', href: '/city-heatmap' },
@@ -27,8 +26,7 @@ export default function Sidebar() {
     { icon: '🎓', label: 'Cohort Analysis', href: '/cohort-analysis' },
     { icon: '🏷️', label: 'Coupons', href: '/coupons' },
     { icon: '👤', label: 'Cust Intel', href: '/customer-intelligence' },
-    { icon: '👥', label: 'Customers'
-    { icon: '📈', label: 'Product Performance', href: '/product-performance' },, href: '/customers' },
+    { icon: '👥', label: 'Customers', href: '/customers' },
     { icon: '🏠', label: 'Dashboard', href: '/dashboard' },
     { icon: '🚚', label: 'Delhivery', href: '/delhivery' },
     { icon: '📅', label: 'Delivery Est.', href: '/delivery-estimator' },
