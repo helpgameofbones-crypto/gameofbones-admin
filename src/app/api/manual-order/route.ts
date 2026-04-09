@@ -21,18 +21,28 @@ export async function POST(req: NextRequest) {
       notes 
     } = body;
 
+    // Ensure items have all required fields
+    const formattedItems = items.map((item: any) => ({
+      id: item.product_id || item.id,
+      name: item.name,
+      quantity: item.quantity || 1,
+      price: item.price || 0,
+      product_id: item.product_id || item.id
+    }));
+
     const insertData: any = {
       ref: `MAN${Date.now()}`,
       customer_phone: customerPhone,
       customer_name: customerName,
+      items: formattedItems,
+      total_amount: total,
+      grand_total: total,
     };
 
     if (customerEmail) insertData.customer_email = customerEmail;
-    if (total) insertData.total_amount = total;
     if (paymentMethod) insertData.payment_method = paymentMethod;
     if (transactionId) insertData.transaction_id = transactionId;
     if (notes) insertData.notes = notes;
-    if (items) insertData.items = items;
     
     insertData.status = 'confirmed';
 
