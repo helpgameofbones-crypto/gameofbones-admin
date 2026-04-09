@@ -105,25 +105,25 @@ export default function ManualOrderPage() {
           <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#1a1008' }}>Customer Details</h2>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Name (Required)</label>
-            <input type="text" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Name (Required)</label>
+            <input type="text" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Phone (Required)</label>
-            <input type="text" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Phone (Required)</label>
+            <input type="text" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Email (Optional)</label>
-            <input type="email" value={formData.customerEmail} onChange={(e) => setFormData({...formData, customerEmail: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Email (Optional)</label>
+            <input type="email" value={formData.customerEmail} onChange={(e) => setFormData({...formData, customerEmail: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
           <h3 style={{ fontSize: '16px', marginTop: '24px', marginBottom: '16px', color: '#1a1008' }}>Payment Info</h3>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Method</label>
-            <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Method</label>
+            <select value={formData.paymentMethod} onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }}>
               <option value="cash">Cash</option>
               <option value="upi">UPI</option>
               <option value="card">Card</option>
@@ -132,13 +132,13 @@ export default function ManualOrderPage() {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Transaction ID</label>
-            <input type="text" value={formData.transactionId} onChange={(e) => setFormData({...formData, transactionId: e.target.value})} placeholder="UPI ref, card last 4 digits, etc" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Transaction ID</label>
+            <input type="text" value={formData.transactionId} onChange={(e) => setFormData({...formData, transactionId: e.target.value})} placeholder="UPI ref, card last 4 digits, etc" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Notes</label>
-            <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Event name, referral source, etc" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', minHeight: '80px', fontFamily: 'inherit' }} />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Notes</label>
+            <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Event name, referral source, etc" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', minHeight: '80px', fontFamily: 'inherit', color: '#1a1008' }} />
           </div>
         </div>
 
@@ -147,7 +147,7 @@ export default function ManualOrderPage() {
             <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Add Products</h2>
             <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
               {products.map(p => (
-                <button key={p.id} onClick={() => addItem(p.id)} style={{ padding: '10px', background: '#faf6f0', border: '1px solid #ede5d8', textAlign: 'left', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                <button key={p.id} onClick={() => addItem(p.id)} style={{ padding: '12px', background: '#faf6f0', border: '1px solid #ede5d8', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1a1008' }}>
                   {p.name} - ₹{p.price}
                 </button>
               ))}
@@ -162,8 +162,8 @@ export default function ManualOrderPage() {
               <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
                 {selectedItems.map((item, i) => (
                   <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
-                    <div><p style={{ fontWeight: '600', margin: 0 }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>₹{item.price}</p></div>
-                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px' }} />
+                    <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>₹{item.price}</p></div>
+                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px', color: '#1a1008' }} />
                     <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
                   </div>
                 ))}
@@ -171,7 +171,7 @@ export default function ManualOrderPage() {
             )}
 
             <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
-              <p style={{ fontSize: '12px', color: '#3a3028', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
+              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
               <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: 0 }}>₹{totalAmount.toFixed(2)}</p>
             </div>
 
