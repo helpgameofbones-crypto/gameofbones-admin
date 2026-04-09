@@ -20,6 +20,7 @@ const supabase = createClient(
 export default function ManualOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -63,36 +64,53 @@ export default function ManualOrderPage() {
   const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCreateOrder = async () => {
+    console.log('Create Order clicked');
+    console.log('Form data:', formData);
+    console.log('Selected items:', selectedItems);
+
     if (!formData.customerName || !formData.customerPhone || selectedItems.length === 0) {
       alert('Please fill in customer details and select items');
       return;
     }
 
+    setLoading(true);
+
     try {
+      const payload = {
+        customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
+        customerPhone: formData.customerPhone,
+        items: selectedItems.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+        total: totalAmount,
+        paymentMethod: formData.paymentMethod,
+        transactionId: formData.transactionId,
+        notes: formData.notes
+      };
+
+      console.log('Sending payload:', payload);
+
       const response = await fetch('/api/manual-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: formData.customerName,
-          customerEmail: formData.customerEmail,
-          customerPhone: formData.customerPhone,
-          items: selectedItems.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
-          total: totalAmount,
-          paymentMethod: formData.paymentMethod,
-          transactionId: formData.transactionId,
-          notes: formData.notes
-        })
+        body: JSON.stringify(payload)
       });
 
+      console.log('Response status:', response.status);
       const result = await response.json();
+      console.log('Response result:', result);
+
       if (result.success) {
         alert('Order created successfully!');
         setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '' });
         setSelectedItems([]);
+      } else {
+        alert('Error: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to create order');
+      alert('Failed to create order: ' + String(error));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,8 +193,8 @@ export default function ManualOrderPage() {
               <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: 0 }}>₹{totalAmount.toFixed(2)}</p>
             </div>
 
-            <button onClick={handleCreateOrder} style={{ width: '100%', padding: '12px', background: '#1a1008', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-              Create Order
+            <button onClick={handleCreateOrder} disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#999' : '#1a1008', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>
+              {loading ? 'Creating...' : 'Create Order'}
             </button>
           </div>
         </div>
