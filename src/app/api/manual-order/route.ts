@@ -9,11 +9,12 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log('Received body:', body);
     
     const { 
       customerName, 
-      customerEmail, 
-      customerPhone, 
+      customerPhone,
+      customerEmail,
       items, 
       total, 
       paymentMethod, 
@@ -21,36 +22,48 @@ export async function POST(req: NextRequest) {
       notes 
     } = body;
 
+    const insertData: any = {
+      customer_name: customerName,
+      customer_phone: customerPhone,
+    };
+
+    if (customerEmail) insertData.customer_email = customerEmail;
+    if (total) insertData.total_amount = total;
+    if (paymentMethod) insertData.payment_method = paymentMethod;
+    if (transactionId) insertData.transaction_id = transactionId;
+    if (notes) insertData.notes = notes;
+    if (items) insertData.items = items;
+
+    console.log('Insert data:', insertData);
+
     const { data, error } = await supabase
       .from('orders')
-      .insert([
-        {
-          order_ref: `MAN${Date.now()}`,
-          customer_name: customerName,
-          customer_email: customerEmail,
-          customer_phone: customerPhone,
-          items: items,
-          total_amount: total,
-          payment_method: paymentMethod,
-          transaction_id: transactionId,
-          status: 'confirmed',
-          notes: notes,
-          created_at: new Date().toISOString()
-        }
-      ])
-      .select();
+      .insert([insertData]);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Insert error:', error);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: error.message,
+          details: error
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Manual order created',
-      order: data 
+      message: 'Order created',
+      data
     });
   } catch (error) {
-    console.error('Error creating manual order:', error);
+    console.error('API error:', error);
     return NextResponse.json(
-      { error: 'Failed to create order', details: String(error) },
+      { 
+        success: false,
+        error: String(error)
+      },
       { status: 500 }
     );
   }
