@@ -198,7 +198,7 @@ export default function CustomerIntelligencePage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Customer Intelligence</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Import, merge, subscriptions, reorder prediction, acquisition cost
           </p>
         </div>
@@ -239,7 +239,7 @@ export default function CustomerIntelligencePage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Import Customers from CSV</h3>
-              <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+              <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
                 Format: Name, Phone, Email, City, State (one per line)
               </p>
               <textarea
@@ -259,7 +259,7 @@ export default function CustomerIntelligencePage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>CSV Format Guide</h3>
               <div className="space-y-3 text-sm">
-                <div className="p-3 rounded-lg font-mono text-xs" style={{ background: '#f9fafb', color: '#374151' }}>
+                <div className="p-3 rounded-lg font-mono text-xs" style={{ background: '#f9fafb', color: '#1a1008' }}>
                   Name, Phone, Email, City, State
                 </div>
                 <div className="space-y-1">
@@ -275,8 +275,8 @@ export default function CustomerIntelligencePage() {
                         style={{ background: f.req ? '#fef3c7' : '#f3f4f6', color: f.req ? '#92400e' : '#6b7280' }}>
                         {f.req ? 'Required' : 'Optional'}
                       </span>
-                      <span className="font-medium text-xs" style={{ color: '#374151' }}>{f.field}</span>
-                      <span className="text-xs" style={{ color: '#9ca3af' }}>â€” {f.note}</span>
+                      <span className="font-medium text-xs" style={{ color: '#1a1008' }}>{f.field}</span>
+                      <span className="text-xs" style={{ color: '#2a1f1a' }}>â€” {f.note}</span>
                     </div>
                   ))}
                 </div>
@@ -295,13 +295,13 @@ export default function CustomerIntelligencePage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Merge Duplicate Customers</h3>
-              <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+              <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
                 Merges all orders and data from Customer 2 into Customer 1.
                 Customer 2 will be deleted.
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Keep this customer (Phone)
                   </label>
                   <input value={mergePhone1} onChange={e => setMergePhone1(e.target.value)}
@@ -316,7 +316,7 @@ export default function CustomerIntelligencePage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Delete this customer (Phone)
                   </label>
                   <input value={mergePhone2} onChange={e => setMergePhone2(e.target.value)}
@@ -345,7 +345,7 @@ export default function CustomerIntelligencePage() {
 
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Possible Duplicates</h3>
-              <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+              <p className="text-xs mb-3" style={{ color: '#1a1008' }}>
                 Customers with similar names that might be duplicates
               </p>
               {customers.filter((c, i) =>
@@ -356,7 +356,7 @@ export default function CustomerIntelligencePage() {
                 <div key={c.id} className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div>
                     <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{c.phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.phone}</div>
                   </div>
                   <button onClick={() => { setMergePhone2(c.phone) }}
                     className="text-xs px-2 py-1 rounded"
@@ -370,7 +370,7 @@ export default function CustomerIntelligencePage() {
                   c2.name.toLowerCase().split(' ')[0] === c.name.toLowerCase().split(' ')[0] &&
                   c2.phone !== c.phone)
               ).length === 0 && (
-                <div style={{ color: '#9ca3af', fontSize: 14 }}>No obvious duplicates found</div>
+                <div style={{ color: '#2a1f1a', fontSize: 14 }}>No obvious duplicates found</div>
               )}
             </div>
           </div>
@@ -383,7 +383,7 @@ export default function CustomerIntelligencePage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Add Subscription</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Customer Phone *</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Customer Phone *</label>
                   <input value={newSub.customer_phone}
                     onChange={e => setNewSub({ ...newSub, customer_phone: e.target.value })}
                     placeholder="9876543210"
@@ -397,7 +397,7 @@ export default function CustomerIntelligencePage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Product *</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Product *</label>
                   <select value={newSub.product_id}
                     onChange={e => setNewSub({ ...newSub, product_id: e.target.value, size_label: '' })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -408,7 +408,7 @@ export default function CustomerIntelligencePage() {
                 </div>
                 {newSub.product_id && (
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Size</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Size</label>
                     <select value={newSub.size_label}
                       onChange={e => setNewSub({ ...newSub, size_label: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -421,7 +421,7 @@ export default function CustomerIntelligencePage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Frequency (days)</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Frequency (days)</label>
                   <select value={newSub.frequency_days}
                     onChange={e => setNewSub({ ...newSub, frequency_days: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -434,7 +434,7 @@ export default function CustomerIntelligencePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>First Order Date</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>First Order Date</label>
                   <input type="date" value={newSub.next_order_date}
                     onChange={e => setNewSub({ ...newSub, next_order_date: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -456,15 +456,15 @@ export default function CustomerIntelligencePage() {
                     <tr>
                       {['Customer','Product','Size','Frequency','Next Order','Status','Action'].map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                          style={{ color: '#6b7280' }}>{h}</th>
+                          style={{ color: '#1a1008' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {loading ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                     ) : subscriptions.length === 0 ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                      <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                         No subscriptions yet
                       </td></tr>
                     ) : subscriptions.map(sub => {
@@ -474,11 +474,11 @@ export default function CustomerIntelligencePage() {
                           style={{ background: isOverdue && sub.is_active ? '#fef2f2' : 'white' }}>
                           <td className="px-4 py-3">
                             <div className="font-medium" style={{ color: '#111827' }}>{sub.customer_name}</div>
-                            <div className="text-xs" style={{ color: '#9ca3af' }}>{sub.customer_phone}</div>
+                            <div className="text-xs" style={{ color: '#2a1f1a' }}>{sub.customer_phone}</div>
                           </td>
-                          <td className="px-4 py-3" style={{ color: '#374151' }}>{sub.product_name}</td>
-                          <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>{sub.size_label}</td>
-                          <td className="px-4 py-3 text-xs" style={{ color: '#374151' }}>Every {sub.frequency_days}d</td>
+                          <td className="px-4 py-3" style={{ color: '#1a1008' }}>{sub.product_name}</td>
+                          <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{sub.size_label}</td>
+                          <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>Every {sub.frequency_days}d</td>
                           <td className="px-4 py-3">
                             <div className="text-xs font-medium" style={{ color: isOverdue ? '#ef4444' : '#374151' }}>
                               {sub.next_order_date}
@@ -529,15 +529,15 @@ export default function CustomerIntelligencePage() {
                   <tr>
                     {['Customer','Last Items','Avg Interval','Predicted Next Order','Days Left','Action'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                   ) : reorderPredictions.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                       Need at least 2 orders per customer to predict reorder date
                     </td></tr>
                   ) : reorderPredictions.map((pred: any) => (
@@ -545,11 +545,11 @@ export default function CustomerIntelligencePage() {
                       style={{ background: pred.daysLeft <= 3 ? '#fef2f2' : pred.daysLeft <= 7 ? '#fefce8' : 'white' }}>
                       <td className="px-4 py-3">
                         <div className="font-medium" style={{ color: '#111827' }}>{pred.customer.name}</div>
-                        <div className="text-xs" style={{ color: '#9ca3af' }}>{pred.customer.phone}</div>
+                        <div className="text-xs" style={{ color: '#2a1f1a' }}>{pred.customer.phone}</div>
                       </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>{pred.lastItems}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#374151' }}>{pred.avgGap} days</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#374151' }}>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{pred.lastItems}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{pred.avgGap} days</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                         {pred.nextOrder.toLocaleDateString('en-IN')}
                       </td>
                       <td className="px-4 py-3">
@@ -590,7 +590,7 @@ export default function CustomerIntelligencePage() {
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -603,7 +603,7 @@ export default function CustomerIntelligencePage() {
                     <span className="text-xs font-bold w-5 text-center" style={{ color: '#c8973a' }}>{i+1}</span>
                     <div className="flex-1">
                       <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{c.total_orders} orders</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders</div>
                     </div>
                     <div className="font-bold text-sm" style={{ color: '#10b981' }}>
                       â‚¹{c.total_spent?.toLocaleString('en-IN')}
@@ -614,7 +614,7 @@ export default function CustomerIntelligencePage() {
 
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Win-back Candidates</h3>
-                <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+                <p className="text-xs mb-3" style={{ color: '#1a1008' }}>
                   Customers who ordered before but haven't ordered in 60+ days
                 </p>
                 {customers.filter(c => {
@@ -628,7 +628,7 @@ export default function CustomerIntelligencePage() {
                   <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50">
                     <div>
                       <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{c.total_orders} orders Â· â‚¹{c.total_spent}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders Â· â‚¹{c.total_spent}</div>
                     </div>
                     <a href={`https://wa.me/91${c.phone}?text=Hi ${c.name}! We miss you at Game of Bones ðŸ¾ Come back for a special offer!`}
                       target="_blank" rel="noreferrer"

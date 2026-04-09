@@ -169,7 +169,7 @@ export default function ExpensesPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Expense Tracker</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Track daily expenses by person
             </p>
           </div>
@@ -212,7 +212,7 @@ export default function ExpensesPage() {
               <div className="text-2xl font-bold" style={{ color: '#111827' }}>
                 â‚¹{p.total.toLocaleString('en-IN')}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+              <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
                 {filtered.filter(e => e.person === p.key).length} expenses
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
             <div className="text-2xl font-bold" style={{ color: '#111827' }}>
               â‚¹{grandTotal.toLocaleString('en-IN')}
             </div>
-            <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+            <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
               {filtered.length} expenses
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function ExpensesPage() {
 
               {/* Person selector */}
               <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: '#374151' }}>
+                <label className="block text-xs font-semibold mb-2" style={{ color: '#1a1008' }}>
                   Person / Account
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -258,7 +258,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Date</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Date</label>
                 <input
                   type="date"
                   value={form.date}
@@ -269,7 +269,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                   Description *
                 </label>
                 <input
@@ -282,7 +282,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                   Amount (â‚¹) *
                 </label>
                 <input
@@ -296,7 +296,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Category</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Category</label>
                 <select
                   value={form.category}
                   onChange={e => setForm({ ...form, category: e.target.value })}
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Payment Mode</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Payment Mode</label>
                 <select
                   value={form.payment_mode}
                   onChange={e => setForm({ ...form, payment_mode: e.target.value })}
@@ -322,7 +322,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Notes</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Notes</label>
                 <input
                   value={form.notes}
                   onChange={e => setForm({ ...form, notes: e.target.value })}
@@ -371,15 +371,15 @@ export default function ExpensesPage() {
                   <tr>
                     {['Date','Description','Category','Person','Amount','Mode',''].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                   ) : filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                       No expenses yet. Add your first expense.
                     </td></tr>
                   ) : filtered.map(expense => {
@@ -387,18 +387,18 @@ export default function ExpensesPage() {
                     return (
                       <tr key={expense.id} className="hover:bg-gray-50"
                         style={{ borderLeft: `3px solid ${person?.color || '#e5e7eb'}` }}>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                           {new Date(expense.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-medium" style={{ color: '#111827' }}>{expense.description}</div>
                           {expense.notes && (
-                            <div className="text-xs" style={{ color: '#9ca3af' }}>{expense.notes}</div>
+                            <div className="text-xs" style={{ color: '#2a1f1a' }}>{expense.notes}</div>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded-full"
-                            style={{ background: '#f3f4f6', color: '#374151' }}>
+                            style={{ background: '#f3f4f6', color: '#1a1008' }}>
                             {expense.category}
                           </span>
                         </td>
@@ -411,7 +411,7 @@ export default function ExpensesPage() {
                         <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>
                           â‚¹{expense.amount?.toLocaleString('en-IN')}
                         </td>
-                        <td className="px-4 py-3 text-xs capitalize" style={{ color: '#6b7280' }}>
+                        <td className="px-4 py-3 text-xs capitalize" style={{ color: '#1a1008' }}>
                           {expense.payment_mode?.replace('_', ' ')}
                         </td>
                         <td className="px-4 py-3">
@@ -430,7 +430,7 @@ export default function ExpensesPage() {
               {/* Footer totals */}
               {filtered.length > 0 && (
                 <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex justify-between items-center">
-                  <span className="text-sm font-semibold" style={{ color: '#374151' }}>
+                  <span className="text-sm font-semibold" style={{ color: '#1a1008' }}>
                     {filtered.length} expenses
                   </span>
                   <span className="font-bold text-lg" style={{ color: '#ef4444' }}>
@@ -451,12 +451,12 @@ export default function ExpensesPage() {
                     return (
                       <div key={cat} className="flex justify-between items-center p-2 rounded-lg"
                         style={{ background: '#f9fafb' }}>
-                        <span className="text-xs" style={{ color: '#374151' }}>{cat}</span>
+                        <span className="text-xs" style={{ color: '#1a1008' }}>{cat}</span>
                         <div className="text-right">
                           <span className="text-xs font-bold" style={{ color: '#111827' }}>
                             â‚¹{total.toLocaleString('en-IN')}
                           </span>
-                          <span className="text-xs ml-1" style={{ color: '#9ca3af' }}>({pct}%)</span>
+                          <span className="text-xs ml-1" style={{ color: '#2a1f1a' }}>({pct}%)</span>
                         </div>
                       </div>
                     )

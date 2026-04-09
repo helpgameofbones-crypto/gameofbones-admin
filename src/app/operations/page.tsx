@@ -132,7 +132,7 @@ export default function OperationsPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Operations</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Suppliers, packaging materials, and staff accounts
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function OperationsPage() {
         {tab === 'suppliers' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <div className="text-sm" style={{ color: '#6b7280' }}>
+              <div className="text-sm" style={{ color: '#1a1008' }}>
                 {suppliers.length} active suppliers
               </div>
               <button onClick={() => setShowAddSupplier(true)}
@@ -177,9 +177,9 @@ export default function OperationsPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {loading ? (
-                <div style={{ color: '#9ca3af' }}>Loading...</div>
+                <div style={{ color: '#2a1f1a' }}>Loading...</div>
               ) : suppliers.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center col-span-2" style={{ color: '#9ca3af' }}>
+                <div className="bg-white rounded-xl p-8 text-center col-span-2" style={{ color: '#2a1f1a' }}>
                   No suppliers yet. Add your first supplier.
                 </div>
               ) : suppliers.map(supplier => (
@@ -188,7 +188,7 @@ export default function OperationsPage() {
                     <div>
                       <div className="font-bold" style={{ color: '#111827' }}>{supplier.name}</div>
                       {supplier.contact_name && (
-                        <div className="text-sm" style={{ color: '#6b7280' }}>{supplier.contact_name}</div>
+                        <div className="text-sm" style={{ color: '#1a1008' }}>{supplier.contact_name}</div>
                       )}
                     </div>
                     <button onClick={() => deleteSupplier(supplier.id)}
@@ -197,7 +197,7 @@ export default function OperationsPage() {
                       Remove
                     </button>
                   </div>
-                  <div className="space-y-1 text-xs" style={{ color: '#6b7280' }}>
+                  <div className="space-y-1 text-xs" style={{ color: '#1a1008' }}>
                     {supplier.phone && <div>ðŸ“ž {supplier.phone}</div>}
                     {supplier.email && <div>âœ‰ï¸ {supplier.email}</div>}
                     {supplier.products_supplied && <div>ðŸ¦´ {supplier.products_supplied}</div>}
@@ -219,7 +219,7 @@ export default function OperationsPage() {
         {tab === 'packaging' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <div className="text-sm" style={{ color: '#6b7280' }}>
+              <div className="text-sm" style={{ color: '#1a1008' }}>
                 {packaging.length} materials tracked
               </div>
               <button onClick={() => setShowAddPackaging(true)}
@@ -234,15 +234,15 @@ export default function OperationsPage() {
                   <tr>
                     {['Material','Unit','Stock','Min Stock','Cost/Unit','Status','Update Stock'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                   ) : packaging.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No packaging materials yet</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No packaging materials yet</td></tr>
                   ) : packaging.map(item => {
                     const isLow = item.current_stock <= item.min_stock
                     return (
@@ -250,15 +250,15 @@ export default function OperationsPage() {
                         style={{ background: isLow ? '#fefce8' : 'white' }}>
                         <td className="px-4 py-3">
                           <div className="font-medium" style={{ color: '#111827' }}>{item.name}</div>
-                          {item.supplier && <div className="text-xs" style={{ color: '#9ca3af' }}>{item.supplier}</div>}
+                          {item.supplier && <div className="text-xs" style={{ color: '#2a1f1a' }}>{item.supplier}</div>}
                         </td>
-                        <td className="px-4 py-3" style={{ color: '#6b7280' }}>{item.unit}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>{item.unit}</td>
                         <td className="px-4 py-3 font-bold text-xl"
                           style={{ color: isLow ? '#f59e0b' : '#10b981' }}>
                           {item.current_stock}
                         </td>
-                        <td className="px-4 py-3" style={{ color: '#6b7280' }}>{item.min_stock}</td>
-                        <td className="px-4 py-3" style={{ color: '#374151' }}>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>{item.min_stock}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>
                           {item.cost_per_unit ? 'â‚¹' + item.cost_per_unit : 'â€”'}
                         </td>
                         <td className="px-4 py-3">
@@ -297,7 +297,7 @@ export default function OperationsPage() {
         {tab === 'staff' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <div className="text-sm" style={{ color: '#6b7280' }}>
+              <div className="text-sm" style={{ color: '#1a1008' }}>
                 {staff.length} staff accounts
               </div>
               <button onClick={() => setShowAddStaff(true)}
@@ -312,19 +312,19 @@ export default function OperationsPage() {
                   <tr>
                     {['Name','Email','Role','Status','Last Login'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                   ) : staff.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No staff accounts yet</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No staff accounts yet</td></tr>
                   ) : staff.map(member => (
                     <tr key={member.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{member.name}</td>
-                      <td className="px-4 py-3" style={{ color: '#6b7280' }}>{member.email}</td>
+                      <td className="px-4 py-3" style={{ color: '#1a1008' }}>{member.email}</td>
                       <td className="px-4 py-3">
                         <span className="text-xs px-2 py-1 rounded-full capitalize"
                           style={{ background: '#dbeafe', color: '#1e40af' }}>
@@ -340,7 +340,7 @@ export default function OperationsPage() {
                           {member.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>
                         {member.last_login
                           ? new Date(member.last_login).toLocaleDateString('en-IN')
                           : 'Never'}
@@ -362,7 +362,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Supplier</div>
               <button onClick={() => setShowAddSupplier(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-3">
               {[
@@ -377,7 +377,7 @@ export default function OperationsPage() {
                 { label: 'Price Notes',     key: 'price_notes',        placeholder: 'Chicken â‚¹180/kg, Goat â‚¹350/kg' },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     {field.label}
                   </label>
                   <input
@@ -392,7 +392,7 @@ export default function OperationsPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddSupplier(false)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={addSupplier} disabled={saving}
@@ -414,7 +414,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Packaging Material</div>
               <button onClick={() => setShowAddPackaging(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-3">
               {[
@@ -427,7 +427,7 @@ export default function OperationsPage() {
                 { label: 'Notes',           key: 'notes',         placeholder: 'Any notes...' },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     {field.label}
                   </label>
                   <input
@@ -442,7 +442,7 @@ export default function OperationsPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddPackaging(false)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={addPackaging} disabled={saving}
@@ -464,7 +464,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Staff Account</div>
               <button onClick={() => setShowAddStaff(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-3">
               {[
@@ -472,7 +472,7 @@ export default function OperationsPage() {
                 { label: 'Email *',     key: 'email', placeholder: 'priya@gameofbones.in' },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     {field.label}
                   </label>
                   <input
@@ -485,7 +485,7 @@ export default function OperationsPage() {
                 </div>
               ))}
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Role</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Role</label>
                 <select
                   value={newStaff.role}
                   onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}
@@ -499,7 +499,7 @@ export default function OperationsPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddStaff(false)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={addStaff} disabled={saving}

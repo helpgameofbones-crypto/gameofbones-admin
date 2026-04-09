@@ -135,7 +135,7 @@ export default function MarketingPage() {
 
       <div className="p-6 max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold mb-2" style={{ color: '#111827' }}>Marketing</h1>
-        <p className="text-sm mb-6" style={{ color: '#6b7280' }}>Pixel setup, ad spend tracking, UTM links, ROAS</p>
+        <p className="text-sm mb-6" style={{ color: '#1a1008' }}>Pixel setup, ad spend tracking, UTM links, ROAS</p>
 
         {msg && <div className="mb-4 px-4 py-3 rounded-lg text-sm bg-green-50 text-green-800 border border-green-200">{msg}</div>}
 
@@ -160,12 +160,12 @@ export default function MarketingPage() {
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Meta Pixel Setup</h3>
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-medium mb-1" style={{ color: '#374151' }}>Step 1 — Get your Pixel ID</p>
-                <p className="text-sm" style={{ color: '#6b7280' }}>Go to business.facebook.com → Events Manager → Create Pixel → Copy your Pixel ID</p>
+                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1 — Get your Pixel ID</p>
+                <p className="text-sm" style={{ color: '#1a1008' }}>Go to business.facebook.com → Events Manager → Create Pixel → Copy your Pixel ID</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium" style={{ color: '#374151' }}>Step 2 — Add to website</p>
+                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2 — Add to website</p>
                   <button onClick={() => copyToClipboard(pixelCode, 'pixel')}
                     className="text-xs px-3 py-1 rounded font-medium"
                     style={{ background: copied === 'pixel' ? '#dcfce7' : '#f3f4f6', color: copied === 'pixel' ? '#166534' : '#374151' }}>
@@ -188,12 +188,12 @@ export default function MarketingPage() {
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Google Analytics 4 Setup</h3>
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-medium mb-1" style={{ color: '#374151' }}>Step 1 — Create GA4 Property</p>
-                <p className="text-sm" style={{ color: '#6b7280' }}>Go to analytics.google.com → Create Account → Create Property → Copy Measurement ID (starts with G-)</p>
+                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1 — Create GA4 Property</p>
+                <p className="text-sm" style={{ color: '#1a1008' }}>Go to analytics.google.com → Create Account → Create Property → Copy Measurement ID (starts with G-)</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium" style={{ color: '#374151' }}>Step 2 — Add to website</p>
+                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2 — Add to website</p>
                   <button onClick={() => copyToClipboard(ga4Code, 'ga4')}
                     className="text-xs px-3 py-1 rounded font-medium"
                     style={{ background: copied === 'ga4' ? '#dcfce7' : '#f3f4f6', color: copied === 'ga4' ? '#166534' : '#374151' }}>
@@ -221,7 +221,7 @@ export default function MarketingPage() {
                   { label: 'Revenue from Ad', key: 'revenue_attributed', type: 'number', placeholder: '4000' },
                 ].map(field => (
                   <div key={field.key}>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>{field.label}</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>{field.label}</label>
                     <input type={field.type} value={(newSpend as any)[field.key]}
                       placeholder={(field as any).placeholder || ''}
                       onChange={e => setNewSpend({ ...newSpend, [field.key]: e.target.value })}
@@ -231,7 +231,7 @@ export default function MarketingPage() {
                   </div>
                 ))}
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Platform</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Platform</label>
                   <select value={newSpend.platform} onChange={e => setNewSpend({ ...newSpend, platform: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ color: '#111827' }}>
                     <option value="meta">Meta (Facebook/Instagram)</option>
@@ -249,7 +249,7 @@ export default function MarketingPage() {
             </div>
             <div className="col-span-2">
               <div className="flex justify-between mb-4">
-                <div className="text-sm" style={{ color: '#6b7280' }}>{adSpend.length} entries</div>
+                <div className="text-sm" style={{ color: '#1a1008' }}>{adSpend.length} entries</div>
                 <button onClick={exportAdSpend} className="text-white text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#10b981' }}>Export CSV</button>
               </div>
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -257,25 +257,25 @@ export default function MarketingPage() {
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       {['Date','Platform','Campaign','Spend','Clicks','Orders','Revenue','ROAS'].map(h => (
-                        <th key={h} className="text-left px-3 py-3 text-xs font-semibold uppercase" style={{ color: '#6b7280' }}>{h}</th>
+                        <th key={h} className="text-left px-3 py-3 text-xs font-semibold uppercase" style={{ color: '#1a1008' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {loading ? (
-                      <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                     ) : adSpend.length === 0 ? (
-                      <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No ad spend logged yet</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No ad spend logged yet</td></tr>
                     ) : adSpend.map(entry => {
                       const roas = entry.amount > 0 && entry.revenue_attributed > 0 ? (entry.revenue_attributed / entry.amount).toFixed(1) + 'x' : '-'
                       return (
                         <tr key={entry.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-3 text-xs" style={{ color: '#6b7280' }}>{entry.date}</td>
+                          <td className="px-3 py-3 text-xs" style={{ color: '#1a1008' }}>{entry.date}</td>
                           <td className="px-3 py-3"><span className="text-xs px-2 py-0.5 rounded-full font-medium text-white capitalize" style={{ background: entry.platform === 'meta' ? '#1877f2' : entry.platform === 'google' ? '#ea4335' : '#6b7280' }}>{entry.platform}</span></td>
-                          <td className="px-3 py-3 text-xs" style={{ color: '#374151' }}>{entry.campaign_name || '-'}</td>
+                          <td className="px-3 py-3 text-xs" style={{ color: '#1a1008' }}>{entry.campaign_name || '-'}</td>
                           <td className="px-3 py-3 font-bold" style={{ color: '#ef4444' }}>Rs {entry.amount}</td>
-                          <td className="px-3 py-3" style={{ color: '#374151' }}>{entry.clicks || 0}</td>
-                          <td className="px-3 py-3" style={{ color: '#374151' }}>{entry.orders_attributed || 0}</td>
+                          <td className="px-3 py-3" style={{ color: '#1a1008' }}>{entry.clicks || 0}</td>
+                          <td className="px-3 py-3" style={{ color: '#1a1008' }}>{entry.orders_attributed || 0}</td>
                           <td className="px-3 py-3 font-medium" style={{ color: '#10b981' }}>{entry.revenue_attributed > 0 ? 'Rs ' + entry.revenue_attributed : '-'}</td>
                           <td className="px-3 py-3 font-bold" style={{ color: parseFloat(roas) >= 2 ? '#10b981' : '#ef4444' }}>{roas}</td>
                         </tr>
@@ -302,7 +302,7 @@ export default function MarketingPage() {
                   { label: 'Content', key: 'utm_content', placeholder: 'dog_video' },
                 ].map(field => (
                   <div key={field.key}>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>{field.label}</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>{field.label}</label>
                     <input value={(newUtm as any)[field.key]} placeholder={field.placeholder}
                       onChange={e => setNewUtm({ ...newUtm, [field.key]: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ color: '#111827' }} />
@@ -310,7 +310,7 @@ export default function MarketingPage() {
                 ))}
                 {newUtm.utm_source && (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs font-semibold mb-1" style={{ color: '#374151' }}>Preview</div>
+                    <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Preview</div>
                     <div className="text-xs break-all" style={{ color: '#3b82f6' }}>{buildUtmUrl()}</div>
                     <button onClick={() => copyToClipboard(buildUtmUrl(), 'preview')}
                       className="mt-2 text-xs px-3 py-1 rounded font-medium"
@@ -329,7 +329,7 @@ export default function MarketingPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Saved Links</h3>
               <div className="space-y-3">
                 {utmLinks.length === 0 ? (
-                  <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#9ca3af' }}>No UTM links yet</div>
+                  <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>No UTM links yet</div>
                 ) : utmLinks.map(link => (
                   <div key={link.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <div className="flex justify-between items-start mb-2">
@@ -360,7 +360,7 @@ export default function MarketingPage() {
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
                   <div className="text-2xl font-bold" style={{ color: card.color }}>{loading ? '...' : card.value}</div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -375,7 +375,7 @@ export default function MarketingPage() {
                 ].map(r => (
                   <div key={r.range} className="p-3 rounded-lg" style={{ background: r.color + '15' }}>
                     <div className="font-bold" style={{ color: r.color }}>{r.range}</div>
-                    <div className="text-xs mt-0.5" style={{ color: '#374151' }}>{r.label}</div>
+                    <div className="text-xs mt-0.5" style={{ color: '#1a1008' }}>{r.label}</div>
                   </div>
                 ))}
               </div>

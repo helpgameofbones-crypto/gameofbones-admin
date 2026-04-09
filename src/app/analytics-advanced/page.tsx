@@ -134,7 +134,7 @@ export default function AdvancedAnalyticsPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Advanced Analytics</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Deep insights â€” heatmap, forecasting, cohorts, product affinity
           </p>
         </div>
@@ -160,21 +160,21 @@ export default function AdvancedAnalyticsPage() {
         {tab === 'heatmap' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Order Heatmap â€” Day Ã— Hour</h3>
-            <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+            <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
               Darker = more orders. Use this to plan your Instagram posts.
             </p>
             {loading ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>Loading...</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>Loading...</div>
             ) : orders.length === 0 ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>No order data yet</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>No order data yet</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', fontSize: 11 }}>
                   <thead>
                     <tr>
-                      <th style={{ padding: '4px 8px', color: '#9ca3af', textAlign: 'left' }}>Day</th>
+                      <th style={{ padding: '4px 8px', color: '#2a1f1a', textAlign: 'left' }}>Day</th>
                       {Array.from({ length: 24 }, (_, i) => (
-                        <th key={i} style={{ padding: '4px 4px', color: '#9ca3af', minWidth: 28 }}>
+                        <th key={i} style={{ padding: '4px 4px', color: '#2a1f1a', minWidth: 28 }}>
                           {i}
                         </th>
                       ))}
@@ -183,7 +183,7 @@ export default function AdvancedAnalyticsPage() {
                   <tbody>
                     {days.map(day => (
                       <tr key={day}>
-                        <td style={{ padding: '4px 8px', fontWeight: 600, color: '#374151' }}>{day}</td>
+                        <td style={{ padding: '4px 8px', fontWeight: 600, color: '#1a1008' }}>{day}</td>
                         {Array.from({ length: 24 }, (_, hour) => {
                           const count = heatmapData[day][hour] || 0
                           const intensity = count / maxHeatmap
@@ -224,9 +224,9 @@ export default function AdvancedAnalyticsPage() {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>City-wise Revenue</h3>
             {loading ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>Loading...</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>Loading...</div>
             ) : topCities.length === 0 ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>No data yet</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>No data yet</div>
             ) : topCities.map(([city, data], i) => {
               const pct = Math.round((data.revenue / maxCityRevenue) * 100)
               return (
@@ -236,8 +236,8 @@ export default function AdvancedAnalyticsPage() {
                       <span className="text-xs font-bold w-5 text-center" style={{ color: '#c8973a' }}>
                         {i + 1}
                       </span>
-                      <span className="font-medium" style={{ color: '#374151' }}>{city}</span>
-                      <span className="text-xs" style={{ color: '#9ca3af' }}>({data.orders} orders)</span>
+                      <span className="font-medium" style={{ color: '#1a1008' }}>{city}</span>
+                      <span className="text-xs" style={{ color: '#2a1f1a' }}>({data.orders} orders)</span>
                     </div>
                     <span className="font-bold" style={{ color: '#111827' }}>
                       â‚¹{data.revenue.toLocaleString('en-IN')}
@@ -257,13 +257,13 @@ export default function AdvancedAnalyticsPage() {
         {tab === 'affinity' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Product Affinity</h3>
-            <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+            <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
               Products most frequently bought together. Use this to create bundles.
             </p>
             {loading ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>Loading...</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>Loading...</div>
             ) : topPairs.length === 0 ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>
                 No multi-item orders yet
               </div>
             ) : topPairs.map(([pair, count], i) => (
@@ -281,7 +281,7 @@ export default function AdvancedAnalyticsPage() {
                       background: '#c8973a'
                     }} />
                   </div>
-                  <span className="text-xs font-bold" style={{ color: '#374151' }}>
+                  <span className="text-xs font-bold" style={{ color: '#1a1008' }}>
                     {count}x
                   </span>
                 </div>
@@ -304,7 +304,7 @@ export default function AdvancedAnalyticsPage() {
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -315,13 +315,13 @@ export default function AdvancedAnalyticsPage() {
                 <tbody>
                   {[
                     { period: 'Last 30 days (actual)',  value: last30Rev,  color: '#3b82f6' },
-                    { period: 'Previous 30 days',       value: prev30Rev,  color: '#6b7280' },
+                    { period: 'Previous 30 days',       value: prev30Rev,  color: '#1a1008' },
                     { period: 'Next 30 days (forecast)', value: forecast30, color: '#8b5cf6' },
                     { period: 'Next 60 days (forecast)', value: forecast60, color: '#8b5cf6' },
                     { period: 'Next 90 days (forecast)', value: forecast90, color: '#8b5cf6' },
                   ].map(row => (
                     <tr key={row.period} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td className="py-3" style={{ color: '#374151' }}>{row.period}</td>
+                      <td className="py-3" style={{ color: '#1a1008' }}>{row.period}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
                         â‚¹{row.value.toLocaleString('en-IN')}
                       </td>
@@ -343,20 +343,20 @@ export default function AdvancedAnalyticsPage() {
         {tab === 'cohort' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Cohort Analysis</h3>
-            <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+            <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
               How many customers from each month came back to order again.
             </p>
             {loading ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>Loading...</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>Loading...</div>
             ) : cohorts.length === 0 ? (
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>No cohort data yet</div>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>No cohort data yet</div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     {['Cohort Month', 'New Customers', 'Returned', 'Retention Rate'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>

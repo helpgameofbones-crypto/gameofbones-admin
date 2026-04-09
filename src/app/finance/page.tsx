@@ -194,7 +194,7 @@ export default function FinancePage() {
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -202,7 +202,7 @@ export default function FinancePage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>P&L Summary</h3>
               <div className="mb-4">
-                <label className="text-xs font-semibold" style={{ color: '#6b7280' }}>
+                <label className="text-xs font-semibold" style={{ color: '#1a1008' }}>
                   COGS % (your cost of goods as % of revenue)
                 </label>
                 <div className="flex items-center gap-3 mt-1">
@@ -225,7 +225,7 @@ export default function FinancePage() {
                     { label: 'Estimated Gross Profit', value: grossProfit,             color: '#10b981', prefix: 'â‚¹' },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td className="py-3" style={{ color: '#374151' }}>{row.label}</td>
+                      <td className="py-3" style={{ color: '#1a1008' }}>{row.label}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
                         {row.value < 0 ? '-' : ''}{row.prefix}{Math.abs(Math.round(row.value)).toLocaleString('en-IN')}
                       </td>
@@ -248,15 +248,15 @@ export default function FinancePage() {
                 <tr>
                   {['Product','Units Sold','Revenue','Avg Price','Refunds'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                      style={{ color: '#6b7280' }}>{h}</th>
+                      style={{ color: '#1a1008' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                 ) : topProducts.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No sales data yet</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No sales data yet</td></tr>
                 ) : topProducts.map(([name, stats], i) => (
                   <tr key={name} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
@@ -265,11 +265,11 @@ export default function FinancePage() {
                         <span className="font-medium" style={{ color: '#111827' }}>{name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-bold" style={{ color: '#374151' }}>{stats.units}</td>
+                    <td className="px-4 py-3 font-bold" style={{ color: '#1a1008' }}>{stats.units}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#10b981' }}>
                       â‚¹{stats.revenue.toLocaleString('en-IN')}
                     </td>
-                    <td className="px-4 py-3" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3" style={{ color: '#1a1008' }}>
                       â‚¹{stats.units ? Math.round(stats.revenue / stats.units) : 0}
                     </td>
                     <td className="px-4 py-3">
@@ -298,7 +298,7 @@ export default function FinancePage() {
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
                   <div className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -322,7 +322,7 @@ export default function FinancePage() {
                 {refundOrder && (
                   <div className="border border-gray-200 rounded-xl p-4">
                     <div className="font-mono font-bold mb-2" style={{ color: '#c8973a' }}>{refundOrder.ref}</div>
-                    <div className="text-sm mb-3" style={{ color: '#374151' }}>
+                    <div className="text-sm mb-3" style={{ color: '#1a1008' }}>
                       {refundOrder.customer_name} â€” â‚¹{refundOrder.grand_total}
                     </div>
                     <div className="space-y-3">
@@ -360,20 +360,20 @@ export default function FinancePage() {
                   <tr>
                     {['Order','Customer','Refund Amount','Reason','Date'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {orders.filter(o => o.is_refunded).length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No refunds yet</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No refunds yet</td></tr>
                   ) : orders.filter(o => o.is_refunded).map(order => (
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>{order.ref}</td>
-                      <td className="px-4 py-3" style={{ color: '#374151' }}>{order.customer_name}</td>
+                      <td className="px-4 py-3" style={{ color: '#1a1008' }}>{order.customer_name}</td>
                       <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>â‚¹{order.refund_amount}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>{order.refund_reason}</td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{order.refund_reason}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                         {order.refunded_at ? new Date(order.refunded_at).toLocaleDateString('en-IN') : 'â€”'}
                       </td>
                     </tr>
@@ -397,11 +397,11 @@ export default function FinancePage() {
                   { label: 'Other Expenses',    key: 'other',  val: monthlyOther,  set: setMonthlyOther },
                 ].map(field => (
                   <div key={field.key}>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: '#374151' }}>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: '#1a1008' }}>
                       {field.label}
                     </label>
                     <div className="flex items-center gap-2">
-                      <span style={{ color: '#6b7280' }}>â‚¹</span>
+                      <span style={{ color: '#1a1008' }}>â‚¹</span>
                       <input
                         type="number"
                         value={field.val}
@@ -414,7 +414,7 @@ export default function FinancePage() {
                 ))}
                 <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 12, marginTop: 8 }}>
                   <div className="flex justify-between font-bold">
-                    <span style={{ color: '#374151' }}>Total Fixed Costs</span>
+                    <span style={{ color: '#1a1008' }}>Total Fixed Costs</span>
                     <span style={{ color: '#ef4444' }}>â‚¹{fixedCosts.toLocaleString('en-IN')}/month</span>
                   </div>
                 </div>
@@ -426,7 +426,7 @@ export default function FinancePage() {
                   { label: 'COGS % of revenue',    val: cogsPercent,   set: setCogsPercent },
                 ].map(field => (
                   <div key={field.label}>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: '#374151' }}>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: '#1a1008' }}>
                       {field.label}
                     </label>
                     <input
@@ -453,7 +453,7 @@ export default function FinancePage() {
                   ].map(row => (
                     <div key={row.label} className="flex justify-between p-3 rounded-lg"
                       style={{ background: '#f9fafb' }}>
-                      <span className="text-sm" style={{ color: '#374151' }}>{row.label}</span>
+                      <span className="text-sm" style={{ color: '#1a1008' }}>{row.label}</span>
                       <span className="font-bold" style={{ color: row.color }}>{row.value}</span>
                     </div>
                   ))}
@@ -464,15 +464,15 @@ export default function FinancePage() {
                 <h3 className="font-bold mb-3" style={{ color: '#111827' }}>Current Performance</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span style={{ color: '#6b7280' }}>Orders this period</span>
+                    <span style={{ color: '#1a1008' }}>Orders this period</span>
                     <span className="font-bold">{orders.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span style={{ color: '#6b7280' }}>Revenue this period</span>
+                    <span style={{ color: '#1a1008' }}>Revenue this period</span>
                     <span className="font-bold">â‚¹{totalRevenue.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span style={{ color: '#6b7280' }}>vs Break-even</span>
+                    <span style={{ color: '#1a1008' }}>vs Break-even</span>
                     <span className="font-bold" style={{ color: orders.length >= breakEvenOrders ? '#10b981' : '#ef4444' }}>
                       {orders.length >= breakEvenOrders ? 'âœ… Profitable' : `Need ${breakEvenOrders - orders.length} more orders`}
                     </span>
@@ -494,13 +494,13 @@ export default function FinancePage() {
                 <tr>
                   {['Month','Revenue','Refunds','Net','Orders'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                      style={{ color: '#6b7280' }}>{h}</th>
+                      style={{ color: '#1a1008' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {Object.entries(monthlyData).length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No data yet</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No data yet</td></tr>
                 ) : Object.entries(monthlyData).map(([month, data]) => (
                   <tr key={month} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{month}</td>
@@ -513,7 +513,7 @@ export default function FinancePage() {
                     <td className="px-4 py-3 font-bold" style={{ color: '#3b82f6' }}>
                       â‚¹{(data.revenue - data.refunds).toLocaleString('en-IN')}
                     </td>
-                    <td className="px-4 py-3" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3" style={{ color: '#1a1008' }}>
                       {orders.filter(o => {
                         const m = new Date(o.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
                         return m === month

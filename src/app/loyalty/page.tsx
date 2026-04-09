@@ -122,7 +122,7 @@ export default function LoyaltyPage() {
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>
               Loyalty & Dog Profiles
             </h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Manage loyalty points, dog profiles and referral codes
             </p>
           </div>
@@ -146,7 +146,7 @@ export default function LoyaltyPage() {
               <div className="text-2xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -157,29 +157,29 @@ export default function LoyaltyPage() {
               <tr>
                 {['Customer','Dog','Breed/Age','Points','Referral Code','Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>{h}</th>
+                    style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No customers found</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No customers found</td></tr>
               ) : filtered.map(customer => (
                 <tr key={customer.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{customer.name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{customer.phone}</div>
                   </td>
                   <td className="px-4 py-3">
                     {customer.dog_name ? (
                       <div className="font-medium" style={{ color: '#c8973a' }}>ðŸ• {customer.dog_name}</div>
                     ) : (
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>Not filled</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>Not filled</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                     {customer.dog_breed && <div>{customer.dog_breed}</div>}
                     {customer.dog_age && <div>{customer.dog_age}</div>}
                   </td>
@@ -191,11 +191,11 @@ export default function LoyaltyPage() {
                   <td className="px-4 py-3">
                     {customer.referral_code ? (
                       <span className="font-mono text-xs px-2 py-1 rounded"
-                        style={{ background: '#f3f4f6', color: '#374151' }}>
+                        style={{ background: '#f3f4f6', color: '#1a1008' }}>
                         {customer.referral_code}
                       </span>
                     ) : (
-                      <span className="text-xs" style={{ color: '#9ca3af' }}>None</span>
+                      <span className="text-xs" style={{ color: '#2a1f1a' }}>None</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -211,7 +211,7 @@ export default function LoyaltyPage() {
                         })
                       }}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                      style={{ background: '#f3f4f6', color: '#374151' }}>
+                      style={{ background: '#f3f4f6', color: '#1a1008' }}>
                       Manage
                     </button>
                   </td>
@@ -230,17 +230,17 @@ export default function LoyaltyPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <div className="font-bold text-lg" style={{ color: '#111827' }}>{selected.name}</div>
-                <div className="text-sm" style={{ color: '#9ca3af' }}>{selected.phone}</div>
+                <div className="text-sm" style={{ color: '#2a1f1a' }}>{selected.phone}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
 
             <div className="p-6 space-y-6">
 
               {/* Loyalty Points */}
               <div>
-                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>
                   Loyalty Points
                 </div>
                 <div className="bg-yellow-50 rounded-xl p-4 mb-3 text-center">
@@ -275,7 +275,7 @@ export default function LoyaltyPage() {
 
               {/* Dog Profile */}
               <div>
-                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>
                   Dog Profile
                 </div>
                 <div className="space-y-3">
@@ -287,7 +287,7 @@ export default function LoyaltyPage() {
                     { label: 'Preferences', key: 'dog_preferences', placeholder: 'Loves fish, allergic to chicken' },
                   ].map(field => (
                     <div key={field.key}>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: '#374151' }}>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: '#1a1008' }}>
                         {field.label}
                       </label>
                       <input
@@ -309,7 +309,7 @@ export default function LoyaltyPage() {
 
               {/* Referral Code */}
               <div>
-                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>
                   Referral Code
                 </div>
                 {selected.referral_code ? (
@@ -317,7 +317,7 @@ export default function LoyaltyPage() {
                     <div className="font-mono font-bold text-xl" style={{ color: '#1a1008' }}>
                       {selected.referral_code}
                     </div>
-                    <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                    <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
                       Share this code with friends for rewards
                     </div>
                   </div>

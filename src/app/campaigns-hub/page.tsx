@@ -283,7 +283,7 @@ export default function CampaignsHubPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Campaigns Hub</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Festival offers, weather campaigns, stock replenishment
           </p>
         </div>
@@ -349,7 +349,7 @@ export default function CampaignsHubPage() {
               {festivalCampaign.festival && (
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                   <div className="flex justify-between items-center mb-3">
-                    <div className="text-xs font-semibold uppercase" style={{ color: '#374151' }}>
+                    <div className="text-xs font-semibold uppercase" style={{ color: '#1a1008' }}>
                       Email Preview
                     </div>
                     <button
@@ -358,11 +358,11 @@ export default function CampaignsHubPage() {
                         if (f) setPreviewHtml(festivalEmailHtml('Rahul', f, f.code, festivalCampaign.customMessage))
                       }}
                       className="text-xs px-3 py-1 rounded font-medium"
-                      style={{ background: '#f3f4f6', color: '#374151' }}>
+                      style={{ background: '#f3f4f6', color: '#1a1008' }}>
                       👁️ Full Preview
                     </button>
                   </div>
-                  <div className="text-xs p-2 rounded" style={{ background: '#f9fafb', color: '#374151' }}>
+                  <div className="text-xs p-2 rounded" style={{ background: '#f9fafb', color: '#1a1008' }}>
                     <strong>Subject:</strong> {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.emoji} Happy {festivalCampaign.festival}! {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.discount}% off for you 🐾
                   </div>
                 </div>
@@ -373,7 +373,7 @@ export default function CampaignsHubPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Send Festival Campaign</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Selected Festival</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Selected Festival</label>
                   <div className="px-3 py-2 rounded-lg text-sm font-medium"
                     style={{ background: '#f9fafb', color: festivalCampaign.festival ? '#111827' : '#9ca3af' }}>
                     {festivalCampaign.festival
@@ -382,7 +382,7 @@ export default function CampaignsHubPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Segment</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Segment</label>
                   <select value={festivalCampaign.segment}
                     onChange={e => setFestivalCampaign({ ...festivalCampaign, segment: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -393,7 +393,7 @@ export default function CampaignsHubPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Custom Message (optional)
                   </label>
                   <textarea value={festivalCampaign.customMessage}
@@ -426,10 +426,10 @@ export default function CampaignsHubPage() {
                     {weather.temp < 20 ? '🧊' : weather.desc.toLowerCase().includes('rain') ? '🌧️' : '☀️'}
                   </div>
                   <div className="text-4xl font-bold mt-2" style={{ color: '#1a1008' }}>{weather.temp}°C</div>
-                  <div className="text-sm mt-1" style={{ color: '#6b7280' }}>{weather.desc}</div>
+                  <div className="text-sm mt-1" style={{ color: '#1a1008' }}>{weather.desc}</div>
                   <div className="mt-4 p-3 rounded-lg" style={{ background: '#f9fafb' }}>
-                    <div className="text-xs font-semibold mb-1" style={{ color: '#374151' }}>Suggested Campaign</div>
-                    <div className="text-sm" style={{ color: '#6b7280' }}>
+                    <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Suggested Campaign</div>
+                    <div className="text-sm" style={{ color: '#1a1008' }}>
                       {weather.temp < 20
                         ? '🧊 Cold weather — promote high-protein treats for energy'
                         : weather.desc.toLowerCase().includes('rain')
@@ -441,7 +441,7 @@ export default function CampaignsHubPage() {
                     <button
                       onClick={() => setPreviewHtml(weatherEmailHtml('Rahul', weather))}
                       className="flex-1 py-2 rounded-lg text-sm font-medium"
-                      style={{ background: '#f3f4f6', color: '#374151' }}>
+                      style={{ background: '#f3f4f6', color: '#1a1008' }}>
                       👁️ Preview
                     </button>
                     <button onClick={sendWeatherCampaign} disabled={saving}
@@ -452,7 +452,7 @@ export default function CampaignsHubPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8" style={{ color: '#9ca3af' }}>Loading weather...</div>
+                <div className="text-center py-8" style={{ color: '#2a1f1a' }}>Loading weather...</div>
               )}
             </div>
 
@@ -463,7 +463,7 @@ export default function CampaignsHubPage() {
                   { temp: 'Below 15°C', icon: '🥶', idea: 'High-protein treats for extra energy in cold', color: '#3b82f6' },
                   { temp: '15-25°C',    icon: '😊', idea: 'Perfect weather — general promotion',          color: '#10b981' },
                   { temp: 'Above 35°C', icon: '🥵', idea: 'Cool fish treats for hot summer days',         color: '#ef4444' },
-                  { temp: 'Rainy',      icon: '🌧️', idea: 'Stay-in treats — free delivery promotion',    color: '#6b7280' },
+                  { temp: 'Rainy',      icon: '🌧️', idea: 'Stay-in treats — free delivery promotion',    color: '#1a1008' },
                   { temp: 'Festive',    icon: '🎉', idea: 'Festival-aligned treat bundles',              color: '#f59e0b' },
                 ].map(item => (
                   <div key={item.temp} className="flex items-start gap-3 p-3 rounded-lg"
@@ -471,7 +471,7 @@ export default function CampaignsHubPage() {
                     <span style={{ fontSize: 20 }}>{item.icon}</span>
                     <div>
                       <div className="text-xs font-bold" style={{ color: item.color }}>{item.temp}</div>
-                      <div className="text-xs mt-0.5" style={{ color: '#374151' }}>{item.idea}</div>
+                      <div className="text-xs mt-0.5" style={{ color: '#1a1008' }}>{item.idea}</div>
                     </div>
                   </div>
                 ))}
@@ -489,9 +489,9 @@ export default function CampaignsHubPage() {
               </p>
             </div>
             {replenishment.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#9ca3af' }}>
+              <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-                <div className="font-medium" style={{ color: '#374151' }}>All products are well stocked</div>
+                <div className="font-medium" style={{ color: '#1a1008' }}>All products are well stocked</div>
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -500,7 +500,7 @@ export default function CampaignsHubPage() {
                     <tr>
                       {['Product','Current Stock','Daily Sales','Days Left','Reorder Qty','Urgency'].map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                          style={{ color: '#6b7280' }}>{h}</th>
+                          style={{ color: '#1a1008' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -513,14 +513,14 @@ export default function CampaignsHubPage() {
                           style={{ color: product.daysLeft <= 3 ? '#ef4444' : '#f59e0b' }}>
                           {product.stock}
                         </td>
-                        <td className="px-4 py-3" style={{ color: '#374151' }}>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>
                           {(product.monthlySales / 30).toFixed(1)}/day
                         </td>
                         <td className="px-4 py-3 font-bold"
                           style={{ color: product.daysLeft <= 3 ? '#ef4444' : product.daysLeft <= 7 ? '#f59e0b' : '#374151' }}>
                           {product.daysLeft} days
                         </td>
-                        <td className="px-4 py-3 font-medium" style={{ color: '#374151' }}>
+                        <td className="px-4 py-3 font-medium" style={{ color: '#1a1008' }}>
                           {product.reorderQty} units
                         </td>
                         <td className="px-4 py-3">
@@ -546,7 +546,7 @@ export default function CampaignsHubPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-2" style={{ color: '#111827' }}>COD Order Value Limiter</h3>
-              <p className="text-sm mb-4" style={{ color: '#6b7280' }}>
+              <p className="text-sm mb-4" style={{ color: '#1a1008' }}>
                 COD orders above ₹1500 are automatically blocked. This reduces RTO risk on high-value orders.
               </p>
               <div className="p-4 rounded-xl mb-4" style={{ background: '#dcfce7', border: '1px solid #bbf7d0' }}>
@@ -560,8 +560,8 @@ export default function CampaignsHubPage() {
               </div>
               <div className="space-y-3">
                 <div className="p-3 rounded-lg" style={{ background: '#f9fafb' }}>
-                  <div className="text-xs font-semibold mb-1" style={{ color: '#374151' }}>How it works</div>
-                  <div className="text-xs" style={{ color: '#6b7280', lineHeight: 1.6 }}>
+                  <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>How it works</div>
+                  <div className="text-xs" style={{ color: '#1a1008', lineHeight: 1.6 }}>
                     When a customer tries to place a COD order above ₹1,500 it is automatically blocked at the API level.
                   </div>
                 </div>
@@ -586,7 +586,7 @@ export default function CampaignsHubPage() {
                     style={{ background: '#f9fafb' }}>
                     <div className="flex items-center gap-2">
                       <span>{item.icon}</span>
-                      <span className="text-sm" style={{ color: '#374151' }}>{item.label}</span>
+                      <span className="text-sm" style={{ color: '#1a1008' }}>{item.label}</span>
                     </div>
                     <span className="font-bold text-sm" style={{ color: item.color }}>{item.value}</span>
                   </div>
@@ -605,7 +605,7 @@ export default function CampaignsHubPage() {
             <div className="p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div className="font-bold" style={{ color: '#111827' }}>Email Preview</div>
               <button onClick={() => setPreviewHtml(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>✕</button>
             </div>
             <div className="p-4">
               <div className="rounded-xl overflow-hidden border border-gray-200"

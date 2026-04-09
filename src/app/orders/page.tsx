@@ -145,12 +145,12 @@ export default function OrdersPage() {
         ) : (
           filtered.map(order => (
             <div key={order.id} onClick={() => { setSelected(order); setNoteText(order.notes || ''); }} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', cursor: 'pointer', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', transition: 'all .2s' }} onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'} onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{order.ref}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>CUSTOMER</p><p style={{ color: '#1a1008' }}>{order.customer_name}</p><p style={{ fontSize: '12px', color: '#7a6a5a' }}>{order.customer_phone}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>ITEMS</p><p style={{ color: '#1a1008' }}>{(order.items || []).length} items</p></div>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>PAYMENT</p><p style={{ color: '#1a1008', textTransform: 'uppercase', fontSize: '12px', fontWeight: '600' }}>{order.payment_method || 'cod'}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>STATUS</p><p style={{ color: order.status === 'confirmed' ? '#2a7c6f' : '#666', textTransform: 'capitalize', fontWeight: '600' }}>{order.status || 'pending'}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{order.ref}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>CUSTOMER</p><p style={{ color: '#1a1008' }}>{order.customer_name}</p><p style={{ fontSize: '12px', color: '#1a1008' }}>{order.customer_phone}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>ITEMS</p><p style={{ color: '#1a1008' }}>{(order.items || []).length} items</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>PAYMENT</p><p style={{ color: '#1a1008', textTransform: 'uppercase', fontSize: '12px', fontWeight: '600' }}>{order.payment_method || 'cod'}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#1a1008', fontWeight: '600', marginBottom: '4px' }}>STATUS</p><p style={{ color: order.status === 'confirmed' ? '#2a7c6f' : '#666', textTransform: 'capitalize', fontWeight: '600' }}>{order.status || 'pending'}</p></div>
             </div>
           ))
         )}
@@ -165,14 +165,14 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#7a6a5a', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Customer</p>
+              <p style={{ fontSize: '12px', color: '#1a1008', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Customer</p>
               <p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{selected.customer_name}</p>
-              <p style={{ color: '#7a6a5a', margin: '4px 0 0 0' }}>{selected.customer_phone}</p>
-              {selected.customer_email && <p style={{ color: '#7a6a5a', margin: '4px 0 0 0' }}>{selected.customer_email}</p>}
+              <p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{selected.customer_phone}</p>
+              {selected.customer_email && <p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{selected.customer_email}</p>}
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#7a6a5a', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Items</p>
+              <p style={{ fontSize: '12px', color: '#1a1008', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Items</p>
               {(selected.items || []).map((item: any, i: number) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #ede5d8' }}>
                   <span style={{ color: '#1a1008' }}>{(item.quantity || item.qty || 1)}× {item.name}</span>
@@ -182,12 +182,12 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Total</p>
+              <p style={{ fontSize: '12px', color: '#1a1008', fontWeight: '600', marginBottom: '4px', textTransform: 'uppercase' }}>Total</p>
               <p style={{ fontSize: '24px', fontWeight: '700', color: '#c8973a', margin: 0 }}>₹{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#7a6a5a', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Internal Note</p>
+              <p style={{ fontSize: '12px', color: '#1a1008', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase' }}>Internal Note</p>
               <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Add a note..." rows={3} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '13px', fontFamily: 'inherit', color: '#1a1008' }} />
               <button onClick={saveNote} disabled={savingNote} style={{ marginTop: '8px', padding: '10px 16px', background: '#1a1008', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', opacity: savingNote ? 0.6 : 1 }}>
                 {savingNote ? 'Saving...' : 'Save Note'}
@@ -195,7 +195,7 @@ export default function OrdersPage() {
             </div>
 
             <div>
-              <p style={{ fontSize: '12px', color: '#7a6a5a', fontWeight: '600', marginBottom: '12px', textTransform: 'uppercase' }}>Update Status</p>
+              <p style={{ fontSize: '12px', color: '#1a1008', fontWeight: '600', marginBottom: '12px', textTransform: 'uppercase' }}>Update Status</p>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {STATUSES.map(s => (
                   <button key={s} onClick={() => updateStatus(selected.id, s)} style={{ padding: '8px 12px', background: selected.status === s ? '#1a1008' : '#f3f4f6', color: selected.status === s ? '#fff' : '#1a1008', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', borderRadius: '4px', textTransform: 'capitalize' }}>

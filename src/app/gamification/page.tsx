@@ -216,7 +216,7 @@ export default function GamificationPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Gamification</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Spin wheel, milestones, streaks, leaderboard
           </p>
         </div>
@@ -268,7 +268,7 @@ export default function GamificationPage() {
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-sm" style={{ color: '#111827' }}>{c.name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{c.total_orders} orders</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders</div>
                   </div>
                   <div className="font-bold" style={{ color: '#10b981' }}>
                     â‚¹{c.total_spent?.toLocaleString('en-IN')}
@@ -290,7 +290,7 @@ export default function GamificationPage() {
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-sm" style={{ color: '#111827' }}>{c.name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>
                       â‚¹{c.total_spent?.toLocaleString('en-IN')} total
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export default function GamificationPage() {
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-2" style={{ color: '#111827' }}>ðŸŽ¡ Spin the Wheel</h3>
-              <p className="text-sm mb-4" style={{ color: '#6b7280' }}>
+              <p className="text-sm mb-4" style={{ color: '#1a1008' }}>
                 Give a customer a spin after they place an order. They win a random discount code.
               </p>
 
@@ -321,7 +321,7 @@ export default function GamificationPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Customer Phone
                   </label>
                   <select value={spinPhone} onChange={e => setSpinPhone(e.target.value)}
@@ -350,12 +350,12 @@ export default function GamificationPage() {
                   <div className="font-mono font-bold text-2xl mt-1" style={{ color: '#c8973a' }}>
                     {spinResult.coupon}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>Valid for 48 hours</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>Valid for 48 hours</div>
                 </div>
               )}
 
               <div className="mt-4">
-                <div className="text-xs font-semibold mb-2" style={{ color: '#374151' }}>Prize Distribution</div>
+                <div className="text-xs font-semibold mb-2" style={{ color: '#1a1008' }}>Prize Distribution</div>
                 <div className="grid grid-cols-2 gap-1">
                   {[
                     { label: '10% OFF', prob: '30%', color: '#f59e0b' },
@@ -368,7 +368,7 @@ export default function GamificationPage() {
                     <div key={p.label} className="flex justify-between p-2 rounded text-xs"
                       style={{ background: '#f9fafb' }}>
                       <span style={{ color: p.color, fontWeight: 'bold' }}>{p.label}</span>
-                      <span style={{ color: '#9ca3af' }}>{p.prob}</span>
+                      <span style={{ color: '#2a1f1a' }}>{p.prob}</span>
                     </div>
                   ))}
                 </div>
@@ -381,13 +381,13 @@ export default function GamificationPage() {
                 <div key={r.id} className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div>
                     <div className="text-sm font-medium" style={{ color: '#111827' }}>{r.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>
                       {new Date(r.created_at).toLocaleDateString('en-IN')}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-sm" style={{ color: '#c8973a' }}>{r.description}</div>
-                    <div className="font-mono text-xs" style={{ color: '#6b7280' }}>{r.coupon_code}</div>
+                    <div className="font-mono text-xs" style={{ color: '#1a1008' }}>{r.coupon_code}</div>
                   </div>
                 </div>
               ))}
@@ -407,8 +407,8 @@ export default function GamificationPage() {
                   <div className="font-bold text-2xl" style={{ color: '#c8973a' }}>
                     {m.order_count} orders
                   </div>
-                  <div className="text-sm mt-1" style={{ color: '#374151' }}>{m.reward_description}</div>
-                  <div className="font-mono text-xs mt-1" style={{ color: '#9ca3af' }}>{m.coupon_code}</div>
+                  <div className="text-sm mt-1" style={{ color: '#1a1008' }}>{m.reward_description}</div>
+                  <div className="font-mono text-xs mt-1" style={{ color: '#2a1f1a' }}>{m.coupon_code}</div>
                 </div>
               ))}
             </div>
@@ -429,18 +429,18 @@ export default function GamificationPage() {
                 </select>
               </div>
               <div className="mt-4">
-                <div className="text-xs font-semibold mb-2" style={{ color: '#6b7280' }}>
+                <div className="text-xs font-semibold mb-2" style={{ color: '#1a1008' }}>
                   Customers at milestones right now:
                 </div>
                 {customers.filter(c => milestones.some(m => m.order_count === c.total_orders)).length === 0 ? (
-                  <div style={{ color: '#9ca3af', fontSize: 13 }}>No customers at milestone order counts right now</div>
+                  <div style={{ color: '#2a1f1a', fontSize: 13 }}>No customers at milestone order counts right now</div>
                 ) : customers.filter(c => milestones.some(m => m.order_count === c.total_orders)).map(c => {
                   const milestone = milestones.find(m => m.order_count === c.total_orders)
                   return (
                     <div key={c.id} className="flex justify-between items-center py-2 border-b border-gray-50">
                       <div>
                         <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                        <div className="text-xs" style={{ color: '#9ca3af' }}>{c.total_orders} orders</div>
+                        <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders</div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm" style={{ color: '#c8973a' }}>{milestone?.reward_description}</div>
@@ -462,7 +462,7 @@ export default function GamificationPage() {
         {tab === 'streaks' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <p className="text-sm" style={{ color: '#6b7280' }}>
+              <p className="text-sm" style={{ color: '#1a1008' }}>
                 Customers who order every month maintain a streak. Reward them for consistency.
               </p>
               <button onClick={updateStreaks} disabled={saving}
@@ -478,15 +478,15 @@ export default function GamificationPage() {
                   <tr>
                     {['Customer','Current Streak','Longest Streak','Last Order Month','Status'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                   ) : streaks.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                       Click "Update All Streaks" to calculate streaks
                     </td></tr>
                   ) : streaks.map(streak => {
@@ -506,13 +506,13 @@ export default function GamificationPage() {
                             <span className="font-bold text-lg" style={{ color: '#f59e0b' }}>
                               {streak.current_streak}
                             </span>
-                            <span className="text-xs" style={{ color: '#9ca3af' }}>months</span>
+                            <span className="text-xs" style={{ color: '#2a1f1a' }}>months</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-bold" style={{ color: '#374151' }}>
+                        <td className="px-4 py-3 font-bold" style={{ color: '#1a1008' }}>
                           {streak.longest_streak} months
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                           {streak.last_order_month}
                         </td>
                         <td className="px-4 py-3">
@@ -528,7 +528,7 @@ export default function GamificationPage() {
                             </span>
                           ) : (
                             <span className="text-xs px-2 py-1 rounded-full"
-                              style={{ background: '#f3f4f6', color: '#9ca3af' }}>
+                              style={{ background: '#f3f4f6', color: '#2a1f1a' }}>
                               Inactive
                             </span>
                           )}
@@ -550,13 +550,13 @@ export default function GamificationPage() {
                 <tr>
                   {['Customer','Type','Reward','Coupon','Used','Date'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                      style={{ color: '#6b7280' }}>{h}</th>
+                      style={{ color: '#1a1008' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {rewards.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                     No rewards given yet
                   </td></tr>
                 ) : rewards.map(r => (
@@ -568,7 +568,7 @@ export default function GamificationPage() {
                         {r.type?.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: '#374151' }}>{r.description}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: '#1a1008' }}>{r.description}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#c8973a' }}>{r.coupon_code}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-0.5 rounded-full"
@@ -579,7 +579,7 @@ export default function GamificationPage() {
                         {r.is_used ? 'Used' : 'Unused'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>
                       {new Date(r.created_at).toLocaleDateString('en-IN')}
                     </td>
                   </tr>

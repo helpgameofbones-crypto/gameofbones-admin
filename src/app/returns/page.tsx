@@ -91,7 +91,7 @@ export default function ReturnsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Returns</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>Manage return requests and refunds</p>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>Manage return requests and refunds</p>
           </div>
           <div className="flex gap-3">
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
@@ -106,7 +106,7 @@ export default function ReturnsPage() {
 
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total Returns',  value: returns.length,                                        icon: '↩️', color: '#6b7280' },
+            { label: 'Total Returns',  value: returns.length,                                        icon: '↩️', color: '#1a1008' },
             { label: 'Requested',      value: returns.filter(r => r.status === 'requested').length,  icon: '⏳', color: '#f59e0b' },
             { label: 'Approved',       value: returns.filter(r => r.status === 'approved').length,   icon: '✅', color: '#10b981' },
             { label: 'Refund Amount',  value: 'Rs ' + returns.filter(r => r.status === 'approved').reduce((s,r) => s+(r.refund_amount||0),0), icon: '💸', color: '#ef4444' },
@@ -114,7 +114,7 @@ export default function ReturnsPage() {
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>
               <div className="text-2xl font-bold" style={{ color: card.color }}>{loading ? '...' : card.value}</div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -124,15 +124,15 @@ export default function ReturnsPage() {
             <thead className="bg-gray-50 border-b">
               <tr>
                 {['Order','Customer','Reason','Refund','Status','Date','Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase" style={{ color: '#6b7280' }}>{h}</th>
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase" style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No returns yet</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No returns yet</td></tr>
               ) : filtered.map(ret => {
                 const sc = statusColors[ret.status] || statusColors.requested
                 return (
@@ -140,17 +140,17 @@ export default function ReturnsPage() {
                     <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>{ret.order_ref}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{ret.customer_name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{ret.customer_phone}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{ret.customer_phone}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#374151' }}>{ret.reason}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{ret.reason}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>{ret.refund_amount > 0 ? 'Rs ' + ret.refund_amount : '-'}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium capitalize" style={{ background: sc.bg, color: sc.color }}>{ret.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>{new Date(ret.created_at).toLocaleDateString('en-IN')}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>{new Date(ret.created_at).toLocaleDateString('en-IN')}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => setSelected(ret)} className="text-xs px-2 py-1 rounded" style={{ background: '#f3f4f6', color: '#374151' }}>View</button>
+                        <button onClick={() => setSelected(ret)} className="text-xs px-2 py-1 rounded" style={{ background: '#f3f4f6', color: '#1a1008' }}>View</button>
                         {ret.status === 'requested' && (
                           <>
                             <button onClick={() => updateReturnStatus(ret.id, 'approved')} className="text-xs px-2 py-1 rounded font-medium" style={{ background: '#dcfce7', color: '#166534' }}>Approve</button>
@@ -175,18 +175,18 @@ export default function ReturnsPage() {
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Log Return Request</div>
-              <button onClick={() => setShowAdd(false)} className="text-2xl font-light" style={{ color: '#9ca3af' }}>x</button>
+              <button onClick={() => setShowAdd(false)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-6 space-y-3">
               {[{ label: 'Order Ref *', key: 'order_ref', placeholder: 'GOB-ABC123' }, { label: 'Refund Amount', key: 'refund_amount', placeholder: '0' }, { label: 'Notes', key: 'notes', placeholder: 'Notes...' }].map(f => (
                 <div key={f.key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>{f.label}</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>{f.label}</label>
                   <input value={(newReturn as any)[f.key]} onChange={e => setNewReturn({ ...newReturn, [f.key]: e.target.value })}
                     placeholder={f.placeholder} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ color: '#111827' }} />
                 </div>
               ))}
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Reason *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Reason *</label>
                 <select value={newReturn.reason} onChange={e => setNewReturn({ ...newReturn, reason: e.target.value })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ color: '#111827' }}>
                   <option value="">Select reason...</option>
@@ -199,7 +199,7 @@ export default function ReturnsPage() {
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowAdd(false)} className="flex-1 py-2 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#374151' }}>Cancel</button>
+                <button onClick={() => setShowAdd(false)} className="flex-1 py-2 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#1a1008' }}>Cancel</button>
                 <button onClick={addReturn} disabled={saving} className="flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50" style={{ background: '#1a1008' }}>
                   {saving ? 'Saving...' : 'Log Return'}
                 </button>
@@ -214,15 +214,15 @@ export default function ReturnsPage() {
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-mono font-bold text-lg" style={{ color: '#c8973a' }}>{selected.order_ref}</div>
-              <button onClick={() => setSelected(null)} className="text-2xl font-light" style={{ color: '#9ca3af' }}>x</button>
+              <button onClick={() => setSelected(null)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#6b7280' }}>Reason</div><div className="text-sm" style={{ color: '#374151' }}>{selected.reason}</div></div>
-                <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#6b7280' }}>Refund</div><div className="text-sm font-bold" style={{ color: '#ef4444' }}>{selected.refund_amount > 0 ? 'Rs ' + selected.refund_amount : 'Not set'}</div></div>
+                <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Reason</div><div className="text-sm" style={{ color: '#1a1008' }}>{selected.reason}</div></div>
+                <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Refund</div><div className="text-sm font-bold" style={{ color: '#ef4444' }}>{selected.refund_amount > 0 ? 'Rs ' + selected.refund_amount : 'Not set'}</div></div>
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Update Status</div>
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#1a1008' }}>Update Status</div>
                 <div className="flex gap-2 flex-wrap">
                   {['requested','approved','rejected','completed'].map(s => (
                     <button key={s} onClick={() => updateReturnStatus(selected.id, s)}

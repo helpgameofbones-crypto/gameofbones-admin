@@ -81,7 +81,7 @@ export default function RTOPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>RTO Risk Prediction</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Orders flagged as high risk for Return to Origin
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function RTOPage() {
               <div className="text-2xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -122,7 +122,7 @@ export default function RTOPage() {
               <tr>
                 {['Order', 'Customer', 'Total', 'Payment', 'State', 'Risk Score', 'Risk Level', 'Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
+                    style={{ color: '#1a1008' }}>
                     {h}
                   </th>
                 ))}
@@ -130,9 +130,9 @@ export default function RTOPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No orders found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No orders found</td></tr>
               ) : filtered.map(order => (
                 <tr key={order.id} className="hover:bg-gray-50"
                   style={{ background: order.risk.level === 'High' ? '#fff5f5' : 'white' }}>
@@ -141,7 +141,7 @@ export default function RTOPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
                     â‚¹{order.grand_total?.toLocaleString('en-IN')}
@@ -155,7 +155,7 @@ export default function RTOPage() {
                       {order.payment_method?.toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: '#374151' }}>
+                  <td className="px-4 py-3 text-sm" style={{ color: '#1a1008' }}>
                     {order.shipping_address?.state || 'â€”'}
                   </td>
                   <td className="px-4 py-3">
@@ -195,7 +195,7 @@ export default function RTOPage() {
             ].map(item => (
               <div key={item.factor} className="flex justify-between items-center p-3 rounded-lg"
                 style={{ background: '#f9fafb' }}>
-                <span style={{ color: '#374151' }}>{item.factor}</span>
+                <span style={{ color: '#1a1008' }}>{item.factor}</span>
                 <span className="font-bold" style={{ color: item.color }}>{item.points}</span>
               </div>
             ))}

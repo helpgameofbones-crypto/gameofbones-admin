@@ -110,13 +110,13 @@ export default function TasksPage() {
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>
               Daily Tasks
             </h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
           <button onClick={resetTasks}
             className="text-xs px-3 py-2 rounded-lg"
-            style={{ background: '#f3f4f6', color: '#6b7280' }}>
+            style={{ background: '#f3f4f6', color: '#1a1008' }}>
             Reset for today
           </button>
         </div>

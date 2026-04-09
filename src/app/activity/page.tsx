@@ -46,7 +46,7 @@ export default function ActivityPage() {
     if (action.includes('updated') || action.includes('changed')) return { bg: '#dbeafe', color: '#1e40af' }
     if (action.includes('deleted') || action.includes('removed')) return { bg: '#fef2f2', color: '#ef4444' }
     if (action.includes('dispatched') || action.includes('delivered')) return { bg: '#f0fdf4', color: '#15803d' }
-    return { bg: '#f3f4f6', color: '#374151' }
+    return { bg: '#f3f4f6', color: '#1a1008' }
   }
 
   function timeAgo(dateStr: string) {
@@ -95,7 +95,7 @@ export default function ActivityPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Activity Log</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Every action taken in your admin panel
             </p>
           </div>
@@ -117,14 +117,14 @@ export default function ActivityPage() {
         </div>
 
         {loading ? (
-          <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#9ca3af' }}>
+          <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>
             Loading...
           </div>
         ) : logs.length === 0 ? (
           <div className="bg-white rounded-xl p-8 text-center">
             <div style={{ fontSize: 48, marginBottom: 12 }}>ðŸ“</div>
-            <div className="font-medium mb-2" style={{ color: '#374151' }}>No activity yet</div>
-            <div className="text-sm" style={{ color: '#9ca3af' }}>
+            <div className="font-medium mb-2" style={{ color: '#1a1008' }}>No activity yet</div>
+            <div className="text-sm" style={{ color: '#2a1f1a' }}>
               Actions like updating orders, editing products, and creating coupons will appear here
             </div>
           </div>
@@ -149,12 +149,12 @@ export default function ActivityPage() {
                       )}
                     </div>
                     {log.details && (
-                      <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
+                      <div className="text-xs mt-1" style={{ color: '#1a1008' }}>
                         {log.details}
                       </div>
                     )}
                   </div>
-                  <div className="text-xs flex-shrink-0" style={{ color: '#9ca3af' }}>
+                  <div className="text-xs flex-shrink-0" style={{ color: '#2a1f1a' }}>
                     {timeAgo(log.created_at)}
                   </div>
                 </div>

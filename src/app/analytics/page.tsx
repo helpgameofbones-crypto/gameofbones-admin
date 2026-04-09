@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
                 <div className="space-y-3">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span style={{ color: '#374151' }}>COD</span>
+                      <span style={{ color: '#1a1008' }}>COD</span>
                       <span className="font-bold" style={{ color: '#f59e0b' }}>{codOrders} orders ({codPct}%)</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3">
@@ -235,7 +235,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span style={{ color: '#374151' }}>Prepaid</span>
+                      <span style={{ color: '#1a1008' }}>Prepaid</span>
                       <span className="font-bold" style={{ color: '#10b981' }}>{prepaidOrders} orders ({100 - codPct}%)</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3">
@@ -249,13 +249,13 @@ export default function AnalyticsPage() {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Peak Order Hours</h3>
                 {loading ? (
-                  <div style={{ color: '#9ca3af' }}>Loading...</div>
+                  <div style={{ color: '#2a1f1a' }}>Loading...</div>
                 ) : peakHours.length === 0 ? (
-                  <div style={{ color: '#9ca3af', fontSize: 14 }}>No data yet</div>
+                  <div style={{ color: '#2a1f1a', fontSize: 14 }}>No data yet</div>
                 ) : peakHours.map((h, i) => (
                   <div key={h.hour} className="flex items-center gap-3 mb-2">
                     <div className="w-6 text-xs font-bold text-center" style={{ color: '#c8973a' }}>{i + 1}</div>
-                    <div className="text-sm flex-1" style={{ color: '#374151' }}>{h.hour}</div>
+                    <div className="text-sm flex-1" style={{ color: '#1a1008' }}>{h.hour}</div>
                     <div className="font-bold text-sm" style={{ color: '#111827' }}>{h.count} orders</div>
                   </div>
                 ))}
@@ -266,14 +266,14 @@ export default function AnalyticsPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Coupon Usage</h3>
               {topCoupons.length === 0 ? (
-                <div style={{ color: '#9ca3af', fontSize: 14 }}>No coupons used yet</div>
+                <div style={{ color: '#2a1f1a', fontSize: 14 }}>No coupons used yet</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
                       {['Coupon Code', 'Times Used', 'Total Discount Given'].map(h => (
                         <th key={h} className="text-left py-2 text-xs font-semibold uppercase"
-                          style={{ color: '#6b7280' }}>{h}</th>
+                          style={{ color: '#1a1008' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -300,7 +300,7 @@ export default function AnalyticsPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-6" style={{ color: '#111827' }}>Revenue by Product Category</h3>
               {topCategories.length === 0 ? (
-                <div style={{ color: '#9ca3af' }}>No sales data yet</div>
+                <div style={{ color: '#2a1f1a' }}>No sales data yet</div>
               ) : topCategories.map(([cat, rev]) => {
                 const pct = Math.round((rev / maxCatRevenue) * 100)
                 const colors: Record<string, string> = {
@@ -310,7 +310,7 @@ export default function AnalyticsPage() {
                 return (
                   <div key={cat} className="mb-4">
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium capitalize" style={{ color: '#374151' }}>{cat}</span>
+                      <span className="font-medium capitalize" style={{ color: '#1a1008' }}>{cat}</span>
                       <span className="font-bold" style={{ color: '#111827' }}>
                         â‚¹{rev.toLocaleString('en-IN')}
                       </span>
@@ -335,7 +335,7 @@ export default function AnalyticsPage() {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Top States by Orders</h3>
                 {topStates.length === 0 ? (
-                  <div style={{ color: '#9ca3af' }}>No data yet</div>
+                  <div style={{ color: '#2a1f1a' }}>No data yet</div>
                 ) : topStates.map(([state, count], i) => {
                   const pct = Math.round((count / maxStateOrders) * 100)
                   return (
@@ -344,7 +344,7 @@ export default function AnalyticsPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold w-5 text-center"
                             style={{ color: '#c8973a' }}>{i + 1}</span>
-                          <span style={{ color: '#374151' }}>{state}</span>
+                          <span style={{ color: '#1a1008' }}>{state}</span>
                         </div>
                         <span className="font-bold" style={{ color: '#111827' }}>{count}</span>
                       </div>
@@ -359,21 +359,21 @@ export default function AnalyticsPage() {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>RTO Rate by State</h3>
                 {rtoByState.length === 0 ? (
-                  <div style={{ color: '#9ca3af' }}>No RTO data yet</div>
+                  <div style={{ color: '#2a1f1a' }}>No RTO data yet</div>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
                       <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
                         {['State', 'Orders', 'RTO', 'Rate'].map(h => (
                           <th key={h} className="text-left py-2 text-xs font-semibold uppercase"
-                            style={{ color: '#6b7280' }}>{h}</th>
+                            style={{ color: '#1a1008' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {rtoByState.map(row => (
                         <tr key={row.state} style={{ borderBottom: '1px solid #f9fafb' }}>
-                          <td className="py-2" style={{ color: '#374151' }}>{row.state}</td>
+                          <td className="py-2" style={{ color: '#1a1008' }}>{row.state}</td>
                           <td className="py-2" style={{ color: '#111827' }}>{row.total}</td>
                           <td className="py-2" style={{ color: '#ef4444' }}>{row.rto}</td>
                           <td className="py-2">
@@ -407,14 +407,14 @@ export default function AnalyticsPage() {
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
                   <div className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Repeat Purchase Rate</h3>
-              <div className="text-center py-8" style={{ color: '#9ca3af' }}>
+              <div className="text-center py-8" style={{ color: '#2a1f1a' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>ðŸ”„</div>
                 <div style={{ fontSize: 14 }}>
                   Repeat purchase data will appear here once you have multiple orders from the same customers
@@ -438,7 +438,7 @@ export default function AnalyticsPage() {
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -456,7 +456,7 @@ export default function AnalyticsPage() {
                     { label: 'Profit Margin',           value: profitMargin + '%',             color: '#8b5cf6', sign: '', isPercent: true },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td className="py-3" style={{ color: '#374151' }}>{row.label}</td>
+                      <td className="py-3" style={{ color: '#1a1008' }}>{row.label}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
                         {row.isPercent ? row.value : row.sign + 'â‚¹' + (typeof row.value === 'number' ? row.value.toLocaleString('en-IN') : row.value)}
                       </td>

@@ -146,7 +146,7 @@ export default function BulkExportPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Bulk Export</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Select orders and export to CSV or Delhivery format
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function BulkExportPage() {
                 </th>
                 {['Order Ref','Customer','Items','Total','Payment','Status'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
+                    style={{ color: '#1a1008' }}>
                     {h}
                   </th>
                 ))}
@@ -196,9 +196,9 @@ export default function BulkExportPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : orders.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No orders found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No orders found</td></tr>
               ) : orders.map(order => (
                 <tr key={order.id}
                   className="hover:bg-gray-50 cursor-pointer"
@@ -217,11 +217,11 @@ export default function BulkExportPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3">
                     {(order.items || []).slice(0, 2).map((item: any, i: number) => (
-                      <div key={i} className="text-xs" style={{ color: '#6b7280' }}>
+                      <div key={i} className="text-xs" style={{ color: '#1a1008' }}>
                         {item.qty}Ã— {item.name}
                       </div>
                     ))}
@@ -240,7 +240,7 @@ export default function BulkExportPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-1 rounded-full font-medium capitalize"
-                      style={{ background: '#f3f4f6', color: '#374151' }}>
+                      style={{ background: '#f3f4f6', color: '#1a1008' }}>
                       {order.status?.replace('_', ' ')}
                     </span>
                   </td>

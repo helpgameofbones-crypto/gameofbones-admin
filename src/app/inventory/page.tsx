@@ -92,7 +92,7 @@ export default function InventoryPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Inventory Forecast</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Stock levels and reorder predictions based on last 30 days sales
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function InventoryPage() {
               <div className="text-2xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -119,7 +119,7 @@ export default function InventoryPage() {
               <tr>
                 {['Product','Current Stock','Monthly Sales','Days Left','Reorder Qty','Status','Update Stock'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
+                    style={{ color: '#1a1008' }}>
                     {h}
                   </th>
                 ))}
@@ -127,7 +127,7 @@ export default function InventoryPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : products.map(product => {
                 const isOut      = product.stock === 0
                 const isLow      = product.stock > 0 && product.stock < 10
@@ -139,13 +139,13 @@ export default function InventoryPage() {
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{product.name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{product.sku}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{product.sku}</div>
                     </td>
                     <td className="px-4 py-3 font-bold text-xl"
                       style={{ color: statusColor }}>
                       {product.stock}
                     </td>
-                    <td className="px-4 py-3" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3" style={{ color: '#1a1008' }}>
                       {product.monthlySales} units
                     </td>
                     <td className="px-4 py-3">
@@ -154,10 +154,10 @@ export default function InventoryPage() {
                           {product.daysLeft} days
                         </span>
                       ) : (
-                        <span style={{ color: '#9ca3af' }}>No sales data</span>
+                        <span style={{ color: '#2a1f1a' }}>No sales data</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-medium" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: '#1a1008' }}>
                       {Math.round(product.reorderQty)} units
                     </td>
                     <td className="px-4 py-3">
@@ -180,7 +180,7 @@ export default function InventoryPage() {
                           className="w-20 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none"
                           style={{ color: '#111827' }}
                         />
-                        <span className="text-xs" style={{ color: '#9ca3af' }}>units</span>
+                        <span className="text-xs" style={{ color: '#2a1f1a' }}>units</span>
                       </div>
                     </td>
                   </tr>

@@ -120,7 +120,7 @@ export default function RazorpayPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Razorpay</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Payments, refunds, reconciliation
             </p>
           </div>
@@ -129,7 +129,7 @@ export default function RazorpayPage() {
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
               style={{ color: '#111827' }}
             />
-            <span style={{ color: '#6b7280' }}>to</span>
+            <span style={{ color: '#1a1008' }}>to</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
               style={{ color: '#111827' }}
@@ -166,7 +166,7 @@ export default function RazorpayPage() {
               <div className="text-2xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -199,34 +199,34 @@ export default function RazorpayPage() {
               <tr>
                 {['Payment ID','Customer','Amount','Method','Status','Date','Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>{h}</th>
+                    style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                   Loading payments from Razorpay...
                 </td></tr>
               ) : filtered.filter(p => tab === 'all' || p.status === tab).length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                   No payments found
                 </td></tr>
               ) : filtered.filter(p => tab === 'all' || p.status === tab).map(payment => (
                 <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: '#374151' }}>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: '#1a1008' }}>
                     {payment.id}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-sm" style={{ color: '#111827' }}>
                       {payment.email || 'â€”'}
                     </div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{payment.contact}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{payment.contact}</div>
                   </td>
                   <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
                     â‚¹{((payment.amount || 0) / 100).toLocaleString('en-IN')}
                   </td>
-                  <td className="px-4 py-3 text-xs capitalize" style={{ color: '#374151' }}>
+                  <td className="px-4 py-3 text-xs capitalize" style={{ color: '#1a1008' }}>
                     {payment.method}
                     {payment.bank ? ` Â· ${payment.bank}` : ''}
                     {payment.card_id ? ' Â· Card' : ''}
@@ -244,7 +244,7 @@ export default function RazorpayPage() {
                       {payment.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                     {new Date(payment.created_at * 1000).toLocaleDateString('en-IN')}
                   </td>
                   <td className="px-4 py-3">
@@ -275,18 +275,18 @@ export default function RazorpayPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Issue Refund</div>
               <button onClick={() => setRefundModal(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="p-3 rounded-lg" style={{ background: '#f9fafb' }}>
-                <div className="text-xs font-semibold uppercase mb-1" style={{ color: '#6b7280' }}>Payment</div>
-                <div className="font-mono text-sm" style={{ color: '#374151' }}>{refundModal.id}</div>
-                <div className="text-sm mt-1" style={{ color: '#374151' }}>
+                <div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Payment</div>
+                <div className="font-mono text-sm" style={{ color: '#1a1008' }}>{refundModal.id}</div>
+                <div className="text-sm mt-1" style={{ color: '#1a1008' }}>
                   â‚¹{((refundModal.amount || 0) / 100).toLocaleString('en-IN')} â€” {refundModal.email}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                   Refund Amount (â‚¹)
                 </label>
                 <input type="number" value={refundAmount}
@@ -295,12 +295,12 @@ export default function RazorpayPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
                   style={{ color: '#111827' }}
                 />
-                <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
                   Max: â‚¹{((refundModal.amount || 0) / 100).toLocaleString('en-IN')}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Reason</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Reason</label>
                 <input value={refundNote} onChange={e => setRefundNote(e.target.value)}
                   placeholder="Reason for refund..."
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -315,7 +315,7 @@ export default function RazorpayPage() {
               <div className="flex gap-3">
                 <button onClick={() => setRefundModal(null)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={issueRefund} disabled={refunding === refundModal.id}

@@ -69,7 +69,7 @@ export default function NPSPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>NPS Survey</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Customer satisfaction â€” sent 7 days after delivery
           </p>
         </div>
@@ -79,14 +79,14 @@ export default function NPSPage() {
             { label: 'NPS Score',      value: npsScore !== null ? npsScore : 'â€”',   icon: 'â­', color: npsScore !== null && npsScore >= 50 ? '#10b981' : '#f59e0b' },
             { label: 'Avg Rating',     value: avgScore ? avgScore + '/10' : 'â€”',    icon: 'ðŸ“Š', color: '#3b82f6' },
             { label: 'Response Rate',  value: responseRate + '%',                   icon: 'ðŸ“¬', color: '#8b5cf6' },
-            { label: 'Total Surveys',  value: surveys.length,                       icon: 'ðŸ“', color: '#6b7280' },
+            { label: 'Total Surveys',  value: surveys.length,                       icon: 'ðŸ“', color: '#1a1008' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>
               <div className="text-2xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -100,14 +100,14 @@ export default function NPSPage() {
             ].map(card => (
               <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                 <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm font-medium" style={{ color: '#374151' }}>{card.label}</div>
+                  <div className="text-sm font-medium" style={{ color: '#1a1008' }}>{card.label}</div>
                   <div className="font-bold text-lg" style={{ color: card.color }}>{card.value}</div>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className="h-2 rounded-full"
                     style={{ width: card.pct + '%', background: card.color }} />
                 </div>
-                <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>{card.pct}%</div>
+                <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>{card.pct}%</div>
               </div>
             ))}
           </div>
@@ -119,15 +119,15 @@ export default function NPSPage() {
               <tr>
                 {['Customer','Order','Score','Feedback','Sent','Responded'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>{h}</th>
+                    style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : surveys.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>ðŸ“¬</div>
                   <div>No surveys sent yet.</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>Surveys are sent automatically 7 days after delivery.</div>
@@ -136,7 +136,7 @@ export default function NPSPage() {
                 <tr key={survey.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{survey.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{survey.customer_phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{survey.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs" style={{ color: '#c8973a' }}>
                     {survey.order_id?.slice(0, 8)}...
@@ -151,16 +151,16 @@ export default function NPSPage() {
                         {survey.score}/10
                       </span>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>Pending</span>
+                      <span style={{ color: '#2a1f1a' }}>Pending</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                     {survey.feedback || 'â€”'}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>
                     {new Date(survey.sent_at).toLocaleDateString('en-IN')}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>
                     {survey.responded_at
                       ? new Date(survey.responded_at).toLocaleDateString('en-IN')
                       : 'â€”'}

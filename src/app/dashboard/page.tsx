@@ -45,7 +45,7 @@ export default function DashboardPage() {
     dispatched:   { bg: '#cffafe', color: '#155e75' },
     delivered:    { bg: '#dcfce7', color: '#166534' },
     rto:          { bg: '#fef2f2', color: '#ef4444' },
-    cancelled:    { bg: '#f3f4f6', color: '#6b7280' },
+    cancelled:    { bg: '#f3f4f6', color: '#1a1008' },
   }
 
   return (
@@ -121,7 +121,7 @@ export default function DashboardPage() {
               ) : recent.length === 0 ? (
                 <tr><td colSpan={6} className='px-4 py-8 text-center text-gray-400'>No orders yet</td></tr>
               ) : recent.map(order => {
-                const sc = STATUS_COLORS[order.status] || { bg: '#f3f4f6', color: '#374151' }
+                const sc = STATUS_COLORS[order.status] || { bg: '#f3f4f6', color: '#1a1008' }
                 return (
                   <tr key={order.id} className='hover:bg-gray-50 transition-colors'>
                     <td className='px-4 py-3 font-mono font-bold text-sm' style={{ color: '#c8973a' }}>{order.ref || order.order_number}</td>

@@ -380,7 +380,7 @@ export default function CampaignsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Email Campaigns</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>Pre-written campaigns with beautiful designs - one click to send</p>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>Pre-written campaigns with beautiful designs - one click to send</p>
           </div>
           <button onClick={() => setShowAddCampaign(true)}
             className="text-white text-sm px-4 py-2 rounded-lg font-medium"
@@ -397,7 +397,7 @@ export default function CampaignsPage() {
         )}
 
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-          <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#374151' }}>Target Segment</div>
+          <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>Target Segment</div>
           <div className="flex gap-2 flex-wrap">
             {[
               { key: 'all',      label: 'All Customers' },
@@ -425,14 +425,14 @@ export default function CampaignsPage() {
               <div className="p-5" style={{ background: campaign.bg }}>
                 <div style={{ fontSize: 40 }} dangerouslySetInnerHTML={{ __html: campaign.emoji }} />
                 <div className="font-bold mt-2 text-sm" style={{ color: '#1a1008' }}>{campaign.name}</div>
-                <div className="text-xs mt-1" style={{ color: '#6b7280', lineHeight: 1.5 }}>{campaign.description}</div>
+                <div className="text-xs mt-1" style={{ color: '#1a1008', lineHeight: 1.5 }}>{campaign.description}</div>
               </div>
               <div className="p-4">
-                <div className="text-xs mb-3" style={{ color: '#9ca3af' }}>Subject: {campaign.subject.slice(0, 40)}...</div>
+                <div className="text-xs mb-3" style={{ color: '#2a1f1a' }}>Subject: {campaign.subject.slice(0, 40)}...</div>
                 <div className="flex gap-2">
                   <button onClick={() => setPreview(campaign)}
                     className="flex-1 py-1.5 rounded-lg text-xs font-medium"
-                    style={{ background: '#f3f4f6', color: '#374151' }}>
+                    style={{ background: '#f3f4f6', color: '#1a1008' }}>
                     Preview
                   </button>
                   <button onClick={() => setSelectedCampaign(campaign)}
@@ -453,17 +453,17 @@ export default function CampaignsPage() {
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div className="font-bold" style={{ color: '#111827' }}>{preview.name} - Preview</div>
-              <button onClick={() => setPreview(null)} className="text-2xl font-light" style={{ color: '#9ca3af' }}>x</button>
+              <button onClick={() => setPreview(null)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-4">
-              <div className="text-xs font-semibold mb-1" style={{ color: '#6b7280' }}>Subject Line</div>
-              <div className="text-sm mb-4 p-3 rounded-lg" style={{ background: '#f9fafb', color: '#374151' }}>{preview.subject}</div>
-              <div className="text-xs font-semibold mb-2" style={{ color: '#6b7280' }}>Email Preview</div>
+              <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Subject Line</div>
+              <div className="text-sm mb-4 p-3 rounded-lg" style={{ background: '#f9fafb', color: '#1a1008' }}>{preview.subject}</div>
+              <div className="text-xs font-semibold mb-2" style={{ color: '#1a1008' }}>Email Preview</div>
               <div className="rounded-xl overflow-hidden border border-gray-200"
                 dangerouslySetInnerHTML={{ __html: buildHtml('Rahul', preview, 'PREVIEW10') }} />
             </div>
             <div className="p-4 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setPreview(null)} className="flex-1 py-2 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#374151' }}>Close</button>
+              <button onClick={() => setPreview(null)} className="flex-1 py-2 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#1a1008' }}>Close</button>
               <button onClick={() => { setPreview(null); setSelectedCampaign(preview) }}
                 className="flex-1 py-2 rounded-lg text-sm font-medium text-white"
                 style={{ background: preview.color }}>
@@ -480,7 +480,7 @@ export default function CampaignsPage() {
           <div className="bg-white rounded-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Send Campaign</div>
-              <button onClick={() => setSelectedCampaign(null)} className="text-2xl font-light" style={{ color: '#9ca3af' }}>x</button>
+              <button onClick={() => setSelectedCampaign(null)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="p-4 rounded-xl" style={{ background: selectedCampaign.bg }}>
@@ -492,7 +492,7 @@ export default function CampaignsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Coupon Code (optional)</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Coupon Code (optional)</label>
                 <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SAVE20"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none"
@@ -500,7 +500,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Custom Subject (optional)</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Custom Subject (optional)</label>
                 <input value={customSubject} onChange={e => setCustomSubject(e.target.value)}
                   placeholder={selectedCampaign.subject}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -508,7 +508,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setSelectedCampaign(null)} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#374151' }}>Cancel</button>
+                <button onClick={() => setSelectedCampaign(null)} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#1a1008' }}>Cancel</button>
                 <button onClick={() => sendCampaign(selectedCampaign)}
                   disabled={sending === selectedCampaign.id}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
@@ -527,11 +527,11 @@ export default function CampaignsPage() {
           <div className="bg-white rounded-2xl w-full max-w-lg">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>New Custom Campaign</div>
-              <button onClick={() => setShowAddCampaign(false)} className="text-2xl font-light" style={{ color: '#9ca3af' }}>x</button>
+              <button onClick={() => setShowAddCampaign(false)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Campaign Name *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Campaign Name *</label>
                 <input value={newCampaign.name} onChange={e => setNewCampaign({ ...newCampaign, name: e.target.value })}
                   placeholder="Summer Sale Announcement"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -539,7 +539,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Email Subject *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Email Subject *</label>
                 <input value={newCampaign.subject} onChange={e => setNewCampaign({ ...newCampaign, subject: e.target.value })}
                   placeholder="Big summer sale - up to 25% off!"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -547,7 +547,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Message Body *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Message Body *</label>
                 <textarea value={newCampaign.body} onChange={e => setNewCampaign({ ...newCampaign, body: e.target.value })}
                   placeholder="Write your message here. It will appear in the email body after Hi [customer name]!"
                   rows={4}
@@ -556,7 +556,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Coupon Code (optional)</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Coupon Code (optional)</label>
                 <input value={newCampaign.coupon} onChange={e => setNewCampaign({ ...newCampaign, coupon: e.target.value.toUpperCase() })}
                   placeholder="SUMMER25"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none"
@@ -564,7 +564,7 @@ export default function CampaignsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Target Segment</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Target Segment</label>
                 <select value={newCampaign.segment} onChange={e => setNewCampaign({ ...newCampaign, segment: e.target.value })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
                   style={{ color: '#111827' }}>
@@ -576,7 +576,7 @@ export default function CampaignsPage() {
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowAddCampaign(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#374151' }}>Cancel</button>
+                <button onClick={() => setShowAddCampaign(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#f3f4f6', color: '#1a1008' }}>Cancel</button>
                 <button onClick={sendCustomCampaign} disabled={sending === 'custom'}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
                   style={{ background: '#c8973a' }}>

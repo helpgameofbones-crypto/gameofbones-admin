@@ -163,7 +163,7 @@ export default function PromotionsPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Promotions</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Flash sales and product bundles
           </p>
         </div>
@@ -201,7 +201,7 @@ export default function PromotionsPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Schedule Flash Sale</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Product
                   </label>
                   <select
@@ -216,7 +216,7 @@ export default function PromotionsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     Flash Sale Price (â‚¹)
                   </label>
                   <input
@@ -230,7 +230,7 @@ export default function PromotionsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Start Date</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Start Date</label>
                     <input type="date" value={flashSale.startDate}
                       onChange={e => setFlashSale({ ...flashSale, startDate: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -238,7 +238,7 @@ export default function PromotionsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Start Time</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Start Time</label>
                     <input type="time" value={flashSale.startTime}
                       onChange={e => setFlashSale({ ...flashSale, startTime: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -246,7 +246,7 @@ export default function PromotionsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>End Date</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>End Date</label>
                     <input type="date" value={flashSale.endDate}
                       onChange={e => setFlashSale({ ...flashSale, endDate: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -254,7 +254,7 @@ export default function PromotionsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>End Time</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>End Time</label>
                     <input type="time" value={flashSale.endTime}
                       onChange={e => setFlashSale({ ...flashSale, endTime: e.target.value })}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -276,7 +276,7 @@ export default function PromotionsPage() {
                 Active Flash Sales ({activeFlashSales.length})
               </h3>
               {activeFlashSales.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#9ca3af' }}>
+                <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>
                   No active flash sales
                 </div>
               ) : activeFlashSales.map(product => {
@@ -289,14 +289,14 @@ export default function PromotionsPage() {
                       <div>
                         <div className="font-medium" style={{ color: '#111827' }}>{product.name}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs line-through" style={{ color: '#9ca3af' }}>â‚¹{product.price}</span>
+                          <span className="text-xs line-through" style={{ color: '#2a1f1a' }}>â‚¹{product.price}</span>
                           <span className="font-bold" style={{ color: '#ef4444' }}>â‚¹{product.flash_sale_price}</span>
                           <span className="text-xs px-1.5 py-0.5 rounded font-bold"
                             style={{ background: '#fef2f2', color: '#ef4444' }}>
                             {discount}% OFF
                           </span>
                         </div>
-                        <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                        <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
                           â±ï¸ Ends in {hoursLeft}h
                         </div>
                       </div>
@@ -317,7 +317,7 @@ export default function PromotionsPage() {
         {tab === 'bundles' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <div className="text-sm" style={{ color: '#6b7280' }}>
+              <div className="text-sm" style={{ color: '#1a1008' }}>
                 {bundles.length} bundles created
               </div>
               <button onClick={() => setShowAddBundle(true)}
@@ -329,9 +329,9 @@ export default function PromotionsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {loading ? (
-                <div style={{ color: '#9ca3af' }}>Loading...</div>
+                <div style={{ color: '#2a1f1a' }}>Loading...</div>
               ) : bundles.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center col-span-3" style={{ color: '#9ca3af' }}>
+                <div className="bg-white rounded-xl p-8 text-center col-span-3" style={{ color: '#2a1f1a' }}>
                   No bundles yet. Create your first bundle.
                 </div>
               ) : bundles.map(bundle => (
@@ -347,11 +347,11 @@ export default function PromotionsPage() {
                     </span>
                   </div>
                   {bundle.description && (
-                    <div className="text-xs mb-3" style={{ color: '#6b7280' }}>{bundle.description}</div>
+                    <div className="text-xs mb-3" style={{ color: '#1a1008' }}>{bundle.description}</div>
                   )}
                   <div className="mb-3">
                     {(bundle.items || []).map((item: any, i: number) => (
-                      <div key={i} className="text-xs py-0.5" style={{ color: '#374151' }}>
+                      <div key={i} className="text-xs py-0.5" style={{ color: '#1a1008' }}>
                         {item.qty}Ã— {item.name} ({item.size})
                       </div>
                     ))}
@@ -359,7 +359,7 @@ export default function PromotionsPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       {bundle.original_price > bundle.bundle_price && (
-                        <span className="text-xs line-through mr-2" style={{ color: '#9ca3af' }}>
+                        <span className="text-xs line-through mr-2" style={{ color: '#2a1f1a' }}>
                           â‚¹{bundle.original_price}
                         </span>
                       )}
@@ -397,11 +397,11 @@ export default function PromotionsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Create Bundle</div>
               <button onClick={() => setShowAddBundle(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Bundle Name *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Bundle Name *</label>
                 <input
                   value={newBundle.name}
                   onChange={e => setNewBundle({ ...newBundle, name: e.target.value })}
@@ -411,7 +411,7 @@ export default function PromotionsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Description</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Description</label>
                 <input
                   value={newBundle.description}
                   onChange={e => setNewBundle({ ...newBundle, description: e.target.value })}
@@ -421,7 +421,7 @@ export default function PromotionsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Bundle Price (â‚¹) *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Bundle Price (â‚¹) *</label>
                 <input
                   type="number"
                   value={newBundle.bundle_price}
@@ -434,10 +434,10 @@ export default function PromotionsPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold" style={{ color: '#374151' }}>Items in Bundle</label>
+                  <label className="text-xs font-semibold" style={{ color: '#1a1008' }}>Items in Bundle</label>
                   <button onClick={addBundleItem}
                     className="text-xs px-3 py-1 rounded font-medium"
-                    style={{ background: '#f3f4f6', color: '#374151' }}>
+                    style={{ background: '#f3f4f6', color: '#1a1008' }}>
                     + Add Item
                   </button>
                 </div>
@@ -473,7 +473,7 @@ export default function PromotionsPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddBundle(false)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={addBundle} disabled={saving}

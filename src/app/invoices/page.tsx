@@ -177,7 +177,7 @@ export default function InvoicesPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Invoices</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Generate and print PDF invoices for any order
             </p>
           </div>
@@ -196,7 +196,7 @@ export default function InvoicesPage() {
               <tr>
                 {['Order Ref','Customer','Date','Total','Payment','Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
+                    style={{ color: '#1a1008' }}>
                     {h}
                   </th>
                 ))}
@@ -204,9 +204,9 @@ export default function InvoicesPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No orders found</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No orders found</td></tr>
               ) : filtered.map(order => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>
@@ -214,9 +214,9 @@ export default function InvoicesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                     {new Date(order.created_at).toLocaleDateString('en-IN')}
                   </td>
                   <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>

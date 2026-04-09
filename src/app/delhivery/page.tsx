@@ -165,7 +165,7 @@ export default function DelhiveryPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Delhivery</h1>
-          <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+          <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
             Generate AWB labels, track shipments, check pincodes
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function DelhiveryPage() {
 
         {/* Pincode checker */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6 flex items-center gap-3 flex-wrap">
-          <span className="font-medium text-sm" style={{ color: '#374151' }}>ðŸ“ Check Pincode</span>
+          <span className="font-medium text-sm" style={{ color: '#1a1008' }}>ðŸ“ Check Pincode</span>
           <input value={pincodeCheck} onChange={e => setPincodeCheck(e.target.value)}
             placeholder="Enter 6-digit pincode..."
             maxLength={6}
@@ -254,15 +254,15 @@ export default function DelhiveryPage() {
                 </th>
                 {['Order','Customer','Address','Weight','Payment','AWB','Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>{h}</th>
+                    style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : orders.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                   No orders found
                 </td></tr>
               ) : orders.map(order => {
@@ -281,19 +281,19 @@ export default function DelhiveryPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-mono font-bold" style={{ color: '#c8973a' }}>{order.ref}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>
                         {new Date(order.created_at).toLocaleDateString('en-IN')}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                       {order.shipping_address?.city}, {order.shipping_address?.state}<br />
                       <span className="font-mono">{order.shipping_address?.pincode}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs font-medium" style={{ color: '#374151' }}>
+                    <td className="px-4 py-3 text-xs font-medium" style={{ color: '#1a1008' }}>
                       {weight}g
                     </td>
                     <td className="px-4 py-3">
@@ -319,7 +319,7 @@ export default function DelhiveryPage() {
                           </a>
                         </div>
                       ) : (
-                        <span style={{ color: '#9ca3af', fontSize: 12 }}>Not generated</span>
+                        <span style={{ color: '#2a1f1a', fontSize: 12 }}>Not generated</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -358,7 +358,7 @@ export default function DelhiveryPage() {
                   <div className="font-mono text-sm" style={{ color: '#c8973a' }}>{trackingAwb}</div>
                 </div>
                 <button onClick={() => setTracking(null)}
-                  className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                  className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
               </div>
               <div className="p-6">
                 {tracking.ShipmentData?.[0]?.Shipment ? (
@@ -367,7 +367,7 @@ export default function DelhiveryPage() {
                       <div className="text-sm font-medium" style={{ color: '#111827' }}>
                         Status: {tracking.ShipmentData[0].Shipment.Status?.Status}
                       </div>
-                      <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
+                      <div className="text-xs mt-1" style={{ color: '#1a1008' }}>
                         {tracking.ShipmentData[0].Shipment.Status?.StatusDateTime}
                       </div>
                     </div>
@@ -376,10 +376,10 @@ export default function DelhiveryPage() {
                         <div key={i} className="flex gap-3 text-xs">
                           <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{ background: i === 0 ? '#10b981' : '#d1d5db' }} />
                           <div>
-                            <div className="font-medium" style={{ color: '#374151' }}>
+                            <div className="font-medium" style={{ color: '#1a1008' }}>
                               {scan.ScanDetail?.Scan}
                             </div>
-                            <div style={{ color: '#9ca3af' }}>
+                            <div style={{ color: '#2a1f1a' }}>
                               {scan.ScanDetail?.ScannedLocation} â€” {scan.ScanDetail?.ScanDateTime}
                             </div>
                           </div>
@@ -388,7 +388,7 @@ export default function DelhiveryPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ color: '#9ca3af' }}>No tracking data available yet</div>
+                  <div style={{ color: '#2a1f1a' }}>No tracking data available yet</div>
                 )}
               </div>
             </div>

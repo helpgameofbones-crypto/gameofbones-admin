@@ -147,7 +147,7 @@ export default function ProductManagementPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Product Management</h1>
-            <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
               Categories, tags, reviews, bestsellers, dead stock
             </p>
           </div>
@@ -187,7 +187,7 @@ export default function ProductManagementPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Add Category</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Name *</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Name *</label>
                   <input value={newCat.name} onChange={e => setNewCat({ ...newCat, name: e.target.value })}
                     placeholder="Fish Treats, Organ Meats..."
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -195,7 +195,7 @@ export default function ProductManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>Description</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Description</label>
                   <textarea value={newCat.description} onChange={e => setNewCat({ ...newCat, description: e.target.value })}
                     placeholder="Category description..."
                     rows={2}
@@ -214,9 +214,9 @@ export default function ProductManagementPage() {
             <div className="col-span-2">
               <div className="grid grid-cols-2 gap-3">
                 {loading ? (
-                  <div style={{ color: '#9ca3af' }}>Loading...</div>
+                  <div style={{ color: '#2a1f1a' }}>Loading...</div>
                 ) : categories.length === 0 ? (
-                  <div className="bg-white rounded-xl p-8 text-center col-span-2" style={{ color: '#9ca3af' }}>
+                  <div className="bg-white rounded-xl p-8 text-center col-span-2" style={{ color: '#2a1f1a' }}>
                     No categories yet
                   </div>
                 ) : categories.map(cat => (
@@ -224,9 +224,9 @@ export default function ProductManagementPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-medium" style={{ color: '#111827' }}>{cat.name}</div>
-                        <div className="text-xs mt-0.5 font-mono" style={{ color: '#9ca3af' }}>/{cat.slug}</div>
+                        <div className="text-xs mt-0.5 font-mono" style={{ color: '#2a1f1a' }}>/{cat.slug}</div>
                         {cat.description && (
-                          <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{cat.description}</div>
+                          <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{cat.description}</div>
                         )}
                       </div>
                       <button onClick={() => deleteCategory(cat.id)}
@@ -246,7 +246,7 @@ export default function ProductManagementPage() {
         {tab === 'tags' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b">
-              <p className="text-sm" style={{ color: '#6b7280' }}>
+              <p className="text-sm" style={{ color: '#1a1008' }}>
                 Add tags to products for filtering â€” grain-free, high-protein, fish-based, etc.
               </p>
             </div>
@@ -255,7 +255,7 @@ export default function ProductManagementPage() {
                 <tr>
                   {['Product','Current Tags','Action'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                      style={{ color: '#6b7280' }}>{h}</th>
+                      style={{ color: '#1a1008' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -282,7 +282,7 @@ export default function ProductManagementPage() {
                               </span>
                             ))
                           ) : (
-                            <span style={{ color: '#9ca3af', fontSize: 12 }}>No tags</span>
+                            <span style={{ color: '#2a1f1a', fontSize: 12 }}>No tags</span>
                           )}
                         </div>
                       )}
@@ -297,7 +297,7 @@ export default function ProductManagementPage() {
                           </button>
                           <button onClick={() => setEditingProduct(null)}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                            style={{ background: '#f3f4f6', color: '#374151' }}>
+                            style={{ background: '#f3f4f6', color: '#1a1008' }}>
                             Cancel
                           </button>
                         </div>
@@ -308,7 +308,7 @@ export default function ProductManagementPage() {
                             setProductTags((product.tags || []).join(', '))
                           }}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ background: '#f3f4f6', color: '#374151' }}>
+                          style={{ background: '#f3f4f6', color: '#1a1008' }}>
                           Edit Tags
                         </button>
                       )}
@@ -328,15 +328,15 @@ export default function ProductManagementPage() {
                 <tr>
                   {['Product','Customer','Rating','Review','Status','Date','Action'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                      style={{ color: '#6b7280' }}>{h}</th>
+                      style={{ color: '#1a1008' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
                 ) : reviews.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                     No reviews yet. Reviews will appear here once customers submit them.
                   </td></tr>
                 ) : reviews.map(review => (
@@ -345,7 +345,7 @@ export default function ProductManagementPage() {
                     <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>
                       {review.product_name || 'â€”'}
                     </td>
-                    <td className="px-4 py-3" style={{ color: '#374151' }}>{review.customer_name}</td>
+                    <td className="px-4 py-3" style={{ color: '#1a1008' }}>{review.customer_name}</td>
                     <td className="px-4 py-3">
                       <div className="flex">
                         {[1,2,3,4,5].map(s => (
@@ -353,7 +353,7 @@ export default function ProductManagementPage() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#374151', maxWidth: 200 }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#1a1008', maxWidth: 200 }}>
                       {review.review || 'â€”'}
                     </td>
                     <td className="px-4 py-3">
@@ -365,7 +365,7 @@ export default function ProductManagementPage() {
                         {review.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#2a1f1a' }}>
                       {new Date(review.created_at).toLocaleDateString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
@@ -397,7 +397,7 @@ export default function ProductManagementPage() {
         {tab === 'bestseller' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <p className="text-sm" style={{ color: '#6b7280' }}>
+              <p className="text-sm" style={{ color: '#1a1008' }}>
                 Top 5 products by sales in the last 30 days are automatically marked as bestsellers.
               </p>
               <button onClick={updateBestsellers} disabled={saving}
@@ -412,7 +412,7 @@ export default function ProductManagementPage() {
                   <tr>
                     {['Product','Sales (30 days)','Bestseller','Toggle'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -430,7 +430,7 @@ export default function ProductManagementPage() {
                             <span className="font-medium" style={{ color: '#111827' }}>{product.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-bold" style={{ color: '#374151' }}>{sales} units</td>
+                        <td className="px-4 py-3 font-bold" style={{ color: '#1a1008' }}>{sales} units</td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-1 rounded-full font-medium"
                             style={{
@@ -476,13 +476,13 @@ export default function ProductManagementPage() {
                   <tr>
                     {['Product','SKU','Current Stock','Price','Cost Value','Action'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {deadStock.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
                       ðŸŽ‰ All products have sold in the last 30 days!
                     </td></tr>
                   ) : deadStock.map(product => {
@@ -490,9 +490,9 @@ export default function ProductManagementPage() {
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{product.name}</td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: '#9ca3af' }}>{product.sku}</td>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: '#2a1f1a' }}>{product.sku}</td>
                         <td className="px-4 py-3 font-bold" style={{ color: '#f59e0b' }}>{product.stock}</td>
-                        <td className="px-4 py-3" style={{ color: '#374151' }}>â‚¹{product.price}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>â‚¹{product.price}</td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#ef4444' }}>
                           â‚¹{Math.round(costValue).toLocaleString('en-IN')}
                         </td>
@@ -524,7 +524,7 @@ export default function ProductManagementPage() {
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
                   <div className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
-                  <div className="text-xs mt-1" style={{ color: '#6b7280' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -535,7 +535,7 @@ export default function ProductManagementPage() {
                   <tr>
                     {['Product','Stock','Cost Price','Selling Price','Stock Value (Cost)','Stock Value (Selling)','Margin'].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                        style={{ color: '#6b7280' }}>{h}</th>
+                        style={{ color: '#1a1008' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -548,11 +548,11 @@ export default function ProductManagementPage() {
                     return (
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{product.name}</td>
-                        <td className="px-4 py-3 font-bold" style={{ color: '#374151' }}>{product.stock}</td>
-                        <td className="px-4 py-3" style={{ color: '#6b7280' }}>
-                          {product.cost_price > 0 ? 'â‚¹' + product.cost_price : <span style={{ color: '#9ca3af' }}>Est.</span>}
+                        <td className="px-4 py-3 font-bold" style={{ color: '#1a1008' }}>{product.stock}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>
+                          {product.cost_price > 0 ? 'â‚¹' + product.cost_price : <span style={{ color: '#2a1f1a' }}>Est.</span>}
                         </td>
-                        <td className="px-4 py-3" style={{ color: '#374151' }}>â‚¹{product.price}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>â‚¹{product.price}</td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#ef4444' }}>
                           â‚¹{costVal.toLocaleString('en-IN')}
                         </td>

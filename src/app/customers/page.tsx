@@ -110,8 +110,8 @@ export default function CustomersPage() {
       VIP:         { bg: '#fef3c7', color: '#92400e' },
       Loyal:       { bg: '#dcfce7', color: '#166534' },
       Repeat:      { bg: '#dbeafe', color: '#1e40af' },
-      New:         { bg: '#f3f4f6', color: '#374151' },
-      Inactive:    { bg: '#f9fafb', color: '#9ca3af' },
+      New:         { bg: '#f3f4f6', color: '#1a1008' },
+      Inactive:    { bg: '#f9fafb', color: '#2a1f1a' },
       Blacklisted: { bg: '#fef2f2', color: '#ef4444' },
     }
     return styles[segment] || styles.Inactive
@@ -207,7 +207,7 @@ export default function CustomersPage() {
               <div className="text-xl font-bold" style={{ color: card.color }}>
                 {loading ? '...' : card.value}
               </div>
-              <div className="text-xs" style={{ color: '#6b7280', marginTop: 2 }}>{card.label}</div>
+              <div className="text-xs" style={{ color: '#1a1008', marginTop: 2 }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -240,7 +240,7 @@ export default function CustomersPage() {
               <tr>
                 {['Customer','Phone','Location','Orders','Total Spent','Segment','Action'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#6b7280' }}>
+                    style={{ color: '#1a1008' }}>
                     {h}
                   </th>
                 ))}
@@ -248,9 +248,9 @@ export default function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>No customers found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No customers found</td></tr>
               ) : filtered.map(customer => {
                 const segment  = getSegment(customer)
                 const segStyle = getSegmentStyle(segment)
@@ -259,17 +259,17 @@ export default function CustomersPage() {
                     style={{ background: customer.is_blacklisted ? '#fef2f2' : 'white' }}>
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{customer.name}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.email}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{customer.email}</div>
                       {customer.notes && (
                         <div className="text-xs mt-0.5 italic" style={{ color: '#c8973a' }}>
                           ðŸ“ {customer.notes.slice(0, 40)}{customer.notes.length > 40 ? '...' : ''}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3" style={{ color: '#6b7280' }}>{customer.phone}</td>
+                    <td className="px-4 py-3" style={{ color: '#1a1008' }}>{customer.phone}</td>
                     <td className="px-4 py-3">
-                      <div style={{ color: '#6b7280' }}>{customer.city}</div>
-                      <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.state}</div>
+                      <div style={{ color: '#1a1008' }}>{customer.city}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{customer.state}</div>
                     </td>
                     <td className="px-4 py-3 font-bold text-center" style={{ color: '#1a1008' }}>
                       {customer.total_orders}
@@ -291,7 +291,7 @@ export default function CustomersPage() {
                           fetchCustomerOrders(customer.phone)
                         }}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                        style={{ background: '#f3f4f6', color: '#374151' }}>
+                        style={{ background: '#f3f4f6', color: '#1a1008' }}>
                         View
                       </button>
                     </td>
@@ -311,7 +311,7 @@ export default function CustomersPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add New Customer</div>
               <button onClick={() => setShowAddModal(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-4">
               {[
@@ -324,7 +324,7 @@ export default function CustomersPage() {
                 { label: 'Pincode',      key: 'pincode',       placeholder: '400001' },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
                     {field.label}
                   </label>
                   <input
@@ -339,7 +339,7 @@ export default function CustomersPage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowAddModal(false)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: '#f3f4f6', color: '#374151' }}>
+                  style={{ background: '#f3f4f6', color: '#1a1008' }}>
                   Cancel
                 </button>
                 <button onClick={addCustomer} disabled={saving}
@@ -361,36 +361,36 @@ export default function CustomersPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <div className="font-bold text-lg" style={{ color: '#111827' }}>{selected.name}</div>
-                <div className="text-sm" style={{ color: '#9ca3af' }}>{selected.phone} Â· {selected.email}</div>
+                <div className="text-sm" style={{ color: '#2a1f1a' }}>{selected.phone} Â· {selected.email}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
             </div>
 
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold" style={{ color: '#1a1008' }}>{selected.total_orders}</div>
-                  <div className="text-xs" style={{ color: '#6b7280' }}>Total Orders</div>
+                  <div className="text-xs" style={{ color: '#1a1008' }}>Total Orders</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold" style={{ color: '#10b981' }}>
                     â‚¹{selected.total_spent?.toLocaleString('en-IN')}
                   </div>
-                  <div className="text-xs" style={{ color: '#6b7280' }}>Total Spent</div>
+                  <div className="text-xs" style={{ color: '#1a1008' }}>Total Spent</div>
                 </div>
               </div>
 
               <div>
-                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Address</div>
-                <div className="text-sm" style={{ color: '#374151', lineHeight: 1.7 }}>
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#1a1008' }}>Address</div>
+                <div className="text-sm" style={{ color: '#1a1008', lineHeight: 1.7 }}>
                   {selected.address_line1}<br />
                   {selected.city}, {selected.state} â€” {selected.pincode}
                 </div>
               </div>
 
               <div>
-                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Internal Notes</div>
+                <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#1a1008' }}>Internal Notes</div>
                 <textarea
                   value={editNote}
                   onChange={e => setEditNote(e.target.value)}
@@ -413,7 +413,7 @@ export default function CustomersPage() {
                   <div className="text-sm font-medium" style={{ color: '#111827' }}>
                     {selected.is_blacklisted ? 'ðŸš« Customer is Blacklisted' : 'Blacklist Customer'}
                   </div>
-                  <div className="text-xs" style={{ color: '#6b7280' }}>
+                  <div className="text-xs" style={{ color: '#1a1008' }}>
                     {selected.is_blacklisted
                       ? 'COD orders blocked for this customer'
                       : 'Block this customer from COD orders'}
@@ -428,18 +428,18 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#6b7280' }}>Order History</div>
+                <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>Order History</div>
                 {orders.length === 0 ? (
-                  <div className="text-sm" style={{ color: '#9ca3af' }}>No orders found</div>
+                  <div className="text-sm" style={{ color: '#2a1f1a' }}>No orders found</div>
                 ) : orders.map(order => (
                   <div key={order.id} className="border border-gray-100 rounded-lg p-3 mb-2">
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-mono font-bold text-sm" style={{ color: '#c8973a' }}>{order.ref}</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>
+                        <div className="text-xs mt-0.5" style={{ color: '#2a1f1a' }}>
                           {new Date(order.created_at).toLocaleDateString('en-IN')}
                         </div>
-                        <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
+                        <div className="text-xs mt-1" style={{ color: '#1a1008' }}>
                           {(order.items || []).map((i: any) => `${i.qty}Ã— ${i.name}`).join(', ')}
                         </div>
                       </div>
