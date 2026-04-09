@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const insertData: any = {
+      ref: `MAN${Date.now()}`,
       customer_phone: customerPhone,
       customer_name: customerName,
     };
