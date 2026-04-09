@@ -37,6 +37,59 @@ export default function OrdersPage() {
     if (selected?.id === orderId) setSelected({ ...selected, status: newStatus })
   }
 
+  async function deleteOrder(orderId: string, ref: string) {
+    if (!confirm(`Delete order ${ref}? This cannot be undone.`)) return
+    await supabase.from('orders').delete().eq('id', orderId)
+    setSelected(null)
+    fetchOrders()
+  }
+
+  function printPackingSlip(order: any) {
+    const items = (order.items || []).map((item: any) => `
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #f3f4f6">${item.name}</td>
+        <td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center">${item.quantity || item.qty || 1}</td>
+      </tr>
+    `).join('')
+
+    const html = `
+      <!DOCTYPE html><html><head><title>Packing Slip ${order.ref}</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;font-size:13px} @media print{body{margin:0}}</style>
+      </head><body>
+      <div style="border:2px solid #1a1008;padding:16px;max-width:400px">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="font-size:18px;font-weight:bold;color:#1a1008">🐾 Game of Bones</div>
+          <div style="font-size:11px;color:#6b7280">gameofbones.in</div>
+        </div>
+        <div style="background:#f9f6f2;padding:10px;margin-bottom:12px;border-radius:4px">
+          <div style="font-weight:bold;color:#c8973a">${order.ref}</div>
+          <div style="font-size:11px;color:#6b7280">${new Date(order.created_at).toLocaleDateString('en-IN')}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-weight:bold;margin-bottom:4px">${order.customer_name}</div>
+          <div style="color:#6b7280;font-size:12px">${order.customer_phone}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#1a1008;color:white">
+            <th style="padding:6px;text-align:left">Item</th>
+            <th style="padding:6px;text-align:center">Qty</th>
+          </tr></thead>
+          <tbody>${items}</tbody>
+        </table>
+        <div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:12px">
+          <div style="display:flex;justify-content:space-between;font-weight:bold">
+            <span>Total:</span>
+            <span>₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+      <script>window.onload=function(){window.print()}</script>
+      </body></html>
+    `
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close() }
+  }
+
   async function saveNote() {
     if (!selected || !noteText.trim()) return
     setSavingNote(true)
