@@ -1,4 +1,5 @@
-﻿'use client'
+﻿// Updated: 2026-04-09 14:38:29
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -76,7 +77,7 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone..." style={{ padding: '10px 16px', border: '1px solid #ede5d8', width: '100%', marginBottom: '24px', fontSize: '14px' }} />
+      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone..." style={{ padding: '12px 16px', border: '2px solid #ede5d8', width: '100%', marginBottom: '24px', fontSize: '14px', color: '#1a1008', background: '#fff', fontWeight: '600' />
 
       <div style={{ display: 'grid', gap: '12px' }}>
         {loading ? (
@@ -160,3 +161,4 @@ export default function OrdersPage() {
     </div>
   )
 }
+
