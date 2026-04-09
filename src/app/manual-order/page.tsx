@@ -121,7 +121,7 @@ export default function ManualOrderPage() {
 
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: '32px', color: '#1a1008', marginBottom: '32px' }}>📝 Manual Order Entry</h1>
+      <h1 style={{ fontSize: '32px', color: '#1a1008', marginBottom: '32px' }}> Manual Order Entry</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
         <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
@@ -171,7 +171,7 @@ export default function ManualOrderPage() {
             <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
               {products.map(p => (
                 <button key={p.id} onClick={() => addItem(p.id)} style={{ padding: '12px', background: '#faf6f0', border: '1px solid #ede5d8', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1a1008' }}>
-                  {p.name} - ₹{p.price}
+                  {p.name} - {p.price}
                 </button>
               ))}
             </div>
@@ -185,7 +185,7 @@ export default function ManualOrderPage() {
               <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
                 {selectedItems.map((item, i) => (
                   <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
-                    <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>₹{item.price}</p></div>
+                    <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>{item.price}</p></div>
                     <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px', color: '#1a1008' }} />
                     <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
                   </div>
@@ -195,7 +195,7 @@ export default function ManualOrderPage() {
 
             <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
-              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: 0 }}>₹{totalAmount.toFixed(2)}</p>
+              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: 0 }}>{totalAmount.toFixed(2)}</p>
             </div>
 
             <button onClick={handleCreateOrder} disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#999' : '#1a1008', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>

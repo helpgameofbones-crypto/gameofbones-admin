@@ -119,7 +119,7 @@ export default function MarketingPage() {
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
       <div className="text-white px-6 py-4 flex items-center justify-between" style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -160,12 +160,12 @@ export default function MarketingPage() {
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Meta Pixel Setup</h3>
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1 — Get your Pixel ID</p>
-                <p className="text-sm" style={{ color: '#1a1008' }}>Go to business.facebook.com → Events Manager → Create Pixel → Copy your Pixel ID</p>
+                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1  Get your Pixel ID</p>
+                <p className="text-sm" style={{ color: '#1a1008' }}>Go to business.facebook.com  Events Manager  Create Pixel  Copy your Pixel ID</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2 — Add to website</p>
+                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2  Add to website</p>
                   <button onClick={() => copyToClipboard(pixelCode, 'pixel')}
                     className="text-xs px-3 py-1 rounded font-medium"
                     style={{ background: copied === 'pixel' ? '#dcfce7' : '#f3f4f6', color: copied === 'pixel' ? '#166534' : '#374151' }}>
@@ -176,7 +176,7 @@ export default function MarketingPage() {
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm" style={{ color: '#1e40af' }}>
-                  In Shopdeck: Website → Web Configuration → Code Snippet → paste pixel code → Save
+                  In Shopdeck: Website  Web Configuration  Code Snippet  paste pixel code  Save
                 </p>
               </div>
             </div>
@@ -188,12 +188,12 @@ export default function MarketingPage() {
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Google Analytics 4 Setup</h3>
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1 — Create GA4 Property</p>
-                <p className="text-sm" style={{ color: '#1a1008' }}>Go to analytics.google.com → Create Account → Create Property → Copy Measurement ID (starts with G-)</p>
+                <p className="text-sm font-medium mb-1" style={{ color: '#1a1008' }}>Step 1  Create GA4 Property</p>
+                <p className="text-sm" style={{ color: '#1a1008' }}>Go to analytics.google.com  Create Account  Create Property  Copy Measurement ID (starts with G-)</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2 — Add to website</p>
+                  <p className="text-sm font-medium" style={{ color: '#1a1008' }}>Step 2  Add to website</p>
                   <button onClick={() => copyToClipboard(ga4Code, 'ga4')}
                     className="text-xs px-3 py-1 rounded font-medium"
                     style={{ background: copied === 'ga4' ? '#dcfce7' : '#f3f4f6', color: copied === 'ga4' ? '#166534' : '#374151' }}>
@@ -352,10 +352,10 @@ export default function MarketingPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Total Ad Spend',     value: 'Rs ' + totalSpend.toLocaleString('en-IN'),     icon: '💸', color: '#ef4444' },
-                { label: 'Revenue Attributed', value: 'Rs ' + totalRevAttr.toLocaleString('en-IN'),   icon: '💰', color: '#10b981' },
-                { label: 'Overall ROAS',       value: overallROAS + 'x',                              icon: '📈', color: parseFloat(overallROAS) >= 2 ? '#10b981' : '#ef4444' },
-                { label: 'Avg CPC',            value: 'Rs ' + avgCPC,                                icon: '🖱️', color: '#3b82f6' },
+                { label: 'Total Ad Spend',     value: 'Rs ' + totalSpend.toLocaleString('en-IN'),     icon: '', color: '#ef4444' },
+                { label: 'Revenue Attributed', value: 'Rs ' + totalRevAttr.toLocaleString('en-IN'),   icon: '', color: '#10b981' },
+                { label: 'Overall ROAS',       value: overallROAS + 'x',                              icon: '', color: parseFloat(overallROAS) >= 2 ? '#10b981' : '#ef4444' },
+                { label: 'Avg CPC',            value: 'Rs ' + avgCPC,                                icon: '', color: '#3b82f6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>

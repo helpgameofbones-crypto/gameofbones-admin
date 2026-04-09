@@ -58,7 +58,7 @@ export default function LoyaltyPage() {
       entity_type: 'customer',
       entity_id:   selected.id,
       entity_name: selected.name,
-      details:     `+${pointsAmount} points â€” ${pointsReason}`,
+      details:     `+${pointsAmount} points  ${pointsReason}`,
     })
     setSelected({ ...selected, loyalty_points: newPoints })
     setAddingPoints(false)
@@ -99,7 +99,7 @@ export default function LoyaltyPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -137,9 +137,9 @@ export default function LoyaltyPage() {
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Total Points Issued',    value: totalPointsIssued.toLocaleString('en-IN'), icon: 'â­', color: '#f59e0b' },
-            { label: 'Dog Profiles Filled',    value: customersWithDogs,                          icon: 'ðŸ•', color: '#10b981' },
-            { label: 'Referral Codes Active',  value: customersWithReferral,                      icon: 'ðŸ”—', color: '#8b5cf6' },
+            { label: 'Total Points Issued',    value: totalPointsIssued.toLocaleString('en-IN'), icon: '', color: '#f59e0b' },
+            { label: 'Dog Profiles Filled',    value: customersWithDogs,                          icon: '', color: '#10b981' },
+            { label: 'Referral Codes Active',  value: customersWithReferral,                      icon: '', color: '#8b5cf6' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>
@@ -174,7 +174,7 @@ export default function LoyaltyPage() {
                   </td>
                   <td className="px-4 py-3">
                     {customer.dog_name ? (
-                      <div className="font-medium" style={{ color: '#c8973a' }}>ðŸ• {customer.dog_name}</div>
+                      <div className="font-medium" style={{ color: '#c8973a' }}> {customer.dog_name}</div>
                     ) : (
                       <div className="text-xs" style={{ color: '#2a1f1a' }}>Not filled</div>
                     )}
@@ -185,7 +185,7 @@ export default function LoyaltyPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-bold" style={{ color: '#f59e0b' }}>
-                      â­ {customer.loyalty_points || 0}
+                       {customer.loyalty_points || 0}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -233,7 +233,7 @@ export default function LoyaltyPage() {
                 <div className="text-sm" style={{ color: '#2a1f1a' }}>{selected.phone}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
 
             <div className="p-6 space-y-6">
@@ -245,7 +245,7 @@ export default function LoyaltyPage() {
                 </div>
                 <div className="bg-yellow-50 rounded-xl p-4 mb-3 text-center">
                   <div className="text-3xl font-bold" style={{ color: '#f59e0b' }}>
-                    â­ {selected.loyalty_points || 0}
+                     {selected.loyalty_points || 0}
                   </div>
                   <div className="text-xs mt-1" style={{ color: '#92400e' }}>points balance</div>
                 </div>
@@ -326,7 +326,7 @@ export default function LoyaltyPage() {
                     onClick={() => generateReferralCode(selected.id, selected.phone)}
                     className="w-full py-2 rounded-lg font-medium text-white"
                     style={{ background: '#8b5cf6' }}>
-                    ðŸ”— Generate Referral Code
+                     Generate Referral Code
                   </button>
                 )}
               </div>

@@ -64,11 +64,11 @@ export default function PromotionsPage() {
       action:      'flash sale scheduled',
       entity_type: 'product',
       entity_id:   flashSale.productId,
-      details:     `â‚¹${flashSale.salePrice} from ${flashSale.startDate} to ${flashSale.endDate}`,
+      details:     `${flashSale.salePrice} from ${flashSale.startDate} to ${flashSale.endDate}`,
     })
 
     setSaving(false)
-    setMsg('âœ… Flash sale scheduled!')
+    setMsg(' Flash sale scheduled!')
     setFlashSale({ productId:'', salePrice:'', startDate:'', startTime:'', endDate:'', endTime:'' })
     fetchData()
     setTimeout(() => setMsg(''), 3000)
@@ -143,7 +143,7 @@ export default function PromotionsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -171,9 +171,9 @@ export default function PromotionsPage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('âœ…') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('âœ…') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('âœ…') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('') ? '#166534' : '#ef4444',
+              border: `1px solid ${msg.startsWith('') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -188,12 +188,12 @@ export default function PromotionsPage() {
                 color: tab === t ? 'white' : '#6b7280',
                 border: '1px solid #e5e7eb'
               }}>
-              {t === 'flashsale' ? 'âš¡ Flash Sales' : 'ðŸŽ Bundles'}
+              {t === 'flashsale' ? ' Flash Sales' : ' Bundles'}
             </button>
           ))}
         </div>
 
-        {/* â”€â”€ FLASH SALE TAB â”€â”€ */}
+        {/*  FLASH SALE TAB  */}
         {tab === 'flashsale' && (
           <div className="grid grid-cols-2 gap-6">
             {/* Schedule new flash sale */}
@@ -211,13 +211,13 @@ export default function PromotionsPage() {
                     style={{ color: '#111827' }}>
                     <option value="">Select product...</option>
                     {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (â‚¹{p.price})</option>
+                      <option key={p.id} value={p.id}>{p.name} ({p.price})</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
-                    Flash Sale Price (â‚¹)
+                    Flash Sale Price ()
                   </label>
                   <input
                     type="number"
@@ -265,7 +265,7 @@ export default function PromotionsPage() {
                 <button onClick={scheduleFlashSale} disabled={saving}
                   className="w-full py-2 rounded-lg font-medium text-white disabled:opacity-50"
                   style={{ background: '#c8973a' }}>
-                  {saving ? 'Scheduling...' : 'âš¡ Schedule Flash Sale'}
+                  {saving ? 'Scheduling...' : ' Schedule Flash Sale'}
                 </button>
               </div>
             </div>
@@ -289,15 +289,15 @@ export default function PromotionsPage() {
                       <div>
                         <div className="font-medium" style={{ color: '#111827' }}>{product.name}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs line-through" style={{ color: '#2a1f1a' }}>â‚¹{product.price}</span>
-                          <span className="font-bold" style={{ color: '#ef4444' }}>â‚¹{product.flash_sale_price}</span>
+                          <span className="text-xs line-through" style={{ color: '#2a1f1a' }}>{product.price}</span>
+                          <span className="font-bold" style={{ color: '#ef4444' }}>{product.flash_sale_price}</span>
                           <span className="text-xs px-1.5 py-0.5 rounded font-bold"
                             style={{ background: '#fef2f2', color: '#ef4444' }}>
                             {discount}% OFF
                           </span>
                         </div>
                         <div className="text-xs mt-1" style={{ color: '#2a1f1a' }}>
-                          â±ï¸ Ends in {hoursLeft}h
+                           Ends in {hoursLeft}h
                         </div>
                       </div>
                       <button onClick={() => cancelFlashSale(product.id)}
@@ -313,7 +313,7 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* â”€â”€ BUNDLES TAB â”€â”€ */}
+        {/*  BUNDLES TAB  */}
         {tab === 'bundles' && (
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -352,7 +352,7 @@ export default function PromotionsPage() {
                   <div className="mb-3">
                     {(bundle.items || []).map((item: any, i: number) => (
                       <div key={i} className="text-xs py-0.5" style={{ color: '#1a1008' }}>
-                        {item.qty}Ã— {item.name} ({item.size})
+                        {item.qty} {item.name} ({item.size})
                       </div>
                     ))}
                   </div>
@@ -360,11 +360,11 @@ export default function PromotionsPage() {
                     <div>
                       {bundle.original_price > bundle.bundle_price && (
                         <span className="text-xs line-through mr-2" style={{ color: '#2a1f1a' }}>
-                          â‚¹{bundle.original_price}
+                          {bundle.original_price}
                         </span>
                       )}
                       <span className="font-bold text-lg" style={{ color: '#c8973a' }}>
-                        â‚¹{bundle.bundle_price}
+                        {bundle.bundle_price}
                       </span>
                     </div>
                     {bundle.discount_percent > 0 && (
@@ -397,7 +397,7 @@ export default function PromotionsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Create Bundle</div>
               <button onClick={() => setShowAddBundle(false)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -421,7 +421,7 @@ export default function PromotionsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Bundle Price (â‚¹) *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Bundle Price () *</label>
                 <input
                   type="number"
                   value={newBundle.bundle_price}

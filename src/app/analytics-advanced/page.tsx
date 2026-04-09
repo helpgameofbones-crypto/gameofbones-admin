@@ -24,7 +24,7 @@ export default function AdvancedAnalyticsPage() {
     setLoading(false)
   }
 
-  // â”€â”€ Hourly Heatmap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Hourly Heatmap 
   const heatmapData: Record<string, Record<number, number>> = {}
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   days.forEach(d => { heatmapData[d] = {} })
@@ -36,7 +36,7 @@ export default function AdvancedAnalyticsPage() {
   })
   const maxHeatmap = Math.max(...Object.values(heatmapData).flatMap(h => Object.values(h)), 1)
 
-  // â”€â”€ City Revenue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  City Revenue 
   const cityRevenue: Record<string, { revenue: number; orders: number }> = {}
   orders.forEach(o => {
     const city = o.shipping_address?.city || 'Unknown'
@@ -49,7 +49,7 @@ export default function AdvancedAnalyticsPage() {
     .slice(0, 15)
   const maxCityRevenue = topCities[0]?.[1].revenue || 1
 
-  // â”€â”€ Product Affinity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Product Affinity 
   const pairCounts: Record<string, number> = {}
   orders.forEach(o => {
     const items = (o.items || []).map((i: any) => i.name)
@@ -64,7 +64,7 @@ export default function AdvancedAnalyticsPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
 
-  // â”€â”€ Revenue Forecasting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Revenue Forecasting 
   const last30  = orders.filter(o => {
     const d = new Date(o.created_at)
     return d >= new Date(Date.now() - 30 * 86400000)
@@ -80,7 +80,7 @@ export default function AdvancedAnalyticsPage() {
   const forecast60 = Math.round(last30Rev * Math.pow(1 + growthRate, 2))
   const forecast90 = Math.round(last30Rev * Math.pow(1 + growthRate, 3))
 
-  // â”€â”€ Cohort Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Cohort Analysis 
   const cohortMap: Record<string, Set<string>> = {}
   const customerFirstOrder: Record<string, string> = {}
   orders.forEach(o => {
@@ -114,7 +114,7 @@ export default function AdvancedAnalyticsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -135,7 +135,7 @@ export default function AdvancedAnalyticsPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Advanced Analytics</h1>
           <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
-            Deep insights â€” heatmap, forecasting, cohorts, product affinity
+            Deep insights  heatmap, forecasting, cohorts, product affinity
           </p>
         </div>
 
@@ -148,18 +148,18 @@ export default function AdvancedAnalyticsPage() {
                 color: tab === t ? 'white' : '#6b7280',
                 border: '1px solid #e5e7eb'
               }}>
-              {t === 'heatmap' ? 'ðŸ”¥ Heatmap' :
-               t === 'cities'  ? 'ðŸ™ï¸ Cities' :
-               t === 'affinity' ? 'ðŸ”— Affinity' :
-               t === 'forecast' ? 'ðŸ“ˆ Forecast' : 'ðŸ‘¥ Cohort'}
+              {t === 'heatmap' ? ' Heatmap' :
+               t === 'cities'  ? ' Cities' :
+               t === 'affinity' ? ' Affinity' :
+               t === 'forecast' ? ' Forecast' : ' Cohort'}
             </button>
           ))}
         </div>
 
-        {/* â”€â”€ HEATMAP TAB â”€â”€ */}
+        {/*  HEATMAP TAB  */}
         {tab === 'heatmap' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Order Heatmap â€” Day Ã— Hour</h3>
+            <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Order Heatmap  Day  Hour</h3>
             <p className="text-xs mb-4" style={{ color: '#1a1008' }}>
               Darker = more orders. Use this to plan your Instagram posts.
             </p>
@@ -190,7 +190,7 @@ export default function AdvancedAnalyticsPage() {
                           return (
                             <td key={hour} style={{ padding: 2 }}>
                               <div
-                                title={`${day} ${hour}:00 â€” ${count} orders`}
+                                title={`${day} ${hour}:00  ${count} orders`}
                                 style={{
                                   width: 24,
                                   height: 24,
@@ -219,7 +219,7 @@ export default function AdvancedAnalyticsPage() {
           </div>
         )}
 
-        {/* â”€â”€ CITIES TAB â”€â”€ */}
+        {/*  CITIES TAB  */}
         {tab === 'cities' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-4" style={{ color: '#111827' }}>City-wise Revenue</h3>
@@ -240,7 +240,7 @@ export default function AdvancedAnalyticsPage() {
                       <span className="text-xs" style={{ color: '#2a1f1a' }}>({data.orders} orders)</span>
                     </div>
                     <span className="font-bold" style={{ color: '#111827' }}>
-                      â‚¹{data.revenue.toLocaleString('en-IN')}
+                      {data.revenue.toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-3">
@@ -253,7 +253,7 @@ export default function AdvancedAnalyticsPage() {
           </div>
         )}
 
-        {/* â”€â”€ AFFINITY TAB â”€â”€ */}
+        {/*  AFFINITY TAB  */}
         {tab === 'affinity' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Product Affinity</h3>
@@ -290,14 +290,14 @@ export default function AdvancedAnalyticsPage() {
           </div>
         )}
 
-        {/* â”€â”€ FORECAST TAB â”€â”€ */}
+        {/*  FORECAST TAB  */}
         {tab === 'forecast' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: 'Last 30 Days',    value: 'â‚¹' + last30Rev.toLocaleString('en-IN'),   icon: 'ðŸ“Š', color: '#3b82f6' },
-                { label: 'Growth Rate',     value: (growthRate >= 0 ? '+' : '') + Math.round(growthRate * 100) + '%', icon: growthRate >= 0 ? 'ðŸ“ˆ' : 'ðŸ“‰', color: growthRate >= 0 ? '#10b981' : '#ef4444' },
-                { label: 'Next 30 Day Est', value: 'â‚¹' + forecast30.toLocaleString('en-IN'),  icon: 'ðŸ”®', color: '#8b5cf6' },
+                { label: 'Last 30 Days',    value: '' + last30Rev.toLocaleString('en-IN'),   icon: '', color: '#3b82f6' },
+                { label: 'Growth Rate',     value: (growthRate >= 0 ? '+' : '') + Math.round(growthRate * 100) + '%', icon: growthRate >= 0 ? '' : '', color: growthRate >= 0 ? '#10b981' : '#ef4444' },
+                { label: 'Next 30 Day Est', value: '' + forecast30.toLocaleString('en-IN'),  icon: '', color: '#8b5cf6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -323,7 +323,7 @@ export default function AdvancedAnalyticsPage() {
                     <tr key={row.period} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#1a1008' }}>{row.period}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
-                        â‚¹{row.value.toLocaleString('en-IN')}
+                        {row.value.toLocaleString('en-IN')}
                       </td>
                     </tr>
                   ))}
@@ -339,7 +339,7 @@ export default function AdvancedAnalyticsPage() {
           </div>
         )}
 
-        {/* â”€â”€ COHORT TAB â”€â”€ */}
+        {/*  COHORT TAB  */}
         {tab === 'cohort' && (
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-bold mb-2" style={{ color: '#111827' }}>Cohort Analysis</h3>

@@ -166,7 +166,7 @@ export default function ProductAffinityPage() {
                   </div>
                   {pa.relatedPairs.length > 0 && (
                     <div className="mt-2 text-xs text-orange-600 font-medium">
-                      ðŸ’¡ Bundle suggestion: {pa.product} + {pa.relatedPairs[0].name}
+                       Bundle suggestion: {pa.product} + {pa.relatedPairs[0].name}
                     </div>
                   )}
                 </div>

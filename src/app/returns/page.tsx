@@ -74,7 +74,7 @@ export default function ReturnsPage() {
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
       <div className="text-white px-6 py-4 flex items-center justify-between" style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -106,10 +106,10 @@ export default function ReturnsPage() {
 
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total Returns',  value: returns.length,                                        icon: '↩️', color: '#1a1008' },
-            { label: 'Requested',      value: returns.filter(r => r.status === 'requested').length,  icon: '⏳', color: '#f59e0b' },
-            { label: 'Approved',       value: returns.filter(r => r.status === 'approved').length,   icon: '✅', color: '#10b981' },
-            { label: 'Refund Amount',  value: 'Rs ' + returns.filter(r => r.status === 'approved').reduce((s,r) => s+(r.refund_amount||0),0), icon: '💸', color: '#ef4444' },
+            { label: 'Total Returns',  value: returns.length,                                        icon: '', color: '#1a1008' },
+            { label: 'Requested',      value: returns.filter(r => r.status === 'requested').length,  icon: '', color: '#f59e0b' },
+            { label: 'Approved',       value: returns.filter(r => r.status === 'approved').length,   icon: '', color: '#10b981' },
+            { label: 'Refund Amount',  value: 'Rs ' + returns.filter(r => r.status === 'approved').reduce((s,r) => s+(r.refund_amount||0),0), icon: '', color: '#ef4444' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>

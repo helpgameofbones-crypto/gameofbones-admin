@@ -161,7 +161,7 @@ export default function DeliveryEstimatorPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">#{order.ref || order.order_number}</div>
-                    <div className="text-xs text-gray-400">{order.customer_name} · {order.customer_phone}</div>
+                    <div className="text-xs text-gray-400">{order.customer_name}  {order.customer_phone}</div>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">{order.status?.replace(/_/g, ' ')}</span>

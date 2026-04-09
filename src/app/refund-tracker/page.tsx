@@ -94,7 +94,7 @@ export default function RefundTrackerPage() {
         {[
           { label: 'Total Refunds', value: totalRefunds, color: 'bg-red-50 text-red-700' },
           { label: 'Refund Rate', value: refundRate + '%', color: parseFloat(refundRate) >= 10 ? 'bg-red-50 text-red-700' : parseFloat(refundRate) >= 5 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700' },
-          { label: 'Total Refunded', value: 'â‚¹' + totalRefundAmount.toLocaleString('en-IN'), color: 'bg-orange-50 text-orange-700' },
+          { label: 'Total Refunded', value: '' + totalRefundAmount.toLocaleString('en-IN'), color: 'bg-orange-50 text-orange-700' },
           { label: 'Revenue Impact', value: refundAmountRate + '%', color: 'bg-blue-50 text-blue-700' },
         ].map(s => (
           <div key={s.label} className={"rounded-xl p-4 " + s.color}>
@@ -132,7 +132,7 @@ export default function RefundTrackerPage() {
                 <div key={m.label}>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>{m.label}</span>
-                    <span>{m.currency ? 'â‚¹' + m.value.toLocaleString('en-IN') : m.value} / {m.currency ? 'â‚¹' + m.total.toLocaleString('en-IN') : m.total}</span>
+                    <span>{m.currency ? '' + m.value.toLocaleString('en-IN') : m.value} / {m.currency ? '' + m.total.toLocaleString('en-IN') : m.total}</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
                     <div className="bg-red-400 h-2 rounded-full" style={{ width: m.total > 0 ? (m.value / m.total * 100) + '%' : '0%' }} />
@@ -153,7 +153,7 @@ export default function RefundTrackerPage() {
                 {refunds.slice(0, 5).map((r, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <div className="text-gray-700">{r.reason || 'No reason given'}</div>
-                    <div className="font-semibold text-red-600">â‚¹{(r.refund_amount || 0).toLocaleString('en-IN')}</div>
+                    <div className="font-semibold text-red-600">{(r.refund_amount || 0).toLocaleString('en-IN')}</div>
                   </div>
                 ))}
               </div>
@@ -181,7 +181,7 @@ export default function RefundTrackerPage() {
                       {p.rate}%
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-red-600">â‚¹{p.amount.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 font-semibold text-red-600">{p.amount.toLocaleString('en-IN')}</td>
                 </tr>
               ))}
             </tbody>
@@ -208,7 +208,7 @@ export default function RefundTrackerPage() {
                       {m.rate}%
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-red-600">â‚¹{m.amount.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 font-semibold text-red-600">{m.amount.toLocaleString('en-IN')}</td>
                 </tr>
               ))}
             </tbody>

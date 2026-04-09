@@ -66,9 +66,9 @@ export default function BulkInvoicesPage() {
 <body>
 <div class="header">
   <div>
-    <div class="brand">ðŸ¾ Game of Bones</div>
+    <div class="brand"> Game of Bones</div>
     <div class="tagline">Premium Natural Dehydrated Treats for Happy Dogs</div>
-    <div class="tagline">gameofbones.in Â· support@gameofbones.in</div>
+    <div class="tagline">gameofbones.in  support@gameofbones.in</div>
   </div>
   <div>
     <div class="invoice-title">INVOICE</div>
@@ -114,18 +114,18 @@ export default function BulkInvoicesPage() {
     <tr>
       <td>${item.name || item.product_name || 'Product'}</td>
       <td style="text-align:center">${item.quantity || 1}</td>
-      <td style="text-align:right">â‚¹${(item.price || 0).toLocaleString('en-IN')}</td>
-      <td style="text-align:right">â‚¹${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</td>
+      <td style="text-align:right">${(item.price || 0).toLocaleString('en-IN')}</td>
+      <td style="text-align:right">${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</td>
     </tr>`).join('')}
     <tr class="total-row">
       <td colspan="3" style="text-align:right">Total Amount</td>
-      <td style="text-align:right; color:#c8973a">â‚¹${total.toLocaleString('en-IN')}</td>
+      <td style="text-align:right; color:#c8973a">${total.toLocaleString('en-IN')}</td>
     </tr>
   </tbody>
 </table>
 
 <div class="footer">
-  Thank you for choosing Game of Bones! ðŸ¾<br>
+  Thank you for choosing Game of Bones! <br>
   For support: support@gameofbones.in<br>
   This is a computer-generated invoice.
 </div>
@@ -248,7 +248,7 @@ export default function BulkInvoicesPage() {
           <div className="text-xs font-medium text-blue-600 mt-1">Invoices in Range</div>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <div className="text-2xl font-bold text-green-700">â‚¹{totalValue.toLocaleString('en-IN')}</div>
+          <div className="text-2xl font-bold text-green-700">{totalValue.toLocaleString('en-IN')}</div>
           <div className="text-xs font-medium text-green-600 mt-1">Total Value</div>
         </div>
       </div>
@@ -285,7 +285,7 @@ export default function BulkInvoicesPage() {
                     {new Date(order.created_at).toLocaleDateString('en-IN')}
                   </td>
                   <td className="px-4 py-3 font-bold text-gray-900">
-                    â‚¹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}
+                    {(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">

@@ -53,13 +53,13 @@ export default function DelhiveryPage() {
       })
       const data = await res.json()
       if (data.ok) {
-        setMsg(`âœ… AWB ${data.awb} generated for ${order.ref}`)
+        setMsg(` AWB ${data.awb} generated for ${order.ref}`)
         fetchOrders()
       } else {
-        setMsg('âŒ ' + (data.error || 'Failed to generate AWB'))
+        setMsg(' ' + (data.error || 'Failed to generate AWB'))
       }
     } catch (e) {
-      setMsg('âŒ Network error')
+      setMsg(' Network error')
     }
     setGenerating(null)
     setTimeout(() => setMsg(''), 5000)
@@ -85,7 +85,7 @@ export default function DelhiveryPage() {
       } catch {}
     }
     setBulkGenerating(false)
-    setMsg(`âœ… Generated ${success}/${toGenerate.length} AWBs`)
+    setMsg(` Generated ${success}/${toGenerate.length} AWBs`)
     setSelectedIds(new Set())
     fetchOrders()
     setTimeout(() => setMsg(''), 5000)
@@ -101,7 +101,7 @@ export default function DelhiveryPage() {
       const data = await res.json()
       setTracking(data.tracking)
     } catch {
-      setMsg('âŒ Tracking failed')
+      setMsg(' Tracking failed')
     }
   }
 
@@ -145,7 +145,7 @@ export default function DelhiveryPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -173,9 +173,9 @@ export default function DelhiveryPage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('âœ…') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('âœ…') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('âœ…') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('') ? '#166534' : '#ef4444',
+              border: `1px solid ${msg.startsWith('') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -183,7 +183,7 @@ export default function DelhiveryPage() {
 
         {/* Pincode checker */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6 flex items-center gap-3 flex-wrap">
-          <span className="font-medium text-sm" style={{ color: '#1a1008' }}>ðŸ“ Check Pincode</span>
+          <span className="font-medium text-sm" style={{ color: '#1a1008' }}> Check Pincode</span>
           <input value={pincodeCheck} onChange={e => setPincodeCheck(e.target.value)}
             placeholder="Enter 6-digit pincode..."
             maxLength={6}
@@ -198,7 +198,7 @@ export default function DelhiveryPage() {
           {pincodeResult && (
             <span className="text-sm font-medium"
               style={{ color: pincodeResult.serviceable ? '#10b981' : '#ef4444' }}>
-              {pincodeResult.serviceable ? 'âœ… Serviceable' : 'âŒ Not serviceable'}
+              {pincodeResult.serviceable ? ' Serviceable' : ' Not serviceable'}
             </span>
           )}
         </div>
@@ -303,7 +303,7 @@ export default function DelhiveryPage() {
                           color: order.payment_method === 'cod' ? '#92400e' : '#166534'
                         }}>
                         {order.payment_method?.toUpperCase()}
-                        {order.payment_method === 'cod' ? ` â‚¹${order.grand_total}` : ''}
+                        {order.payment_method === 'cod' ? ` ${order.grand_total}` : ''}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -315,7 +315,7 @@ export default function DelhiveryPage() {
                           <a href={`https://www.delhivery.com/track/package/${order.delhivery_awb}`}
                             target="_blank" rel="noreferrer"
                             className="text-xs" style={{ color: '#3b82f6' }}>
-                            Track â†’
+                            Track 
                           </a>
                         </div>
                       ) : (
@@ -329,14 +329,14 @@ export default function DelhiveryPage() {
                           disabled={generating === order.id}
                           className="text-white text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
                           style={{ background: '#c8973a' }}>
-                          {generating === order.id ? 'Generating...' : 'ðŸ“¦ Generate AWB'}
+                          {generating === order.id ? 'Generating...' : ' Generate AWB'}
                         </button>
                       ) : (
                         <button
                           onClick={() => { setTrackingAwb(order.delhivery_awb); trackShipment(order.delhivery_awb) }}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium"
                           style={{ background: '#dbeafe', color: '#1e40af' }}>
-                          ðŸ” Track
+                           Track
                         </button>
                       )}
                     </td>
@@ -358,7 +358,7 @@ export default function DelhiveryPage() {
                   <div className="font-mono text-sm" style={{ color: '#c8973a' }}>{trackingAwb}</div>
                 </div>
                 <button onClick={() => setTracking(null)}
-                  className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                  className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
               </div>
               <div className="p-6">
                 {tracking.ShipmentData?.[0]?.Shipment ? (
@@ -380,7 +380,7 @@ export default function DelhiveryPage() {
                               {scan.ScanDetail?.Scan}
                             </div>
                             <div style={{ color: '#2a1f1a' }}>
-                              {scan.ScanDetail?.ScannedLocation} â€” {scan.ScanDetail?.ScanDateTime}
+                              {scan.ScanDetail?.ScannedLocation}  {scan.ScanDetail?.ScanDateTime}
                             </div>
                           </div>
                         </div>

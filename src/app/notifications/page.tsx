@@ -46,7 +46,7 @@ export default function NotificationsPage() {
       type: 'orders',
       priority: 'high',
       title: `${newOrders.length} new order${newOrders.length > 1 ? 's' : ''} today`,
-      description: `â‚¹${newOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} in revenue today`,
+      description: `${newOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} in revenue today`,
       action: 'View Orders',
       actionHref: '/orders',
       time: 'Today',
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
       type: 'danger',
       priority: 'medium',
       title: `${rtoOrders.length} RTO order${rtoOrders.length > 1 ? 's' : ''}`,
-      description: `â‚¹${rtoOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} worth of returned shipments`,
+      description: `${rtoOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0).toLocaleString('en-IN')} worth of returned shipments`,
       action: 'View RTO',
       actionHref: '/rto',
     })
@@ -238,7 +238,7 @@ export default function NotificationsPage() {
                     {alert.action && (
                       <a href={alert.actionHref}
                         className="inline-block mt-2 text-xs font-medium text-orange-600 hover:text-orange-700 underline">
-                        {alert.action} â†’
+                        {alert.action} 
                       </a>
                     )}
                   </div>

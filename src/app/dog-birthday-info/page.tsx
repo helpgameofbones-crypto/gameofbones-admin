@@ -55,7 +55,7 @@ export default function DogBirthdayPage() {
 
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '24px', color: '#1a1008' }}>🎂 Dog Birthday Club</h1>
+      <h1 style={{ fontSize: '32px', marginBottom: '24px', color: '#1a1008' }}> Dog Birthday Club</h1>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '12px' }}>
         <input
@@ -69,7 +69,7 @@ export default function DogBirthdayPage() {
       </div>
 
       <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>📅 Upcoming ({upcoming.length})</h2>
+        <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}> Upcoming ({upcoming.length})</h2>
         {upcoming.length === 0 ? (
           <p style={{ color: '#3a3028' }}>No upcoming birthdays</p>
         ) : (
@@ -88,7 +88,7 @@ export default function DogBirthdayPage() {
       </div>
 
       <div>
-        <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>✅ Past ({past.length})</h2>
+        <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}> Past ({past.length})</h2>
         {past.length === 0 ? (
           <p style={{ color: '#3a3028' }}>No past birthdays</p>
         ) : (

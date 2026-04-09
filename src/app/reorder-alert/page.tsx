@@ -105,8 +105,8 @@ export default function ReorderAlertsPage() {
     const days = Math.abs(customer.daysUntilDue)
     const overdue = customer.daysUntilDue < 0
     return overdue
-      ? `Hi ${customer.name.split(' ')[0]}! ðŸ¾ It's been a while since ${customer.topProduct} ran out. Your dog must be missing them! Reorder now at gameofbones.in and use code REORDER10 for 10% off. ðŸ¦´`
-      : `Hi ${customer.name.split(' ')[0]}! ðŸ¾ ${customer.topProduct} is probably running low! Based on your order history, it's almost time to restock. Order now at gameofbones.in before your dog notices. ðŸ¦´`
+      ? `Hi ${customer.name.split(' ')[0]}!  It's been a while since ${customer.topProduct} ran out. Your dog must be missing them! Reorder now at gameofbones.in and use code REORDER10 for 10% off. `
+      : `Hi ${customer.name.split(' ')[0]}!  ${customer.topProduct} is probably running low! Based on your order history, it's almost time to restock. Order now at gameofbones.in before your dog notices. `
   }
 
   async function sendAlert(customer: any) {
@@ -177,10 +177,10 @@ export default function ReorderAlertsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Due This Week', value: stats.due, color: 'bg-orange-50 text-orange-700', icon: 'â°' },
-          { label: 'Overdue', value: stats.overdue, color: 'bg-red-50 text-red-700', icon: 'ðŸš¨' },
-          { label: 'Repeat Customers', value: stats.total, color: 'bg-blue-50 text-blue-700', icon: 'ðŸ‘¥' },
-          { label: 'Potential Revenue', value: 'â‚¹' + stats.potentialRevenue.toLocaleString('en-IN'), color: 'bg-green-50 text-green-700', icon: 'ðŸ’°' },
+          { label: 'Due This Week', value: stats.due, color: 'bg-orange-50 text-orange-700', icon: '' },
+          { label: 'Overdue', value: stats.overdue, color: 'bg-red-50 text-red-700', icon: '' },
+          { label: 'Repeat Customers', value: stats.total, color: 'bg-blue-50 text-blue-700', icon: '' },
+          { label: 'Potential Revenue', value: '' + stats.potentialRevenue.toLocaleString('en-IN'), color: 'bg-green-50 text-green-700', icon: '' },
         ].map(s => (
           <div key={s.label} className={"rounded-xl p-4 " + s.color}>
             <div className="text-2xl mb-1">{s.icon}</div>
@@ -208,14 +208,14 @@ export default function ReorderAlertsPage() {
           {[3, 5, 7, 14].map(d => (
             <button key={d} onClick={() => setWindowDays(d)}
               className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (windowDays === d ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50')}>
-              Â±{d} days
+              {d} days
             </button>
           ))}
         </div>
         <div className="flex gap-2">
           {[
-            { key: 'due', label: `â° Due Soon (${stats.due})` },
-            { key: 'overdue', label: `ðŸš¨ Overdue (${stats.overdue})` },
+            { key: 'due', label: ` Due Soon (${stats.due})` },
+            { key: 'overdue', label: ` Overdue (${stats.overdue})` },
             { key: 'all', label: `All (${stats.total})` },
           ].map(f => (
             <button key={f.key} onClick={() => setFilter(f.key as any)}
@@ -279,7 +279,7 @@ export default function ReorderAlertsPage() {
                       {[
                         { label: 'Orders', value: customer.totalOrders },
                         { label: 'Avg Interval', value: customer.avgInterval + 'd' },
-                        { label: 'Total Spent', value: 'â‚¹' + customer.totalSpent.toLocaleString('en-IN') },
+                        { label: 'Total Spent', value: '' + customer.totalSpent.toLocaleString('en-IN') },
                       ].map(s => (
                         <div key={s.label} className="bg-gray-50 rounded-lg p-2">
                           <div className="text-sm font-bold text-gray-800">{s.value}</div>
@@ -311,7 +311,7 @@ export default function ReorderAlertsPage() {
 
                   {/* Message Preview */}
                   <div className="mt-3 bg-green-50 border border-green-100 rounded-lg px-3 py-2.5">
-                    <div className="text-xs font-semibold text-green-700 mb-1">ðŸ“± WhatsApp Message Preview</div>
+                    <div className="text-xs font-semibold text-green-700 mb-1"> WhatsApp Message Preview</div>
                     <div className="text-xs text-green-800">{message}</div>
                   </div>
                 </div>

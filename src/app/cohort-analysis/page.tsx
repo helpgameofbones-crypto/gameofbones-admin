@@ -105,17 +105,17 @@ export default function CohortAnalysisPage() {
       {!loading && cohorts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-green-600 mb-1">ðŸ’° Highest Revenue Cohort</div>
+            <div className="text-xs font-semibold text-green-600 mb-1"> Highest Revenue Cohort</div>
             <div className="text-xl font-bold text-green-800">{formatMonth(bestCohort?.cohortMonth)}</div>
-            <div className="text-sm text-green-700 mt-1">â‚¹{bestCohort?.revenue.toLocaleString('en-IN')} Â· {bestCohort?.size} customers</div>
+            <div className="text-sm text-green-700 mt-1">{bestCohort?.revenue.toLocaleString('en-IN')}  {bestCohort?.size} customers</div>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-blue-600 mb-1">ðŸ”„ Best Retention Cohort</div>
+            <div className="text-xs font-semibold text-blue-600 mb-1"> Best Retention Cohort</div>
             <div className="text-xl font-bold text-blue-800">{formatMonth(bestRetention?.cohortMonth)}</div>
             <div className="text-sm text-blue-700 mt-1">{bestRetention?.retention[1] || 0}% came back month 2</div>
           </div>
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-orange-600 mb-1">ðŸ“¦ Total Cohorts Tracked</div>
+            <div className="text-xs font-semibold text-orange-600 mb-1"> Total Cohorts Tracked</div>
             <div className="text-xl font-bold text-orange-800">{cohorts.length} months</div>
             <div className="text-sm text-orange-700 mt-1">{orders.length} total orders analysed</div>
           </div>
@@ -145,9 +145,9 @@ export default function CohortAnalysisPage() {
                 <tr key={c.cohortMonth} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatMonth(c.cohortMonth)}</td>
                   <td className="px-4 py-3 text-gray-700">{c.size}</td>
-                  <td className="px-4 py-3 font-bold text-green-700">â‚¹{c.revenue.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-gray-700">â‚¹{c.avgOrderValue.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-gray-700">{c.ordersPerCustomer}Ã—</td>
+                  <td className="px-4 py-3 font-bold text-green-700">{c.revenue.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-gray-700">{c.avgOrderValue.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-gray-700">{c.ordersPerCustomer}</td>
                 </tr>
               ))}
             </tbody>
@@ -189,7 +189,7 @@ export default function CohortAnalysisPage() {
                             {pct}%
                           </div>
                         ) : (
-                          <div className="rounded text-center px-2 py-1.5 text-gray-200">â€”</div>
+                          <div className="rounded text-center px-2 py-1.5 text-gray-200"></div>
                         )}
                       </td>
                     ))}

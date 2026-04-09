@@ -64,7 +64,7 @@ export default function CustomerIntelligencePage() {
       imported++
     }
     setSaving(false)
-    setMsg(`âœ… Imported ${imported} customers!`)
+    setMsg(` Imported ${imported} customers!`)
     setImportData('')
     fetchData()
     setTimeout(() => setMsg(''), 4000)
@@ -74,7 +74,7 @@ export default function CustomerIntelligencePage() {
     if (!mergePhone1 || !mergePhone2) return
     const c1 = customers.find(c => c.phone === mergePhone1)
     const c2 = customers.find(c => c.phone === mergePhone2)
-    if (!c1 || !c2) { setMsg('âŒ Customer not found'); return }
+    if (!c1 || !c2) { setMsg(' Customer not found'); return }
     setSaving(true)
     await supabase.from('customers').update({
       total_orders: c1.total_orders + c2.total_orders,
@@ -83,7 +83,7 @@ export default function CustomerIntelligencePage() {
     }).eq('id', c1.id)
     await supabase.from('customers').delete().eq('id', c2.id)
     setSaving(false)
-    setMsg(`âœ… Merged ${c2.name} into ${c1.name}`)
+    setMsg(` Merged ${c2.name} into ${c1.name}`)
     setMergePhone1('')
     setMergePhone2('')
     fetchData()
@@ -109,7 +109,7 @@ export default function CustomerIntelligencePage() {
       is_active:      true,
     })
     setSaving(false)
-    setMsg('âœ… Subscription created!')
+    setMsg(' Subscription created!')
     setNewSub({ customer_phone: '', product_id: '', size_label: '', frequency_days: '30', next_order_date: '' })
     fetchData()
     setTimeout(() => setMsg(''), 3000)
@@ -178,7 +178,7 @@ export default function CustomerIntelligencePage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -206,9 +206,9 @@ export default function CustomerIntelligencePage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('âœ…') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('âœ…') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('âœ…') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('') ? '#166534' : '#ef4444',
+              border: `1px solid ${msg.startsWith('') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -216,11 +216,11 @@ export default function CustomerIntelligencePage() {
 
         <div className="flex gap-2 mb-6 flex-wrap">
           {[
-            { key: 'import',       label: 'ðŸ“¥ Import' },
-            { key: 'merge',        label: 'ðŸ”€ Merge' },
-            { key: 'subscriptions', label: `ðŸ”„ Subscriptions (${subscriptions.filter(s=>s.is_active).length})` },
-            { key: 'reorder',      label: 'ðŸ”® Reorder Prediction' },
-            { key: 'metrics',      label: 'ðŸ“Š Metrics' },
+            { key: 'import',       label: ' Import' },
+            { key: 'merge',        label: ' Merge' },
+            { key: 'subscriptions', label: ` Subscriptions (${subscriptions.filter(s=>s.is_active).length})` },
+            { key: 'reorder',      label: ' Reorder Prediction' },
+            { key: 'metrics',      label: ' Metrics' },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -253,7 +253,7 @@ export default function CustomerIntelligencePage() {
               <button onClick={importCustomers} disabled={saving}
                 className="w-full mt-3 py-2 rounded-lg font-medium text-white disabled:opacity-50"
                 style={{ background: '#1a1008' }}>
-                {saving ? 'Importing...' : 'ðŸ“¥ Import Customers'}
+                {saving ? 'Importing...' : ' Import Customers'}
               </button>
             </div>
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -276,13 +276,13 @@ export default function CustomerIntelligencePage() {
                         {f.req ? 'Required' : 'Optional'}
                       </span>
                       <span className="font-medium text-xs" style={{ color: '#1a1008' }}>{f.field}</span>
-                      <span className="text-xs" style={{ color: '#2a1f1a' }}>â€” {f.note}</span>
+                      <span className="text-xs" style={{ color: '#2a1f1a' }}> {f.note}</span>
                     </div>
                   ))}
                 </div>
                 <div className="p-3 rounded-lg" style={{ background: '#f0fdf4' }}>
                   <p className="text-xs" style={{ color: '#166534' }}>
-                    âœ… Duplicate phone numbers are automatically skipped
+                     Duplicate phone numbers are automatically skipped
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function CustomerIntelligencePage() {
                   />
                   {mergePhone1 && customers.find(c => c.phone === mergePhone1) && (
                     <div className="mt-1 text-xs" style={{ color: '#10b981' }}>
-                      âœ… {customers.find(c => c.phone === mergePhone1)?.name}
+                       {customers.find(c => c.phone === mergePhone1)?.name}
                     </div>
                   )}
                 </div>
@@ -326,19 +326,19 @@ export default function CustomerIntelligencePage() {
                   />
                   {mergePhone2 && customers.find(c => c.phone === mergePhone2) && (
                     <div className="mt-1 text-xs" style={{ color: '#ef4444' }}>
-                      âš ï¸ {customers.find(c => c.phone === mergePhone2)?.name} will be deleted
+                       {customers.find(c => c.phone === mergePhone2)?.name} will be deleted
                     </div>
                   )}
                 </div>
                 <div className="p-3 rounded-lg" style={{ background: '#fef2f2' }}>
                   <p className="text-xs" style={{ color: '#ef4444' }}>
-                    âš ï¸ This action cannot be undone. The second customer profile will be permanently deleted.
+                     This action cannot be undone. The second customer profile will be permanently deleted.
                   </p>
                 </div>
                 <button onClick={mergeCustomers} disabled={saving || !mergePhone1 || !mergePhone2}
                   className="w-full py-2 rounded-lg font-medium text-white disabled:opacity-50"
                   style={{ background: '#ef4444' }}>
-                  {saving ? 'Merging...' : 'ðŸ”€ Merge Customers'}
+                  {saving ? 'Merging...' : ' Merge Customers'}
                 </button>
               </div>
             </div>
@@ -392,7 +392,7 @@ export default function CustomerIntelligencePage() {
                   />
                   {newSub.customer_phone && customers.find(c => c.phone === newSub.customer_phone) && (
                     <div className="mt-1 text-xs" style={{ color: '#10b981' }}>
-                      âœ… {customers.find(c => c.phone === newSub.customer_phone)?.name}
+                       {customers.find(c => c.phone === newSub.customer_phone)?.name}
                     </div>
                   )}
                 </div>
@@ -415,7 +415,7 @@ export default function CustomerIntelligencePage() {
                       style={{ color: '#111827' }}>
                       <option value="">Select size...</option>
                       {products.find(p => p.id === newSub.product_id)?.product_sizes?.map((s: any) => (
-                        <option key={s.id} value={s.label}>{s.label} â€” â‚¹{s.price}</option>
+                        <option key={s.id} value={s.label}>{s.label}  {s.price}</option>
                       ))}
                     </select>
                   </div>
@@ -482,7 +482,7 @@ export default function CustomerIntelligencePage() {
                           <td className="px-4 py-3">
                             <div className="text-xs font-medium" style={{ color: isOverdue ? '#ef4444' : '#374151' }}>
                               {sub.next_order_date}
-                              {isOverdue && ' âš ï¸'}
+                              {isOverdue && ' '}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -559,12 +559,12 @@ export default function CustomerIntelligencePage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <a href={`https://wa.me/91${pred.customer.phone}?text=Hi ${pred.customer.name}! Your pup must be running low on treats. Time to restock? ðŸ¾ gameofbones.in`}
+                        <a href={`https://wa.me/91${pred.customer.phone}?text=Hi ${pred.customer.name}! Your pup must be running low on treats. Time to restock?  gameofbones.in`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
                           style={{ background: '#25d366', textDecoration: 'none' }}>
-                          ðŸ“± WhatsApp
+                           WhatsApp
                         </a>
                       </td>
                     </tr>
@@ -580,10 +580,10 @@ export default function CustomerIntelligencePage() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Total Customers',      value: customers.length,                                                   icon: 'ðŸ‘¥', color: '#3b82f6' },
-                { label: 'Repeat Buyers',        value: customers.filter(c => c.total_orders > 1).length,                   icon: 'ðŸ”„', color: '#10b981' },
-                { label: 'Avg Repeat Interval',  value: avgRepeatInterval ? avgRepeatInterval + ' days' : 'N/A',           icon: 'ðŸ“…', color: '#8b5cf6' },
-                { label: 'Avg Order Value',      value: orders.length ? 'â‚¹' + Math.round(orders.reduce((s,o) => s+(o.grand_total||0),0)/orders.length).toLocaleString('en-IN') : 'â‚¹0', icon: 'ðŸ’°', color: '#c8973a' },
+                { label: 'Total Customers',      value: customers.length,                                                   icon: '', color: '#3b82f6' },
+                { label: 'Repeat Buyers',        value: customers.filter(c => c.total_orders > 1).length,                   icon: '', color: '#10b981' },
+                { label: 'Avg Repeat Interval',  value: avgRepeatInterval ? avgRepeatInterval + ' days' : 'N/A',           icon: '', color: '#8b5cf6' },
+                { label: 'Avg Order Value',      value: orders.length ? '' + Math.round(orders.reduce((s,o) => s+(o.grand_total||0),0)/orders.length).toLocaleString('en-IN') : '0', icon: '', color: '#c8973a' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -606,7 +606,7 @@ export default function CustomerIntelligencePage() {
                       <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders</div>
                     </div>
                     <div className="font-bold text-sm" style={{ color: '#10b981' }}>
-                      â‚¹{c.total_spent?.toLocaleString('en-IN')}
+                      {c.total_spent?.toLocaleString('en-IN')}
                     </div>
                   </div>
                 ))}
@@ -628,9 +628,9 @@ export default function CustomerIntelligencePage() {
                   <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50">
                     <div>
                       <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders Â· â‚¹{c.total_spent}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders  {c.total_spent}</div>
                     </div>
-                    <a href={`https://wa.me/91${c.phone}?text=Hi ${c.name}! We miss you at Game of Bones ðŸ¾ Come back for a special offer!`}
+                    <a href={`https://wa.me/91${c.phone}?text=Hi ${c.name}! We miss you at Game of Bones  Come back for a special offer!`}
                       target="_blank" rel="noreferrer"
                       className="text-xs px-2 py-1 rounded font-medium text-white"
                       style={{ background: '#25d366', textDecoration: 'none' }}>

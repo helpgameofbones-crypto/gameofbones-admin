@@ -18,7 +18,7 @@ export default function ProductPerformancePage() {
   return (
     <div style={{minHeight:'100vh',background:'#f9f6f2',fontFamily:'Inter,sans-serif'}}>
       <div style={{background:'#1a1008',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{fontWeight:700,color:'#c8973a',fontSize:18}}>Game of Bones — Product Performance</div>
+        <div style={{fontWeight:700,color:'#c8973a',fontSize:18}}>Game of Bones  Product Performance</div>
         <select value={days} onChange={e=>setDays(Number(e.target.value))} style={{padding:'7px 14px',borderRadius:8,fontSize:13,border:'none'}}>
           <option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last 12 months</option>
         </select>
@@ -28,7 +28,7 @@ export default function ProductPerformancePage() {
         {loading ? <div style={{textAlign:'center',padding:60,color:'#8a7a6a'}}>Loading...</div> : data && (<>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:24}}>
             {[
-              {label:'Total Revenue',value:`₹${data.totalRevenue?.toLocaleString('en-IN')}`,color:'#c8973a'},
+              {label:'Total Revenue',value:`${data.totalRevenue?.toLocaleString('en-IN')}`,color:'#c8973a'},
               {label:'Units Sold',value:data.totalUnits?.toLocaleString('en-IN'),color:'#1a1008'},
               {label:'Orders',value:data.ordersCount,color:'#2a7c6f'},
             ].map(({label,value,color})=>(
@@ -50,9 +50,9 @@ export default function ProductPerformancePage() {
                 <tr key={p.name} style={{borderBottom:'1px solid #f0ebe3',background:i%2===0?'white':'#fafafa'}}>
                   <td style={{padding:'12px 16px',fontWeight:600,color:'#1a1008',fontSize:14}}>{p.name}</td>
                   <td style={{padding:'12px 16px',fontSize:14,color:'#1a1008'}}>{p.units_sold}</td>
-                  <td style={{padding:'12px 16px',fontWeight:700,color:'#c8973a',fontSize:14}}>₹{p.revenue?.toLocaleString('en-IN')}</td>
+                  <td style={{padding:'12px 16px',fontWeight:700,color:'#c8973a',fontSize:14}}>{p.revenue?.toLocaleString('en-IN')}</td>
                   <td style={{padding:'12px 16px',fontSize:14}}>
-                    {p.margin!==null ? <span style={{color:p.margin>=50?'#16a34a':p.margin>=30?'#d97706':'#dc2626',fontWeight:700}}>{p.margin}%</span> : <span style={{color:'#8a7a6a'}}>—</span>}
+                    {p.margin!==null ? <span style={{color:p.margin>=50?'#16a34a':p.margin>=30?'#d97706':'#dc2626',fontWeight:700}}>{p.margin}%</span> : <span style={{color:'#8a7a6a'}}></span>}
                   </td>
                   <td style={{padding:'12px 16px',fontSize:14,fontWeight:700,color:p.stock===0?'#dc2626':p.low_stock?'#d97706':'#16a34a'}}>{p.stock}</td>
                   <td style={{padding:'12px 16px'}}>

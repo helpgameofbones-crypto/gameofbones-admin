@@ -58,18 +58,18 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className='flex items-center gap-3'>
-          <a href='/notifications' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>🔔 Alerts</a>
-          <a href='/orders' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>📦 Orders</a>
-          <a href='/tasks' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}>✅ Tasks</a>
+          <a href='/notifications' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}> Alerts</a>
+          <a href='/orders' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}> Orders</a>
+          <a href='/tasks' style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textDecoration: 'none' }}> Tasks</a>
         </div>
       </div>
       <div className='p-6 max-w-7xl mx-auto'>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-6'>
           {[
-            { label: 'Todays Orders',   value: loading ? '...' : stats.orders,                                 icon: '📦', color: '#3b82f6', bg: '#eff6ff' },
-            { label: 'Todays Revenue',  value: loading ? '...' : 'Rs ' + stats.revenue.toLocaleString('en-IN'), icon: '💰', color: '#10b981', bg: '#f0fdf4' },
-            { label: 'Total Customers', value: loading ? '...' : stats.customers,                              icon: '👥', color: '#8b5cf6', bg: '#f5f3ff' },
-            { label: 'Pending Orders',  value: loading ? '...' : stats.pending,                                icon: '⏳', color: '#f59e0b', bg: '#fffbeb' },
+            { label: 'Todays Orders',   value: loading ? '...' : stats.orders,                                 icon: '', color: '#3b82f6', bg: '#eff6ff' },
+            { label: 'Todays Revenue',  value: loading ? '...' : 'Rs ' + stats.revenue.toLocaleString('en-IN'), icon: '', color: '#10b981', bg: '#f0fdf4' },
+            { label: 'Total Customers', value: loading ? '...' : stats.customers,                              icon: '', color: '#8b5cf6', bg: '#f5f3ff' },
+            { label: 'Pending Orders',  value: loading ? '...' : stats.pending,                                icon: '', color: '#f59e0b', bg: '#fffbeb' },
           ].map(card => (
             <div key={card.label} className='rounded-2xl p-5 shadow-sm border border-gray-100' style={{ background: card.bg }}>
               <div className='text-3xl mb-2'>{card.icon}</div>
@@ -90,10 +90,10 @@ export default function DashboardPage() {
         </div>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-3 mb-6'>
           {[
-            { label: 'Orders',         href: '/orders',         icon: '📦', desc: 'Manage orders' },
-            { label: 'COD Tracker',    href: '/cod-tracker',    icon: '📞', desc: 'Confirm COD calls' },
-            { label: 'Reorder Alerts', href: '/reorder-alerts', icon: '🔔', desc: 'Send reminders' },
-            { label: 'Production',     href: '/production',     icon: '🏭', desc: 'Log a batch' },
+            { label: 'Orders',         href: '/orders',         icon: '', desc: 'Manage orders' },
+            { label: 'COD Tracker',    href: '/cod-tracker',    icon: '', desc: 'Confirm COD calls' },
+            { label: 'Reorder Alerts', href: '/reorder-alerts', icon: '', desc: 'Send reminders' },
+            { label: 'Production',     href: '/production',     icon: '', desc: 'Log a batch' },
           ].map(action => (
             <a key={action.href} href={action.href} className='bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all' style={{ textDecoration: 'none' }}>
               <div className='text-2xl mb-1'>{action.icon}</div>

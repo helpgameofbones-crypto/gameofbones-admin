@@ -96,7 +96,7 @@ export default function OrderNotesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">#{order.ref || order.order_number}</div>
-                    <div className="text-xs text-gray-400">{order.customer_name} Â· {new Date(order.created_at).toLocaleDateString('en-IN')}</div>
+                    <div className="text-xs text-gray-400">{order.customer_name}  {new Date(order.created_at).toLocaleDateString('en-IN')}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     {notes.length > 0 && (
@@ -130,7 +130,7 @@ export default function OrderNotesPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-50">
                 <div className="font-bold text-gray-900">#{selected.ref || selected.order_number}</div>
-                <div className="text-sm text-gray-500">{selected.customer_name} Â· â‚¹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
+                <div className="text-sm text-gray-500">{selected.customer_name}  {(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
               </div>
 
               <div className="p-4 max-h-80 overflow-y-auto space-y-3">

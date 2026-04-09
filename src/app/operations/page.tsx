@@ -112,7 +112,7 @@ export default function OperationsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -140,7 +140,7 @@ export default function OperationsPage() {
         {lowPackaging.length > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
             <div className="font-medium text-sm mb-1" style={{ color: '#92400e' }}>
-              âš ï¸ {lowPackaging.length} packaging material{lowPackaging.length > 1 ? 's' : ''} running low
+               {lowPackaging.length} packaging material{lowPackaging.length > 1 ? 's' : ''} running low
             </div>
             <div className="text-xs" style={{ color: '#92400e' }}>
               {lowPackaging.map(p => p.name).join(', ')}
@@ -157,12 +157,12 @@ export default function OperationsPage() {
                 color: tab === t ? 'white' : '#6b7280',
                 border: '1px solid #e5e7eb'
               }}>
-              {t === 'suppliers' ? 'ðŸ­ Suppliers' : t === 'packaging' ? 'ðŸ“¦ Packaging' : 'ðŸ‘¥ Staff'}
+              {t === 'suppliers' ? ' Suppliers' : t === 'packaging' ? ' Packaging' : ' Staff'}
             </button>
           ))}
         </div>
 
-        {/* â”€â”€ SUPPLIERS â”€â”€ */}
+        {/*  SUPPLIERS  */}
         {tab === 'suppliers' && (
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -198,14 +198,14 @@ export default function OperationsPage() {
                     </button>
                   </div>
                   <div className="space-y-1 text-xs" style={{ color: '#1a1008' }}>
-                    {supplier.phone && <div>ðŸ“ž {supplier.phone}</div>}
-                    {supplier.email && <div>âœ‰ï¸ {supplier.email}</div>}
-                    {supplier.products_supplied && <div>ðŸ¦´ {supplier.products_supplied}</div>}
-                    {supplier.lead_time_days > 0 && <div>â±ï¸ {supplier.lead_time_days} days lead time</div>}
-                    {supplier.moq && <div>ðŸ“¦ MOQ: {supplier.moq}</div>}
+                    {supplier.phone && <div> {supplier.phone}</div>}
+                    {supplier.email && <div> {supplier.email}</div>}
+                    {supplier.products_supplied && <div> {supplier.products_supplied}</div>}
+                    {supplier.lead_time_days > 0 && <div> {supplier.lead_time_days} days lead time</div>}
+                    {supplier.moq && <div> MOQ: {supplier.moq}</div>}
                     {supplier.price_notes && (
                       <div className="mt-2 p-2 rounded" style={{ background: '#f9f6f2' }}>
-                        ðŸ’° {supplier.price_notes}
+                         {supplier.price_notes}
                       </div>
                     )}
                   </div>
@@ -215,7 +215,7 @@ export default function OperationsPage() {
           </div>
         )}
 
-        {/* â”€â”€ PACKAGING â”€â”€ */}
+        {/*  PACKAGING  */}
         {tab === 'packaging' && (
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -259,7 +259,7 @@ export default function OperationsPage() {
                         </td>
                         <td className="px-4 py-3" style={{ color: '#1a1008' }}>{item.min_stock}</td>
                         <td className="px-4 py-3" style={{ color: '#1a1008' }}>
-                          {item.cost_per_unit ? 'â‚¹' + item.cost_per_unit : 'â€”'}
+                          {item.cost_per_unit ? '' + item.cost_per_unit : ''}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-1 rounded-full font-medium"
@@ -267,7 +267,7 @@ export default function OperationsPage() {
                               background: isLow ? '#fef3c7' : '#f0fdf4',
                               color: isLow ? '#92400e' : '#15803d'
                             }}>
-                            {isLow ? 'âš ï¸ Low' : 'âœ… OK'}
+                            {isLow ? ' Low' : ' OK'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -293,7 +293,7 @@ export default function OperationsPage() {
           </div>
         )}
 
-        {/* â”€â”€ STAFF â”€â”€ */}
+        {/*  STAFF  */}
         {tab === 'staff' && (
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -362,7 +362,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Supplier</div>
               <button onClick={() => setShowAddSupplier(false)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
             <div className="p-6 space-y-3">
               {[
@@ -374,7 +374,7 @@ export default function OperationsPage() {
                 { label: 'Products Supplied', key: 'products_supplied', placeholder: 'Chicken, Goat organs' },
                 { label: 'Lead Time (days)', key: 'lead_time_days',    placeholder: '3' },
                 { label: 'MOQ',             key: 'moq',                placeholder: '5 kg minimum' },
-                { label: 'Price Notes',     key: 'price_notes',        placeholder: 'Chicken â‚¹180/kg, Goat â‚¹350/kg' },
+                { label: 'Price Notes',     key: 'price_notes',        placeholder: 'Chicken 180/kg, Goat 350/kg' },
               ].map(field => (
                 <div key={field.key}>
                   <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>
@@ -414,7 +414,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Packaging Material</div>
               <button onClick={() => setShowAddPackaging(false)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
             <div className="p-6 space-y-3">
               {[
@@ -464,7 +464,7 @@ export default function OperationsPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add Staff Account</div>
               <button onClick={() => setShowAddStaff(false)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>âœ•</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
             <div className="p-6 space-y-3">
               {[

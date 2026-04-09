@@ -40,7 +40,7 @@ export default function OrdersPage() {
 
   const printSlip = (order: any) => {
     const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones - Packing Slip</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%;margin:20px 0"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>Total: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones - Packing Slip</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%;margin:20px 0"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>Total: ${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   };
@@ -78,7 +78,7 @@ export default function OrdersPage() {
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
             </div>
@@ -101,15 +101,15 @@ export default function OrdersPage() {
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Items</p>
               {(selected.items || []).map((item: any, i: number) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee', color: '#1a1008' }}>
-                  <span>{(item.quantity || item.qty || 1)}× {item.name}</span>
-                  <span style={{ fontWeight: '600' }}>₹{((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
+                  <span>{(item.quantity || item.qty || 1)} {item.name}</span>
+                  <span style={{ fontWeight: '600' }}>{((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
                 </div>
               ))}
             </div>
 
             <div style={{ borderTop: '2px solid #eee', paddingTop: '16px', marginBottom: '24px' }}>
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p>
-              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: '8px 0 0 0' }}>₹{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
+              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: '8px 0 0 0' }}>{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
             </div>
 
             <div style={{ marginBottom: '24px' }}>
@@ -125,10 +125,10 @@ export default function OrdersPage() {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => printSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                🖨️ Print Slip
+                 Print Slip
               </button>
               <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                🗑️ Delete
+                 Delete
               </button>
               <button onClick={() => setSelected(null)} style={{ flex: 1, padding: '12px', background: '#f0f0f0', color: '#666', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
                 Close

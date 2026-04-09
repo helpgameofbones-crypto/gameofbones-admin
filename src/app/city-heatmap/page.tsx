@@ -94,9 +94,9 @@ export default function CityHeatmapPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Orders', value: totalOrders, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Total Revenue', value: 'â‚¹' + totalRevenue.toLocaleString('en-IN'), color: 'bg-green-50 text-green-700' },
+          { label: 'Total Revenue', value: '' + totalRevenue.toLocaleString('en-IN'), color: 'bg-green-50 text-green-700' },
           { label: view === 'city' ? 'Cities Covered' : 'States Covered', value: locations.length, color: 'bg-orange-50 text-orange-700' },
-          { label: 'Top ' + (view === 'city' ? 'City' : 'State'), value: topLocation?.name || 'â€”', color: 'bg-purple-50 text-purple-700' },
+          { label: 'Top ' + (view === 'city' ? 'City' : 'State'), value: topLocation?.name || '', color: 'bg-purple-50 text-purple-700' },
         ].map(s => (
           <div key={s.label} className={"rounded-xl p-4 " + s.color}>
             <div className="text-2xl font-bold truncate">{s.value}</div>
@@ -139,7 +139,7 @@ export default function CityHeatmapPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
               <div className="text-sm font-semibold text-gray-700 mb-4">
-                {view === 'city' ? 'City' : 'State'} Heatmap â€” by {metric}
+                {view === 'city' ? 'City' : 'State'} Heatmap  by {metric}
               </div>
               <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                 {locations.map(loc => {
@@ -151,7 +151,7 @@ export default function CityHeatmapPage() {
                       style={{ background: bg, color: text }}>
                       <div className="font-bold text-sm truncate">{loc.name}</div>
                       <div className="text-xs mt-0.5 font-medium">
-                        {metric === 'orders' ? loc.orders + ' orders' : 'â‚¹' + Math.round(loc.revenue / 1000) + 'k'}
+                        {metric === 'orders' ? loc.orders + ' orders' : '' + Math.round(loc.revenue / 1000) + 'k'}
                       </div>
                     </div>
                   )
@@ -184,16 +184,16 @@ export default function CityHeatmapPage() {
                         <MapPin size={10} className="text-orange-400 shrink-0" />{loc.name}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {loc.orders} orders Â· â‚¹{loc.revenue.toLocaleString('en-IN')}
+                        {loc.orders} orders  {loc.revenue.toLocaleString('en-IN')}
                       </div>
                       <div className="flex gap-2 mt-1">
                         <span className="text-xs text-orange-600">{loc.codPct}% COD</span>
-                        <span className="text-xs text-gray-400">AOV â‚¹{loc.avgOrderValue.toLocaleString('en-IN')}</span>
+                        <span className="text-xs text-gray-400">AOV {loc.avgOrderValue.toLocaleString('en-IN')}</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-bold" style={{ color: heatColor(metric === 'orders' ? loc.orders : loc.revenue, metric === 'orders' ? maxOrders : maxRevenue).bg }}>
-                        {metric === 'orders' ? loc.orders : 'â‚¹' + Math.round(loc.revenue / 1000) + 'k'}
+                        {metric === 'orders' ? loc.orders : '' + Math.round(loc.revenue / 1000) + 'k'}
                       </div>
                       <div className="text-xs text-gray-400">
                         {Math.round((metric === 'orders' ? loc.orders / maxOrders : loc.revenue / maxRevenue) * 100)}% of top

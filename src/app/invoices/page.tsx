@@ -51,7 +51,7 @@ export default function InvoicesPage() {
           <!-- Header -->
           <div style="background:#1a1008;padding:28px 32px;display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="color:#c8973a;font-size:24px;font-weight:bold">🐾 Game of Bones</div>
+              <div style="color:#c8973a;font-size:24px;font-weight:bold"> Game of Bones</div>
               <div style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:4px">Real Food. Real Dogs. Real Results.</div>
               <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:2px">gameofbones.in | +91 90825 03295</div>
             </div>
@@ -121,7 +121,7 @@ export default function InvoicesPage() {
 
           <!-- Footer -->
           <div style="background:#1a1008;padding:20px 32px;text-align:center;margin-top:8px">
-            <div style="color:#c8973a;font-weight:bold;margin-bottom:6px">Thank you for choosing Game of Bones! 🐾</div>
+            <div style="color:#c8973a;font-weight:bold;margin-bottom:6px">Thank you for choosing Game of Bones! </div>
             <div style="color:rgba(255,255,255,0.5);font-size:12px">helpgameofbones@gmail.com | +91 90825 03295 | gameofbones.in</div>
           </div>
 
@@ -156,7 +156,7 @@ export default function InvoicesPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -236,7 +236,7 @@ export default function InvoicesPage() {
                       onClick={() => generateInvoice(order)}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
                       style={{ background: '#c8973a' }}>
-                      🖨️ Print Invoice
+                       Print Invoice
                     </button>
                   </td>
                 </tr>

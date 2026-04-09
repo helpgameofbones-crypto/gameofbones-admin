@@ -10,14 +10,14 @@ const supabase = createClient(
 const LOGO = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg'
 
 const FESTIVALS = [
-  { name: 'Diwali',       date: '2025-10-20', emoji: '🪔', discount: 20, code: 'DIWALI20'    },
-  { name: 'Holi',         date: '2026-03-14', emoji: '🎨', discount: 15, code: 'HOLI15'      },
-  { name: 'Christmas',    date: '2025-12-25', emoji: '🎄', discount: 15, code: 'XMAS15'      },
-  { name: 'New Year',     date: '2026-01-01', emoji: '🎉', discount: 10, code: 'NY2026'      },
-  { name: 'Independence', date: '2025-08-15', emoji: '🇮🇳', discount: 15, code: 'INDIA15'   },
-  { name: 'Republic Day', date: '2026-01-26', emoji: '🇮🇳', discount: 10, code: 'REPUBLIC10' },
-  { name: 'Pongal',       date: '2026-01-14', emoji: '🌾', discount: 10, code: 'PONGAL10'   },
-  { name: 'Eid',          date: '2026-03-31', emoji: '🌙', discount: 15, code: 'EID15'       },
+  { name: 'Diwali',       date: '2025-10-20', emoji: '', discount: 20, code: 'DIWALI20'    },
+  { name: 'Holi',         date: '2026-03-14', emoji: '', discount: 15, code: 'HOLI15'      },
+  { name: 'Christmas',    date: '2025-12-25', emoji: '', discount: 15, code: 'XMAS15'      },
+  { name: 'New Year',     date: '2026-01-01', emoji: '', discount: 10, code: 'NY2026'      },
+  { name: 'Independence', date: '2025-08-15', emoji: '', discount: 15, code: 'INDIA15'   },
+  { name: 'Republic Day', date: '2026-01-26', emoji: '', discount: 10, code: 'REPUBLIC10' },
+  { name: 'Pongal',       date: '2026-01-14', emoji: '', discount: 10, code: 'PONGAL10'   },
+  { name: 'Eid',          date: '2026-03-31', emoji: '', discount: 15, code: 'EID15'       },
 ]
 
 function emailWrapper(body: string) {
@@ -31,7 +31,7 @@ function emailWrapper(body: string) {
       ${body}
       <div style="background:#1a1008;padding:24px 32px;text-align:center">
         <p style="color:#c8973a;margin:0 0 8px;font-weight:bold">Game of Bones</p>
-        <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">gameofbones.in · WhatsApp: +91 90825 03295</p>
+        <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">gameofbones.in  WhatsApp: +91 90825 03295</p>
       </div>
     </div>
   `
@@ -49,7 +49,7 @@ function festivalEmailHtml(name: string, festival: any, coupon: string, customMe
       <div style="background:white;border:3px solid #c8973a;border-radius:16px;padding:24px;margin:0 0 24px">
         <p style="margin:0 0 8px;color:#6b7280;font-size:13px">${festival.name} Special Offer</p>
         <div style="font-size:40px;font-weight:900;color:#c8973a;letter-spacing:4px">${coupon}</div>
-        <p style="margin:8px 0 0;color:#9ca3af;font-size:13px">${festival.discount}% off — valid for 7 days</p>
+        <p style="margin:8px 0 0;color:#9ca3af;font-size:13px">${festival.discount}% off  valid for 7 days</p>
       </div>` : ''}
       <a href="https://gameofbones.in" style="background:#c8973a;color:#1a1008;padding:14px 36px;text-decoration:none;border-radius:50px;font-weight:800;display:inline-block;font-size:15px">
         ${festival.emoji} Shop Now
@@ -61,17 +61,17 @@ function festivalEmailHtml(name: string, festival: any, coupon: string, customMe
 function weatherEmailHtml(name: string, weather: any) {
   const isCold  = weather.temp < 20
   const isRainy = weather.desc.toLowerCase().includes('rain')
-  const icon    = isCold ? '🧊' : isRainy ? '🌧️' : '☀️'
+  const icon    = isCold ? '' : isRainy ? '' : ''
   const headline = isCold
     ? `Cold day? Keep your pup energised, ${name}!`
     : isRainy
     ? `Rainy day treats for your pup, ${name}!`
     : `Perfect weather for a treat, ${name}!`
   const body = isCold
-    ? `It's ${weather.temp}°C in ${weather.city} today! Cold weather means your dog needs extra energy. Stock up on high-protein treats to keep them warm and active!`
+    ? `It's ${weather.temp}C in ${weather.city} today! Cold weather means your dog needs extra energy. Stock up on high-protein treats to keep them warm and active!`
     : isRainy
     ? `It's raining in ${weather.city}! Perfect day to stay in and treat your pup. Order now and we'll deliver right to your door!`
-    : `Beautiful ${weather.temp}°C day in ${weather.city}! Your dog deserves a treat as great as this weather. Spoil them a little today!`
+    : `Beautiful ${weather.temp}C day in ${weather.city}! Your dog deserves a treat as great as this weather. Spoil them a little today!`
 
   return emailWrapper(`
     <div style="background:#f9f6f2;padding:40px 32px;text-align:center">
@@ -79,15 +79,15 @@ function weatherEmailHtml(name: string, weather: any) {
       <h2 style="color:#1a1008;margin:0 0 12px;font-size:24px">${headline}</h2>
       <p style="color:#6b7280;font-size:15px;line-height:1.7;margin:0 0 32px">${body}</p>
       <div style="background:white;border-radius:16px;padding:24px;margin:0 0 24px;text-align:left">
-        <p style="margin:0 0 12px;font-weight:bold;color:#1a1008">🐾 Perfect treats for today:</p>
+        <p style="margin:0 0 12px;font-weight:bold;color:#1a1008"> Perfect treats for today:</p>
         ${[
-          isCold  ? '🐔 Chicken Jerky — High protein for extra energy' : '🐟 Fish Treats — Light and refreshing',
-          isCold  ? '🦴 Raw Bones — Natural warmth and nutrition'      : '🐐 Goat Organs — Lean and nutritious',
-          '📦 Free delivery on orders above Rs 499',
+          isCold  ? ' Chicken Jerky  High protein for extra energy' : ' Fish Treats  Light and refreshing',
+          isCold  ? ' Raw Bones  Natural warmth and nutrition'      : ' Goat Organs  Lean and nutritious',
+          ' Free delivery on orders above Rs 499',
         ].map(item => `<p style="margin:0 0 8px;color:#374151;font-size:14px">${item}</p>`).join('')}
       </div>
       <a href="https://gameofbones.in" style="background:#3b82f6;color:white;padding:14px 36px;text-decoration:none;border-radius:50px;font-weight:800;display:inline-block;font-size:15px">
-        Shop Now 🛍️
+        Shop Now 
       </a>
     </div>
   `)
@@ -194,7 +194,7 @@ export default function CampaignsHubPage() {
         customers: targetCustomers,
         campaign: {
           type:         'festival',
-          subject:      `${festival.emoji} Happy ${festival.name}! ${festival.discount}% off for you 🐾`,
+          subject:      `${festival.emoji} Happy ${festival.name}! ${festival.discount}% off for you `,
           headline:     `Happy ${festival.name} from Game of Bones!`,
           body:         '',
           cta:          'Shop Now',
@@ -207,7 +207,7 @@ export default function CampaignsHubPage() {
 
     const data = await res.json()
     setSaving(false)
-    setMsg(`✅ ${festival.name} campaign sent to ${data.sent} customers! Code: ${couponCode}`)
+    setMsg(` ${festival.name} campaign sent to ${data.sent} customers! Code: ${couponCode}`)
     setTimeout(() => setMsg(''), 5000)
   }
 
@@ -218,10 +218,10 @@ export default function CampaignsHubPage() {
     const isCold  = weather.temp < 20
     const isRainy = weather.desc.toLowerCase().includes('rain')
     const subject = isCold
-      ? `🧊 Cold day? Keep your pup energised!`
+      ? ` Cold day? Keep your pup energised!`
       : isRainy
-      ? `🌧️ Rainy day treats for your pup!`
-      : `☀️ Perfect weather for a treat! 🐾`
+      ? ` Rainy day treats for your pup!`
+      : ` Perfect weather for a treat! `
 
     const res = await fetch('/api/send-campaign', {
       method: 'POST',
@@ -243,7 +243,7 @@ export default function CampaignsHubPage() {
 
     const data = await res.json()
     setSaving(false)
-    setMsg(`✅ Weather campaign sent to ${data.sent} customers!`)
+    setMsg(` Weather campaign sent to ${data.sent} customers!`)
     setTimeout(() => setMsg(''), 5000)
   }
 
@@ -291,9 +291,9 @@ export default function CampaignsHubPage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('✅') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('') ? '#166534' : '#ef4444',
+              border: `1px solid ${msg.startsWith('') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -301,10 +301,10 @@ export default function CampaignsHubPage() {
 
         <div className="flex gap-2 mb-6 flex-wrap">
           {[
-            { key: 'festivals',     label: '🪔 Festival Offers' },
-            { key: 'weather',       label: '🌤️ Weather Campaigns' },
-            { key: 'replenishment', label: `📦 Restock Alerts (${replenishment.length})` },
-            { key: 'cod_limiter',   label: '🚫 COD Limiter' },
+            { key: 'festivals',     label: ' Festival Offers' },
+            { key: 'weather',       label: ' Weather Campaigns' },
+            { key: 'replenishment', label: ` Restock Alerts (${replenishment.length})` },
+            { key: 'cod_limiter',   label: ' COD Limiter' },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -359,11 +359,11 @@ export default function CampaignsHubPage() {
                       }}
                       className="text-xs px-3 py-1 rounded font-medium"
                       style={{ background: '#f3f4f6', color: '#1a1008' }}>
-                      👁️ Full Preview
+                       Full Preview
                     </button>
                   </div>
                   <div className="text-xs p-2 rounded" style={{ background: '#f9fafb', color: '#1a1008' }}>
-                    <strong>Subject:</strong> {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.emoji} Happy {festivalCampaign.festival}! {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.discount}% off for you 🐾
+                    <strong>Subject:</strong> {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.emoji} Happy {festivalCampaign.festival}! {FESTIVALS.find(f => f.name === festivalCampaign.festival)?.discount}% off for you 
                   </div>
                 </div>
               )}
@@ -408,7 +408,7 @@ export default function CampaignsHubPage() {
                   disabled={saving || !festivalCampaign.festival}
                   className="w-full py-2.5 rounded-lg font-medium text-white disabled:opacity-50"
                   style={{ background: '#c8973a' }}>
-                  {saving ? 'Sending...' : '🪔 Send Festival Campaign'}
+                  {saving ? 'Sending...' : ' Send Festival Campaign'}
                 </button>
               </div>
             </div>
@@ -419,22 +419,22 @@ export default function CampaignsHubPage() {
         {tab === 'weather' && (
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Current Weather — Mumbai</h3>
+              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Current Weather  Mumbai</h3>
               {weather ? (
                 <div className="text-center py-6">
                   <div style={{ fontSize: 64 }}>
-                    {weather.temp < 20 ? '🧊' : weather.desc.toLowerCase().includes('rain') ? '🌧️' : '☀️'}
+                    {weather.temp < 20 ? '' : weather.desc.toLowerCase().includes('rain') ? '' : ''}
                   </div>
-                  <div className="text-4xl font-bold mt-2" style={{ color: '#1a1008' }}>{weather.temp}°C</div>
+                  <div className="text-4xl font-bold mt-2" style={{ color: '#1a1008' }}>{weather.temp}C</div>
                   <div className="text-sm mt-1" style={{ color: '#1a1008' }}>{weather.desc}</div>
                   <div className="mt-4 p-3 rounded-lg" style={{ background: '#f9fafb' }}>
                     <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>Suggested Campaign</div>
                     <div className="text-sm" style={{ color: '#1a1008' }}>
                       {weather.temp < 20
-                        ? '🧊 Cold weather — promote high-protein treats for energy'
+                        ? ' Cold weather  promote high-protein treats for energy'
                         : weather.desc.toLowerCase().includes('rain')
-                        ? '🌧️ Rainy day — promote cozy indoor treats'
-                        : '☀️ Nice weather — promote outdoor activity treats'}
+                        ? ' Rainy day  promote cozy indoor treats'
+                        : ' Nice weather  promote outdoor activity treats'}
                     </div>
                   </div>
                   <div className="flex gap-3 mt-4">
@@ -442,12 +442,12 @@ export default function CampaignsHubPage() {
                       onClick={() => setPreviewHtml(weatherEmailHtml('Rahul', weather))}
                       className="flex-1 py-2 rounded-lg text-sm font-medium"
                       style={{ background: '#f3f4f6', color: '#1a1008' }}>
-                      👁️ Preview
+                       Preview
                     </button>
                     <button onClick={sendWeatherCampaign} disabled={saving}
                       className="flex-1 py-2.5 rounded-lg font-medium text-white disabled:opacity-50"
                       style={{ background: '#3b82f6' }}>
-                      {saving ? 'Sending...' : '🌤️ Send Campaign'}
+                      {saving ? 'Sending...' : ' Send Campaign'}
                     </button>
                   </div>
                 </div>
@@ -460,11 +460,11 @@ export default function CampaignsHubPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Weather Campaign Ideas</h3>
               <div className="space-y-3">
                 {[
-                  { temp: 'Below 15°C', icon: '🥶', idea: 'High-protein treats for extra energy in cold', color: '#3b82f6' },
-                  { temp: '15-25°C',    icon: '😊', idea: 'Perfect weather — general promotion',          color: '#10b981' },
-                  { temp: 'Above 35°C', icon: '🥵', idea: 'Cool fish treats for hot summer days',         color: '#ef4444' },
-                  { temp: 'Rainy',      icon: '🌧️', idea: 'Stay-in treats — free delivery promotion',    color: '#1a1008' },
-                  { temp: 'Festive',    icon: '🎉', idea: 'Festival-aligned treat bundles',              color: '#f59e0b' },
+                  { temp: 'Below 15C', icon: '', idea: 'High-protein treats for extra energy in cold', color: '#3b82f6' },
+                  { temp: '15-25C',    icon: '', idea: 'Perfect weather  general promotion',          color: '#10b981' },
+                  { temp: 'Above 35C', icon: '', idea: 'Cool fish treats for hot summer days',         color: '#ef4444' },
+                  { temp: 'Rainy',      icon: '', idea: 'Stay-in treats  free delivery promotion',    color: '#1a1008' },
+                  { temp: 'Festive',    icon: '', idea: 'Festival-aligned treat bundles',              color: '#f59e0b' },
                 ].map(item => (
                   <div key={item.temp} className="flex items-start gap-3 p-3 rounded-lg"
                     style={{ background: item.color + '10' }}>
@@ -485,12 +485,12 @@ export default function CampaignsHubPage() {
           <div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
               <p className="text-sm" style={{ color: '#92400e' }}>
-                ⚠️ These products will run out within 14 days based on current sales rate.
+                 These products will run out within 14 days based on current sales rate.
               </p>
             </div>
             {replenishment.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}></div>
                 <div className="font-medium" style={{ color: '#1a1008' }}>All products are well stocked</div>
               </div>
             ) : (
@@ -529,7 +529,7 @@ export default function CampaignsHubPage() {
                               background: product.daysLeft <= 3 ? '#fef2f2' : product.daysLeft <= 7 ? '#fef3c7' : '#fefce8',
                               color: product.daysLeft <= 3 ? '#ef4444' : '#92400e'
                             }}>
-                            {product.daysLeft <= 3 ? '🔴 Critical' : product.daysLeft <= 7 ? '🟡 Urgent' : '🟠 Soon'}
+                            {product.daysLeft <= 3 ? ' Critical' : product.daysLeft <= 7 ? ' Urgent' : ' Soon'}
                           </span>
                         </td>
                       </tr>
@@ -547,14 +547,14 @@ export default function CampaignsHubPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-2" style={{ color: '#111827' }}>COD Order Value Limiter</h3>
               <p className="text-sm mb-4" style={{ color: '#1a1008' }}>
-                COD orders above ₹1500 are automatically blocked. This reduces RTO risk on high-value orders.
+                COD orders above 1500 are automatically blocked. This reduces RTO risk on high-value orders.
               </p>
               <div className="p-4 rounded-xl mb-4" style={{ background: '#dcfce7', border: '1px solid #bbf7d0' }}>
                 <div className="flex items-center gap-2">
-                  <span style={{ fontSize: 20 }}>✅</span>
+                  <span style={{ fontSize: 20 }}></span>
                   <div>
                     <div className="font-medium text-sm" style={{ color: '#166534' }}>COD Limiter Active</div>
-                    <div className="text-xs" style={{ color: '#166534' }}>COD blocked for orders above ₹1,500</div>
+                    <div className="text-xs" style={{ color: '#166534' }}>COD blocked for orders above 1,500</div>
                   </div>
                 </div>
               </div>
@@ -562,11 +562,11 @@ export default function CampaignsHubPage() {
                 <div className="p-3 rounded-lg" style={{ background: '#f9fafb' }}>
                   <div className="text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>How it works</div>
                   <div className="text-xs" style={{ color: '#1a1008', lineHeight: 1.6 }}>
-                    When a customer tries to place a COD order above ₹1,500 it is automatically blocked at the API level.
+                    When a customer tries to place a COD order above 1,500 it is automatically blocked at the API level.
                   </div>
                 </div>
                 <div className="p-3 rounded-lg" style={{ background: '#fef3c7' }}>
-                  <div className="text-xs font-semibold mb-1" style={{ color: '#92400e' }}>Why ₹1,500?</div>
+                  <div className="text-xs font-semibold mb-1" style={{ color: '#92400e' }}>Why 1,500?</div>
                   <div className="text-xs" style={{ color: '#92400e', lineHeight: 1.6 }}>
                     High-value COD orders have a much higher RTO rate. Blocking them saves you shipping and return costs.
                   </div>
@@ -577,10 +577,10 @@ export default function CampaignsHubPage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>COD Risk Stats</h3>
               <div className="space-y-3">
                 {[
-                  { label: 'COD limit',         value: '₹1,500', icon: '🚫', color: '#ef4444' },
-                  { label: 'Max COD exposure',  value: '₹1,500', icon: '💸', color: '#f59e0b' },
-                  { label: 'Orders above limit', value: 'Blocked', icon: '🛡️', color: '#10b981' },
-                  { label: 'Prepaid encouraged', value: 'Always',  icon: '💳', color: '#3b82f6' },
+                  { label: 'COD limit',         value: '1,500', icon: '', color: '#ef4444' },
+                  { label: 'Max COD exposure',  value: '1,500', icon: '', color: '#f59e0b' },
+                  { label: 'Orders above limit', value: 'Blocked', icon: '', color: '#10b981' },
+                  { label: 'Prepaid encouraged', value: 'Always',  icon: '', color: '#3b82f6' },
                 ].map(item => (
                   <div key={item.label} className="flex justify-between items-center p-3 rounded-lg"
                     style={{ background: '#f9fafb' }}>
@@ -605,7 +605,7 @@ export default function CampaignsHubPage() {
             <div className="p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div className="font-bold" style={{ color: '#111827' }}>Email Preview</div>
               <button onClick={() => setPreviewHtml(null)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>✕</button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
             </div>
             <div className="p-4">
               <div className="rounded-xl overflow-hidden border border-gray-200"

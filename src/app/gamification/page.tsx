@@ -130,7 +130,7 @@ export default function GamificationPage() {
       discount_value: milestone.discount_percent,
     })
 
-    setMsg(`âœ… Milestone reward sent to ${customer.name}!`)
+    setMsg(` Milestone reward sent to ${customer.name}!`)
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
@@ -176,7 +176,7 @@ export default function GamificationPage() {
       }
     }
     setSaving(false)
-    setMsg('âœ… Streaks updated!')
+    setMsg(' Streaks updated!')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
@@ -196,7 +196,7 @@ export default function GamificationPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -224,9 +224,9 @@ export default function GamificationPage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('âœ…') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('âœ…') ? '#166634' : '#ef4444',
-              border: `1px solid ${msg.startsWith('âœ…') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('') ? '#166634' : '#ef4444',
+              border: `1px solid ${msg.startsWith('') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -234,11 +234,11 @@ export default function GamificationPage() {
 
         <div className="flex gap-2 mb-6 flex-wrap">
           {[
-            { key: 'leaderboard', label: 'ðŸ† Leaderboard' },
-            { key: 'spin',        label: 'ðŸŽ¡ Spin Wheel' },
-            { key: 'milestones',  label: 'ðŸŽ¯ Milestones' },
-            { key: 'streaks',     label: 'ðŸ”¥ Streaks' },
-            { key: 'rewards',     label: `ðŸŽ Rewards (${rewards.length})` },
+            { key: 'leaderboard', label: ' Leaderboard' },
+            { key: 'spin',        label: ' Spin Wheel' },
+            { key: 'milestones',  label: ' Milestones' },
+            { key: 'streaks',     label: ' Streaks' },
+            { key: 'rewards',     label: ` Rewards (${rewards.length})` },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -256,7 +256,7 @@ export default function GamificationPage() {
         {tab === 'leaderboard' && (
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>ðŸ† Top by Revenue</h3>
+              <h3 className="font-bold mb-4" style={{ color: '#111827' }}> Top by Revenue</h3>
               {topCustomers.map((c, i) => (
                 <div key={c.id} className="flex items-center gap-3 py-3 border-b border-gray-50">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
@@ -264,21 +264,21 @@ export default function GamificationPage() {
                       background: i === 0 ? '#fef3c7' : i === 1 ? '#f3f4f6' : i === 2 ? '#fef3c7' : '#f9fafb',
                       color: i === 0 ? '#92400e' : i === 1 ? '#6b7280' : i === 2 ? '#92400e' : '#9ca3af'
                     }}>
-                    {i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : i + 1}
+                    {i === 0 ? '' : i === 1 ? '' : i === 2 ? '' : i + 1}
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-sm" style={{ color: '#111827' }}>{c.name}</div>
                     <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders</div>
                   </div>
                   <div className="font-bold" style={{ color: '#10b981' }}>
-                    â‚¹{c.total_spent?.toLocaleString('en-IN')}
+                    {c.total_spent?.toLocaleString('en-IN')}
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>ðŸ† Top by Orders</h3>
+              <h3 className="font-bold mb-4" style={{ color: '#111827' }}> Top by Orders</h3>
               {[...customers].sort((a, b) => b.total_orders - a.total_orders).slice(0, 10).map((c, i) => (
                 <div key={c.id} className="flex items-center gap-3 py-3 border-b border-gray-50">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
@@ -286,12 +286,12 @@ export default function GamificationPage() {
                       background: i < 3 ? '#fef3c7' : '#f9fafb',
                       color: i < 3 ? '#92400e' : '#9ca3af'
                     }}>
-                    {i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : i + 1}
+                    {i === 0 ? '' : i === 1 ? '' : i === 2 ? '' : i + 1}
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-sm" style={{ color: '#111827' }}>{c.name}</div>
                     <div className="text-xs" style={{ color: '#2a1f1a' }}>
-                      â‚¹{c.total_spent?.toLocaleString('en-IN')} total
+                      {c.total_spent?.toLocaleString('en-IN')} total
                     </div>
                   </div>
                   <div className="font-bold" style={{ color: '#3b82f6' }}>
@@ -307,14 +307,14 @@ export default function GamificationPage() {
         {tab === 'spin' && (
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-bold mb-2" style={{ color: '#111827' }}>ðŸŽ¡ Spin the Wheel</h3>
+              <h3 className="font-bold mb-2" style={{ color: '#111827' }}> Spin the Wheel</h3>
               <p className="text-sm mb-4" style={{ color: '#1a1008' }}>
                 Give a customer a spin after they place an order. They win a random discount code.
               </p>
 
               <div style={{ fontSize: 80, textAlign: 'center', margin: '20px 0',
                 animation: spinning ? 'spin 0.5s linear infinite' : 'none' }}>
-                ðŸŽ¡
+                
               </div>
 
               <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
@@ -329,21 +329,21 @@ export default function GamificationPage() {
                     style={{ color: '#111827' }}>
                     <option value="">Select customer...</option>
                     {customers.map(c => (
-                      <option key={c.id} value={c.phone}>{c.name} â€” {c.phone}</option>
+                      <option key={c.id} value={c.phone}>{c.name}  {c.phone}</option>
                     ))}
                   </select>
                 </div>
                 <button onClick={() => spinWheel(spinPhone)} disabled={spinning || !spinPhone}
                   className="w-full py-3 rounded-lg font-bold text-white disabled:opacity-50 text-lg"
                   style={{ background: spinning ? '#9ca3af' : '#c8973a' }}>
-                  {spinning ? 'ðŸŽ¡ Spinning...' : 'ðŸŽ¡ Spin!'}
+                  {spinning ? ' Spinning...' : ' Spin!'}
                 </button>
               </div>
 
               {spinResult && (
                 <div className="mt-4 p-4 rounded-xl text-center"
                   style={{ background: '#fef3c7', border: '2px dashed #c8973a' }}>
-                  <div style={{ fontSize: 36 }}>ðŸŽ‰</div>
+                  <div style={{ fontSize: 36 }}></div>
                   <div className="font-bold text-xl mt-2" style={{ color: '#1a1008' }}>
                     {spinResult.label}
                   </div>
@@ -402,7 +402,7 @@ export default function GamificationPage() {
               {milestones.map(m => (
                 <div key={m.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 text-center">
                   <div style={{ fontSize: 36, marginBottom: 8 }}>
-                    {m.order_count >= 20 ? 'ðŸ‘‘' : m.order_count >= 10 ? 'ðŸ†' : m.order_count >= 5 ? 'â­' : 'ðŸŽ¯'}
+                    {m.order_count >= 20 ? '' : m.order_count >= 10 ? '' : m.order_count >= 5 ? '' : ''}
                   </div>
                   <div className="font-bold text-2xl" style={{ color: '#c8973a' }}>
                     {m.order_count} orders
@@ -423,7 +423,7 @@ export default function GamificationPage() {
                   <option value="">Select customer to check milestone...</option>
                   {customers.filter(c => milestones.some(m => m.order_count === c.total_orders)).map(c => (
                     <option key={c.id} value={c.phone}>
-                      {c.name} â€” {c.total_orders} orders â­ MILESTONE!
+                      {c.name}  {c.total_orders} orders  MILESTONE!
                     </option>
                   ))}
                 </select>
@@ -468,7 +468,7 @@ export default function GamificationPage() {
               <button onClick={updateStreaks} disabled={saving}
                 className="text-white text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-50"
                 style={{ background: '#c8973a' }}>
-                {saving ? 'Updating...' : 'ðŸ”„ Update All Streaks'}
+                {saving ? 'Updating...' : ' Update All Streaks'}
               </button>
             </div>
 
@@ -501,7 +501,7 @@ export default function GamificationPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <span style={{ fontSize: 20 }}>
-                              {streak.current_streak >= 6 ? 'ðŸ”¥ðŸ”¥ðŸ”¥' : streak.current_streak >= 3 ? 'ðŸ”¥ðŸ”¥' : streak.current_streak >= 1 ? 'ðŸ”¥' : ''}
+                              {streak.current_streak >= 6 ? '' : streak.current_streak >= 3 ? '' : streak.current_streak >= 1 ? '' : ''}
                             </span>
                             <span className="font-bold text-lg" style={{ color: '#f59e0b' }}>
                               {streak.current_streak}
@@ -519,7 +519,7 @@ export default function GamificationPage() {
                           {streak.current_streak >= 3 ? (
                             <span className="text-xs px-2 py-1 rounded-full font-medium"
                               style={{ background: '#fef3c7', color: '#92400e' }}>
-                              ðŸ”¥ On Fire!
+                               On Fire!
                             </span>
                           ) : streak.current_streak >= 1 ? (
                             <span className="text-xs px-2 py-1 rounded-full font-medium"

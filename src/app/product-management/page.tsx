@@ -48,7 +48,7 @@ export default function ProductManagementPage() {
     await supabase.from('product_categories').insert({ ...newCat, slug })
     setSaving(false)
     setNewCat({ name: '', description: '' })
-    setMsg('âœ… Category added!')
+    setMsg(' Category added!')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
@@ -65,7 +65,7 @@ export default function ProductManagementPage() {
     await supabase.from('products').update({ tags: tagsArray }).eq('id', editingProduct.id)
     setSaving(false)
     setEditingProduct(null)
-    setMsg('âœ… Tags saved!')
+    setMsg(' Tags saved!')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
@@ -99,12 +99,12 @@ export default function ProductManagementPage() {
         .eq('id', product.id)
     }
     setSaving(false)
-    setMsg('âœ… Bestsellers updated based on last 30 days sales!')
+    setMsg(' Bestsellers updated based on last 30 days sales!')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
 
-  // Dead stock â€” no sales in 30 days
+  // Dead stock  no sales in 30 days
   const soldProducts = new Set(
     orders.flatMap(o => (o.items || []).map((i: any) => i.name))
   )
@@ -126,7 +126,7 @@ export default function ProductManagementPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">ðŸ¾</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -161,12 +161,12 @@ export default function ProductManagementPage() {
 
         <div className="flex gap-2 mb-6 flex-wrap">
           {[
-            { key: 'categories', label: 'ðŸ“ Categories' },
-            { key: 'tags',       label: 'ðŸ·ï¸ Tags' },
-            { key: 'reviews',    label: `â­ Reviews (${reviews.filter(r=>r.status==='pending').length} pending)` },
-            { key: 'bestseller', label: 'ðŸ”¥ Bestsellers' },
-            { key: 'deadstock',  label: `ðŸ’€ Dead Stock (${deadStock.length})` },
-            { key: 'valuation',  label: 'ðŸ’° Inventory Value' },
+            { key: 'categories', label: ' Categories' },
+            { key: 'tags',       label: ' Tags' },
+            { key: 'reviews',    label: ` Reviews (${reviews.filter(r=>r.status==='pending').length} pending)` },
+            { key: 'bestseller', label: ' Bestsellers' },
+            { key: 'deadstock',  label: ` Dead Stock (${deadStock.length})` },
+            { key: 'valuation',  label: ' Inventory Value' },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -247,7 +247,7 @@ export default function ProductManagementPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b">
               <p className="text-sm" style={{ color: '#1a1008' }}>
-                Add tags to products for filtering â€” grain-free, high-protein, fish-based, etc.
+                Add tags to products for filtering  grain-free, high-protein, fish-based, etc.
               </p>
             </div>
             <table className="w-full text-sm">
@@ -343,18 +343,18 @@ export default function ProductManagementPage() {
                   <tr key={review.id} className="hover:bg-gray-50"
                     style={{ background: review.status === 'pending' ? '#fefce8' : 'white' }}>
                     <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>
-                      {review.product_name || 'â€”'}
+                      {review.product_name || ''}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#1a1008' }}>{review.customer_name}</td>
                     <td className="px-4 py-3">
                       <div className="flex">
                         {[1,2,3,4,5].map(s => (
-                          <span key={s} style={{ color: s <= (review.rating || 0) ? '#f59e0b' : '#e5e7eb' }}>â˜…</span>
+                          <span key={s} style={{ color: s <= (review.rating || 0) ? '#f59e0b' : '#e5e7eb' }}></span>
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#1a1008', maxWidth: 200 }}>
-                      {review.review || 'â€”'}
+                      {review.review || ''}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium capitalize"
@@ -403,7 +403,7 @@ export default function ProductManagementPage() {
               <button onClick={updateBestsellers} disabled={saving}
                 className="text-white text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-50"
                 style={{ background: '#c8973a' }}>
-                {saving ? 'Updating...' : 'ðŸ”¥ Auto-update Bestsellers'}
+                {saving ? 'Updating...' : ' Auto-update Bestsellers'}
               </button>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -426,7 +426,7 @@ export default function ProductManagementPage() {
                         style={{ background: product.is_bestseller ? '#fefce8' : 'white' }}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {product.is_bestseller && <span>ðŸ”¥</span>}
+                            {product.is_bestseller && <span></span>}
                             <span className="font-medium" style={{ color: '#111827' }}>{product.name}</span>
                           </div>
                         </td>
@@ -437,7 +437,7 @@ export default function ProductManagementPage() {
                               background: product.is_bestseller ? '#fef3c7' : '#f3f4f6',
                               color: product.is_bestseller ? '#92400e' : '#6b7280'
                             }}>
-                            {product.is_bestseller ? 'ðŸ”¥ Bestseller' : 'Normal'}
+                            {product.is_bestseller ? ' Bestseller' : 'Normal'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -465,7 +465,7 @@ export default function ProductManagementPage() {
             <div className="mb-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <p className="text-sm" style={{ color: '#92400e' }}>
-                  âš ï¸ These products have had <strong>zero sales in the last 30 days</strong>.
+                   These products have had <strong>zero sales in the last 30 days</strong>.
                   Consider running a flash sale or promotion to clear this stock.
                 </p>
               </div>
@@ -483,7 +483,7 @@ export default function ProductManagementPage() {
                 <tbody className="divide-y divide-gray-50">
                   {deadStock.length === 0 ? (
                     <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>
-                      ðŸŽ‰ All products have sold in the last 30 days!
+                       All products have sold in the last 30 days!
                     </td></tr>
                   ) : deadStock.map(product => {
                     const costValue = (product.cost_price || product.price * 0.4) * product.stock
@@ -492,15 +492,15 @@ export default function ProductManagementPage() {
                         <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{product.name}</td>
                         <td className="px-4 py-3 font-mono text-xs" style={{ color: '#2a1f1a' }}>{product.sku}</td>
                         <td className="px-4 py-3 font-bold" style={{ color: '#f59e0b' }}>{product.stock}</td>
-                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>â‚¹{product.price}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>{product.price}</td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#ef4444' }}>
-                          â‚¹{Math.round(costValue).toLocaleString('en-IN')}
+                          {Math.round(costValue).toLocaleString('en-IN')}
                         </td>
                         <td className="px-4 py-3">
                           <a href="/promotions"
                             className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
                             style={{ background: '#f59e0b', textDecoration: 'none' }}>
-                            âš¡ Flash Sale
+                             Flash Sale
                           </a>
                         </td>
                       </tr>
@@ -517,9 +517,9 @@ export default function ProductManagementPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: 'Total Stock Value (Cost)', value: 'â‚¹' + Math.round(totalValue).toLocaleString('en-IN'), icon: 'ðŸ’°', color: '#10b981' },
-                { label: 'Total Products',           value: products.length,                                       icon: 'ðŸ¦´', color: '#3b82f6' },
-                { label: 'Total Units',              value: products.reduce((s,p) => s+p.stock, 0),               icon: 'ðŸ“¦', color: '#8b5cf6' },
+                { label: 'Total Stock Value (Cost)', value: '' + Math.round(totalValue).toLocaleString('en-IN'), icon: '', color: '#10b981' },
+                { label: 'Total Products',           value: products.length,                                       icon: '', color: '#3b82f6' },
+                { label: 'Total Units',              value: products.reduce((s,p) => s+p.stock, 0),               icon: '', color: '#8b5cf6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -550,14 +550,14 @@ export default function ProductManagementPage() {
                         <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{product.name}</td>
                         <td className="px-4 py-3 font-bold" style={{ color: '#1a1008' }}>{product.stock}</td>
                         <td className="px-4 py-3" style={{ color: '#1a1008' }}>
-                          {product.cost_price > 0 ? 'â‚¹' + product.cost_price : <span style={{ color: '#2a1f1a' }}>Est.</span>}
+                          {product.cost_price > 0 ? '' + product.cost_price : <span style={{ color: '#2a1f1a' }}>Est.</span>}
                         </td>
-                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>â‚¹{product.price}</td>
+                        <td className="px-4 py-3" style={{ color: '#1a1008' }}>{product.price}</td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#ef4444' }}>
-                          â‚¹{costVal.toLocaleString('en-IN')}
+                          {costVal.toLocaleString('en-IN')}
                         </td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#10b981' }}>
-                          â‚¹{sellVal.toLocaleString('en-IN')}
+                          {sellVal.toLocaleString('en-IN')}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium"
