@@ -14,17 +14,13 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchOrders();
-  }, [filter]);
+  useEffect(() => { fetchOrders(); }, [filter]);
 
   const fetchOrders = async () => {
     setLoading(true);
-    let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
-    if (filter !== 'all') {
-      query = query.eq('status', filter);
-    }
-    const { data } = await query;
+    let q = supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (filter !== 'all') q = q.eq('status', filter);
+    const { data } = await q;
     setOrders(data || []);
     setLoading(false);
   };
@@ -75,16 +71,16 @@ export default function OrdersPage() {
         {loading ? (
           <p>Loading...</p>
         ) : filtered.length === 0 ? (
-          <p>No orders found</p>
+          <p>No orders</p>
         ) : (
           filtered.map(order => (
-            <div key={order.id} onClick={() => setSelected(order)} style={{ background: '#fff', border: '1px solid #ddd', padding: '16px', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center' }}>
+            <div key={order.id} onClick={() => setSelected(order)} style={{ background: '#fff', border: '1px solid #ddd', padding: '16px', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px' }}>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
               <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0', textTransform: 'uppercase' }}>{order.payment_method}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0', textTransform: 'capitalize' }}>{order.status}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
+              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
             </div>
           ))
         )}
@@ -93,20 +89,16 @@ export default function OrdersPage() {
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: '#1a1008', margin: 0 }}>{selected.ref}</h2>
-              <button onClick={() => setSelected(null)} style={{ fontSize: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>
-            </div>
+            <h2 style={{ color: '#1a1008', margin: 0, marginBottom: '24px' }}>{selected.ref}</h2>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Customer</p>
+              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0' }}>Customer</p>
               <p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{selected.customer_name}</p>
               <p style={{ color: '#2a1f1a', margin: '4px 0 0 0' }}>{selected.customer_phone}</p>
-              {selected.customer_email && <p style={{ color: '#2a1f1a', margin: '4px 0 0 0' }}>{selected.customer_email}</p>}
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', textTransform: 'uppercase', margin: '0 0 12px 0' }}>Items</p>
+              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Items</p>
               {(selected.items || []).map((item: any, i: number) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee', color: '#1a1008' }}>
                   <span>{(item.quantity || item.qty || 1)}× {item.name}</span>
@@ -121,7 +113,7 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', textTransform: 'uppercase', margin: '0 0 12px 0' }}>Change Status</p>
+              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Status</p>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {STATUSES.map(s => (
                   <button key={s} onClick={() => updateStatus(selected.id, s)} style={{ padding: '8px 12px', background: selected.status === s ? '#1a1008' : '#f0f0f0', color: selected.status === s ? '#fff' : '#1a1008', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>
@@ -132,11 +124,14 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => printSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+              <button onClick={() => printSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
                 🖨️ Print Slip
               </button>
-              <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+              <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
                 🗑️ Delete
+              </button>
+              <button onClick={() => setSelected(null)} style={{ flex: 1, padding: '12px', background: '#f0f0f0', color: '#666', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+                Close
               </button>
             </div>
           </div>
