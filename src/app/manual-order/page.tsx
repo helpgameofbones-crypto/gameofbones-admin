@@ -80,7 +80,12 @@ export default function ManualOrderPage() {
         customerName: formData.customerName,
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone,
-        items: selectedItems.map(i => ({ product_id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+        items: selectedItems.map(i => ({ 
+          product_id: i.id, 
+          name: i.name, 
+          quantity: i.quantity, 
+          price: i.price || 0
+        })),
         total: totalAmount,
         paymentMethod: formData.paymentMethod,
         transactionId: formData.transactionId,
