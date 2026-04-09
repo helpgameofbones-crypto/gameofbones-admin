@@ -37,6 +37,7 @@ export default function Sidebar() {
     { icon: '⏰', label: 'Hour Analysis', href: '/hour-analysis' },
     { icon: '📦', label: 'Inventory', href: '/inventory' },
     { icon: '🧾', label: 'Invoices', href: '/invoices' },
+    { icon: '📝', label: 'Manual Orders', href: '/manual-order' },
     { icon: '🔓', label: 'Login', href: '/login' },
     { icon: '💎', label: 'Loyalty', href: '/loyalty' },
     { icon: '📧', label: 'Marketing', href: '/marketing' },
@@ -86,6 +87,7 @@ export default function Sidebar() {
     </aside>
   )
 }
+
 
 
 
