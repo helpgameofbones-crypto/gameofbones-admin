@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
           notes: notes,
           created_at: new Date().toISOString()
         }
-      ]);
+      ])
+      .select();
 
     if (error) throw error;
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error creating manual order:', error);
     return NextResponse.json(
-      { error: 'Failed to create order' },
+      { error: 'Failed to create order', details: String(error) },
       { status: 500 }
     );
   }
