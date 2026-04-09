@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -80,7 +80,7 @@ export default function ExpensesPage() {
       details:     `Rs ${form.amount} by ${form.person}`,
     })
     setSaving(false)
-    setMsg('✅ Expense added!')
+    setMsg('âœ… Expense added!')
     setForm({ ...form, description: '', amount: '', notes: '' })
     fetchExpenses()
     setTimeout(() => setMsg(''), 3000)
@@ -148,7 +148,7 @@ export default function ExpensesPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -185,7 +185,7 @@ export default function ExpensesPage() {
             <button onClick={exportExcel}
               className="text-white text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2"
               style={{ background: '#10b981' }}>
-              📊 Export Excel
+              ðŸ“Š Export Excel
             </button>
           </div>
         </div>
@@ -193,9 +193,9 @@ export default function ExpensesPage() {
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg text-sm"
             style={{
-              background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: msg.startsWith('✅') ? '#166534' : '#ef4444',
-              border: `1px solid ${msg.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`
+              background: msg.startsWith('âœ…') ? '#f0fdf4' : '#fef2f2',
+              color: msg.startsWith('âœ…') ? '#166534' : '#ef4444',
+              border: `1px solid ${msg.startsWith('âœ…') ? '#bbf7d0' : '#fecaca'}`
             }}>
             {msg}
           </div>
@@ -210,7 +210,7 @@ export default function ExpensesPage() {
                 {p.label}
               </div>
               <div className="text-2xl font-bold" style={{ color: '#111827' }}>
-                ₹{p.total.toLocaleString('en-IN')}
+                â‚¹{p.total.toLocaleString('en-IN')}
               </div>
               <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
                 {filtered.filter(e => e.person === p.key).length} expenses
@@ -223,7 +223,7 @@ export default function ExpensesPage() {
               Total
             </div>
             <div className="text-2xl font-bold" style={{ color: '#111827' }}>
-              ₹{grandTotal.toLocaleString('en-IN')}
+              â‚¹{grandTotal.toLocaleString('en-IN')}
             </div>
             <div className="text-xs mt-1" style={{ color: '#9ca3af' }}>
               {filtered.length} expenses
@@ -283,7 +283,7 @@ export default function ExpensesPage() {
 
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: '#374151' }}>
-                  Amount (₹) *
+                  Amount (â‚¹) *
                 </label>
                 <input
                   type="number"
@@ -409,7 +409,7 @@ export default function ExpensesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>
-                          ₹{expense.amount?.toLocaleString('en-IN')}
+                          â‚¹{expense.amount?.toLocaleString('en-IN')}
                         </td>
                         <td className="px-4 py-3 text-xs capitalize" style={{ color: '#6b7280' }}>
                           {expense.payment_mode?.replace('_', ' ')}
@@ -434,7 +434,7 @@ export default function ExpensesPage() {
                     {filtered.length} expenses
                   </span>
                   <span className="font-bold text-lg" style={{ color: '#ef4444' }}>
-                    Total: ₹{grandTotal.toLocaleString('en-IN')}
+                    Total: â‚¹{grandTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
               )}
@@ -454,7 +454,7 @@ export default function ExpensesPage() {
                         <span className="text-xs" style={{ color: '#374151' }}>{cat}</span>
                         <div className="text-right">
                           <span className="text-xs font-bold" style={{ color: '#111827' }}>
-                            ₹{total.toLocaleString('en-IN')}
+                            â‚¹{total.toLocaleString('en-IN')}
                           </span>
                           <span className="text-xs ml-1" style={{ color: '#9ca3af' }}>({pct}%)</span>
                         </div>

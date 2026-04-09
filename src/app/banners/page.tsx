@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -77,7 +77,7 @@ export default function BannersPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>
               Game of Bones
@@ -131,7 +131,7 @@ export default function BannersPage() {
                         className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">
-                        🖼️
+                        ðŸ–¼ï¸
                       </div>
                     )}
                   </div>

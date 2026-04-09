@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Phone, CheckCircle, XCircle, Clock, Search, RefreshCw } from 'lucide-react'
@@ -81,9 +81,9 @@ export default function CODTrackerPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total COD Orders', value: stats.total, sub: `₹${stats.totalValue.toLocaleString('en-IN')}`, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Confirmed ✓', value: stats.confirmed, sub: `₹${stats.confirmedValue.toLocaleString('en-IN')}`, color: 'bg-green-50 text-green-700' },
-          { label: 'Rejected ✗', value: stats.rejected, sub: 'Do not dispatch', color: 'bg-red-50 text-red-700' },
+          { label: 'Total COD Orders', value: stats.total, sub: `â‚¹${stats.totalValue.toLocaleString('en-IN')}`, color: 'bg-blue-50 text-blue-700' },
+          { label: 'Confirmed âœ“', value: stats.confirmed, sub: `â‚¹${stats.confirmedValue.toLocaleString('en-IN')}`, color: 'bg-green-50 text-green-700' },
+          { label: 'Rejected âœ—', value: stats.rejected, sub: 'Do not dispatch', color: 'bg-red-50 text-red-700' },
           { label: 'Pending Call', value: stats.pending, sub: 'Need to call', color: stats.pending > 0 ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-50 text-gray-600' },
         ].map(s => (
           <div key={s.label} className={`rounded-xl p-4 ${s.color}`}>
@@ -105,9 +105,9 @@ export default function CODTrackerPage() {
         <div className="flex gap-2">
           {[
             { key: 'all', label: 'All' },
-            { key: 'pending', label: '⏳ Pending' },
-            { key: 'confirmed', label: '✓ Confirmed' },
-            { key: 'rejected', label: '✗ Rejected' },
+            { key: 'pending', label: 'â³ Pending' },
+            { key: 'confirmed', label: 'âœ“ Confirmed' },
+            { key: 'rejected', label: 'âœ— Rejected' },
           ].map(f => (
             <button key={f.key} onClick={() => setFilter(f.key)}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${filter === f.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>
@@ -158,7 +158,7 @@ export default function CODTrackerPage() {
 
                   <div className="text-center">
                     <div className="text-xs text-gray-400">Amount</div>
-                    <div className="font-bold text-gray-900">₹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</div>
+                    <div className="font-bold text-gray-900">â‚¹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</div>
                   </div>
 
                   <div className="text-center">
@@ -206,7 +206,7 @@ export default function CODTrackerPage() {
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {items.map((item: any, i: number) => (
                       <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        {item.name} ×{item.quantity || 1}
+                        {item.name} Ã—{item.quantity || 1}
                       </span>
                     ))}
                   </div>

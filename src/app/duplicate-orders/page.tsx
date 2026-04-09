@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { AlertTriangle, CheckCircle, Phone, Package } from 'lucide-react'
@@ -25,7 +25,7 @@ export default function DuplicateOrdersPage() {
     setLoading(false)
   }
 
-  // Find duplicates — same phone, within windowHours
+  // Find duplicates â€” same phone, within windowHours
   const duplicateGroups: any[][] = []
   const seen = new Set<string>()
 
@@ -88,7 +88,7 @@ export default function DuplicateOrdersPage() {
           <div className="text-xs font-medium text-orange-600 mt-1">Orders Flagged</div>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="text-2xl font-bold text-blue-700">₹{totalExtraRevenue.toLocaleString('en-IN')}</div>
+          <div className="text-2xl font-bold text-blue-700">â‚¹{totalExtraRevenue.toLocaleString('en-IN')}</div>
           <div className="text-xs font-medium text-blue-600 mt-1">Value of Potential Duplicates</div>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function DuplicateOrdersPage() {
                         <div className="flex flex-wrap gap-1.5">
                           {items.slice(0, 3).map((item: any, ii: number) => (
                             <span key={ii} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                              {item.name} ×{item.quantity || 1}
+                              {item.name} Ã—{item.quantity || 1}
                             </span>
                           ))}
                         </div>
@@ -147,7 +147,7 @@ export default function DuplicateOrdersPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${order.payment_method === 'cod' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                             {order.payment_method?.toUpperCase()}
                           </span>
-                          <span className="font-bold text-gray-900">₹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</span>
+                          <span className="font-bold text-gray-900">â‚¹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${order.status === 'cancelled' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-700'}`}>
                             {order.status}
                           </span>

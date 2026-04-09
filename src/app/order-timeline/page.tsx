@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Truck, Clock, Search, CheckCircle } from 'lucide-react'
@@ -118,7 +118,7 @@ export default function DeliveryEstimatorPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {Object.entries(ZONE_DAYS).map(([zone, days]) => (
             <div key={zone} className="bg-gray-50 rounded-lg p-2.5 text-center">
-              <div className="text-sm font-bold text-gray-800">{days.min}–{days.max} days</div>
+              <div className="text-sm font-bold text-gray-800">{days.min}â€“{days.max} days</div>
               <div className="text-xs text-gray-500 capitalize">{zone}</div>
             </div>
           ))}
@@ -135,7 +135,7 @@ export default function DeliveryEstimatorPage() {
         <div className="flex gap-2">
           {[
             { key: 'active', label: 'Active' },
-            { key: 'late', label: '⚠️ Late' },
+            { key: 'late', label: 'âš ï¸ Late' },
             { key: 'no-estimate', label: 'No Estimate' },
             { key: 'all', label: 'All' },
           ].map(f => (
@@ -162,7 +162,7 @@ export default function DeliveryEstimatorPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">#{order.ref || order.order_number}</div>
-                    <div className="text-xs text-gray-400">{order.customer_name} · {order.customer_phone}</div>
+                    <div className="text-xs text-gray-400">{order.customer_name} Â· {order.customer_phone}</div>
                   </div>
 
                   <div className="flex items-center gap-2 text-xs">
@@ -173,14 +173,14 @@ export default function DeliveryEstimatorPage() {
                   </div>
 
                   <div className="text-xs text-gray-500">
-                    {est.city || addr.city}, {est.state || addr.state} · PIN {addr.pincode}
+                    {est.city || addr.city}, {est.state || addr.state} Â· PIN {addr.pincode}
                   </div>
 
                   <div className="flex items-center gap-3">
                     {/* Auto estimate */}
                     <div className="text-xs text-gray-500">
-                      <div className="font-medium text-gray-700">Est: {est.minDate.toLocaleDateString('en-IN')} – {est.maxDate.toLocaleDateString('en-IN')}</div>
-                      <div className="text-gray-400">{ZONE_DAYS[est.zone]?.min}–{ZONE_DAYS[est.zone]?.max} days from {order.dispatched_at ? 'dispatch' : 'order'}</div>
+                      <div className="font-medium text-gray-700">Est: {est.minDate.toLocaleDateString('en-IN')} â€“ {est.maxDate.toLocaleDateString('en-IN')}</div>
+                      <div className="text-gray-400">{ZONE_DAYS[est.zone]?.min}â€“{ZONE_DAYS[est.zone]?.max} days from {order.dispatched_at ? 'dispatch' : 'order'}</div>
                     </div>
 
                     {/* Manual override */}

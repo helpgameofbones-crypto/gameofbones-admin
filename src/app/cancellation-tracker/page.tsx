@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { XCircle, MapPin, TrendingDown } from 'lucide-react'
@@ -85,7 +85,7 @@ export default function CancellationTrackerPage() {
           { label: 'Total Cancellations', value: orders.length, color: 'bg-red-50 text-red-700' },
           { label: 'COD Cancellations', value: codCancellations, color: 'bg-orange-50 text-orange-700' },
           { label: 'Prepaid Cancellations', value: prepaidCancellations, color: 'bg-yellow-50 text-yellow-700' },
-          { label: 'Lost Revenue', value: '₹' + totalValue.toLocaleString('en-IN'), color: 'bg-gray-50 text-gray-700' },
+          { label: 'Lost Revenue', value: 'â‚¹' + totalValue.toLocaleString('en-IN'), color: 'bg-gray-50 text-gray-700' },
         ].map(s => (
           <div key={s.label} className={"rounded-xl p-4 " + s.color}>
             <div className="text-2xl font-bold">{s.value}</div>
@@ -96,10 +96,10 @@ export default function CancellationTrackerPage() {
 
       <div className="flex gap-2 mb-4">
         {[
-          { key: 'by-city', label: '🏙️ By City' },
-          { key: 'by-state', label: '🗺️ By State' },
-          { key: 'by-reason', label: '❓ By Reason' },
-          { key: 'list', label: '📋 Full List' },
+          { key: 'by-city', label: 'ðŸ™ï¸ By City' },
+          { key: 'by-state', label: 'ðŸ—ºï¸ By State' },
+          { key: 'by-reason', label: 'â“ By Reason' },
+          { key: 'list', label: 'ðŸ“‹ Full List' },
         ].map(v => (
           <button key={v.key} onClick={() => setView(v.key as any)}
             className={"px-4 py-2 rounded-lg text-sm font-medium transition-colors " + (view === v.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}>
@@ -135,7 +135,7 @@ export default function CancellationTrackerPage() {
                   <td className="px-4 py-3 font-bold text-red-600">{data.total}</td>
                   <td className="px-4 py-3 text-orange-600">{data.cod}</td>
                   <td className="px-4 py-3 text-yellow-600">{data.prepaid}</td>
-                  <td className="px-4 py-3 text-gray-700">₹{data.value.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-gray-700">â‚¹{data.value.toLocaleString('en-IN')}</td>
                 </tr>
               ))}
             </tbody>
@@ -157,7 +157,7 @@ export default function CancellationTrackerPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{state}</td>
                   <td className="px-4 py-3 font-bold text-red-600">{data.total}</td>
                   <td className="px-4 py-3 text-orange-600">{data.cod}</td>
-                  <td className="px-4 py-3 text-gray-700">₹{data.value.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-gray-700">â‚¹{data.value.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700">
                       {data.total > 0 ? Math.round(data.cod / data.total * 100) : 0}%
@@ -193,14 +193,14 @@ export default function CancellationTrackerPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">#{order.ref || order.order_number}</div>
-                    <div className="text-xs text-gray-400">{order.customer_name} · {order.customer_phone}</div>
+                    <div className="text-xs text-gray-400">{order.customer_name} Â· {order.customer_phone}</div>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={"px-2 py-0.5 rounded-full font-medium " + (order.payment_method === 'cod' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')}>
                       {order.payment_method?.toUpperCase()}
                     </span>
                     <span className="text-gray-500">{addr.city}, {addr.state}</span>
-                    <span className="font-bold text-gray-900">₹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-gray-900">â‚¹{(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}</span>
                     <span className="text-gray-400">{formatMonth(order.created_at)}</span>
                   </div>
                 </div>

@@ -96,28 +96,28 @@ export default function CouponsPage() {
             <h2 style={{ fontSize: '24px', color: '#1a1008', marginBottom: '24px' }}>Create Coupon</h2>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#7a6a5a', marginBottom: '8px', textTransform: 'uppercase' }}>Coupon Code</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Coupon Code</label>
               <input type="text" value={couponData.code} onChange={(e) => setCouponData({...couponData, code: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#7a6a5a', marginBottom: '8px', textTransform: 'uppercase' }}>Discount %</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Discount %</label>
                 <input type="number" min="1" max="100" value={couponData.discountPercent} onChange={(e) => setCouponData({...couponData, discountPercent: parseInt(e.target.value)})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#7a6a5a', marginBottom: '8px', textTransform: 'uppercase' }}>Valid Until</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Valid Until</label>
                 <input type="date" value={couponData.expiryDate} onChange={(e) => setCouponData({...couponData, expiryDate: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#7a6a5a', marginBottom: '8px', textTransform: 'uppercase' }}>Uses Per Customer</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Uses Per Customer</label>
                 <input type="number" min="1" value={couponData.usagePerCustomer} onChange={(e) => setCouponData({...couponData, usagePerCustomer: parseInt(e.target.value)})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#7a6a5a', marginBottom: '8px', textTransform: 'uppercase' }}>Total Limit</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Total Limit</label>
                 <input type="number" min="0" value={couponData.usageLimit} onChange={(e) => setCouponData({...couponData, usageLimit: parseInt(e.target.value)})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
               </div>
             </div>
@@ -133,12 +133,12 @@ export default function CouponsPage() {
       <div style={{ display: 'grid', gap: '12px' }}>
         {coupons.map((coupon) => (
           <div key={coupon.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px', alignItems: 'center' }}>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>CODE</p><p style={{ color: '#1a1008', fontWeight: '600' }}>{coupon.code}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{coupon.discountPercent}%</p></div>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>PER CUSTOMER</p><p style={{ color: '#1a1008' }}>{coupon.usagePerCustomer}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>TOTAL LIMIT</p><p style={{ color: '#1a1008' }}>{coupon.usageLimit || 'Unlimited'}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>EXPIRES</p><p style={{ color: '#1a1008' }}>{new Date(coupon.expiryDate).toLocaleDateString()}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>STATUS</p><p style={{ color: coupon.active ? '#2a7c6f' : '#c0392b' }}>{coupon.active ? 'Active' : 'Inactive'}</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>CODE</p><p style={{ color: '#1a1008', fontWeight: '600' }}>{coupon.code}</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{coupon.discountPercent}%</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>PER CUSTOMER</p><p style={{ color: '#1a1008' }}>{coupon.usagePerCustomer}</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>TOTAL LIMIT</p><p style={{ color: '#1a1008' }}>{coupon.usageLimit || 'Unlimited'}</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>EXPIRES</p><p style={{ color: '#1a1008' }}>{new Date(coupon.expiryDate).toLocaleDateString()}</p></div>
+            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>STATUS</p><p style={{ color: coupon.active ? '#2a7c6f' : '#c0392b' }}>{coupon.active ? 'Active' : 'Inactive'}</p></div>
             <div><button onClick={() => handleToggleCoupon(coupon.id, !coupon.active)} style={{ padding: '6px 12px', background: coupon.active ? '#c0392b' : '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', width: '100%' }}>{coupon.active ? 'Deactivate' : 'Activate'}</button></div>
           </div>
         ))}

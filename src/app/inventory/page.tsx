@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -72,7 +72,7 @@ export default function InventoryPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -99,9 +99,9 @@ export default function InventoryPage() {
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Out of Stock',  value: critical, icon: '🔴', color: '#ef4444' },
-            { label: 'Low Stock',     value: low,      icon: '🟡', color: '#f59e0b' },
-            { label: 'Healthy Stock', value: healthy,  icon: '🟢', color: '#10b981' },
+            { label: 'Out of Stock',  value: critical, icon: 'ðŸ”´', color: '#ef4444' },
+            { label: 'Low Stock',     value: low,      icon: 'ðŸŸ¡', color: '#f59e0b' },
+            { label: 'Healthy Stock', value: healthy,  icon: 'ðŸŸ¢', color: '#10b981' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>

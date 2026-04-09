@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { TrendingUp, RefreshCw, ArrowRight } from 'lucide-react'
@@ -166,7 +166,7 @@ export default function ProductAffinityPage() {
                   </div>
                   {pa.relatedPairs.length > 0 && (
                     <div className="mt-2 text-xs text-orange-600 font-medium">
-                      💡 Bundle suggestion: {pa.product} + {pa.relatedPairs[0].name}
+                      ðŸ’¡ Bundle suggestion: {pa.product} + {pa.relatedPairs[0].name}
                     </div>
                   )}
                 </div>

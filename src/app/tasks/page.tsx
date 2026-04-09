@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -87,7 +87,7 @@ export default function TasksPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -128,7 +128,7 @@ export default function TasksPage() {
               <a href="/orders"
                 className="flex items-center gap-3 p-3 rounded-xl border"
                 style={{ background: '#eff6ff', borderColor: '#bfdbfe', textDecoration: 'none' }}>
-                <span className="text-2xl">📦</span>
+                <span className="text-2xl">ðŸ“¦</span>
                 <div>
                   <div className="font-bold" style={{ color: '#1e40af' }}>{pendingOrders} pending orders</div>
                   <div className="text-xs" style={{ color: '#3b82f6' }}>Need to be packed</div>
@@ -139,7 +139,7 @@ export default function TasksPage() {
               <a href="/inventory"
                 className="flex items-center gap-3 p-3 rounded-xl border"
                 style={{ background: '#fefce8', borderColor: '#fde68a', textDecoration: 'none' }}>
-                <span className="text-2xl">⚠️</span>
+                <span className="text-2xl">âš ï¸</span>
                 <div>
                   <div className="font-bold" style={{ color: '#92400e' }}>{lowStock} low stock items</div>
                   <div className="text-xs" style={{ color: '#f59e0b' }}>Need restocking</div>
@@ -165,7 +165,7 @@ export default function TasksPage() {
           </div>
           {pct === 100 && (
             <div className="text-center mt-3 text-sm font-medium" style={{ color: '#10b981' }}>
-              🎉 All done for today!
+              ðŸŽ‰ All done for today!
             </div>
           )}
         </div>
@@ -182,7 +182,7 @@ export default function TasksPage() {
                   borderColor: task.done ? '#10b981' : '#d1d5db',
                   background: task.done ? '#10b981' : 'white'
                 }}>
-                {task.done && <span style={{ color: 'white', fontSize: 12 }}>✓</span>}
+                {task.done && <span style={{ color: 'white', fontSize: 12 }}>âœ“</span>}
               </div>
               <div className="flex-1">
                 <div className="text-sm" style={{

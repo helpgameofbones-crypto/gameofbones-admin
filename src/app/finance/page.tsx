@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -64,7 +64,7 @@ export default function FinancePage() {
       entity_type: 'order',
       entity_id:   refundOrder.id,
       entity_name: refundOrder.ref,
-      details:     `₹${refundAmount} — ${refundReason}`,
+      details:     `â‚¹${refundAmount} â€” ${refundReason}`,
     })
 
     setSavingRefund(false)
@@ -134,7 +134,7 @@ export default function FinancePage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -184,10 +184,10 @@ export default function FinancePage() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Gross Revenue',  value: '₹' + totalRevenue.toLocaleString('en-IN'),  icon: '💰', color: '#10b981' },
-                { label: 'Discounts',      value: '-₹' + totalDiscount.toLocaleString('en-IN'), icon: '🏷️', color: '#f59e0b' },
-                { label: 'Refunds',        value: '-₹' + totalRefunds.toLocaleString('en-IN'),  icon: '↩️', color: '#ef4444' },
-                { label: 'Gross Margin',   value: grossMargin + '%',                             icon: '📈', color: '#8b5cf6' },
+                { label: 'Gross Revenue',  value: 'â‚¹' + totalRevenue.toLocaleString('en-IN'),  icon: 'ðŸ’°', color: '#10b981' },
+                { label: 'Discounts',      value: '-â‚¹' + totalDiscount.toLocaleString('en-IN'), icon: 'ðŸ·ï¸', color: '#f59e0b' },
+                { label: 'Refunds',        value: '-â‚¹' + totalRefunds.toLocaleString('en-IN'),  icon: 'â†©ï¸', color: '#ef4444' },
+                { label: 'Gross Margin',   value: grossMargin + '%',                             icon: 'ðŸ“ˆ', color: '#8b5cf6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -217,12 +217,12 @@ export default function FinancePage() {
               <table className="w-full text-sm">
                 <tbody>
                   {[
-                    { label: 'Gross Revenue',       value: totalRevenue,                color: '#10b981', prefix: '₹' },
-                    { label: 'Discounts Given',      value: -totalDiscount,             color: '#ef4444', prefix: '₹' },
-                    { label: 'Refunds',              value: -totalRefunds,              color: '#ef4444', prefix: '₹' },
-                    { label: 'Net Revenue',          value: netRevenue,                 color: '#3b82f6', prefix: '₹' },
-                    { label: `COGS (${cogsPercent}%)`, value: -estimatedCOGS,          color: '#ef4444', prefix: '₹' },
-                    { label: 'Estimated Gross Profit', value: grossProfit,             color: '#10b981', prefix: '₹' },
+                    { label: 'Gross Revenue',       value: totalRevenue,                color: '#10b981', prefix: 'â‚¹' },
+                    { label: 'Discounts Given',      value: -totalDiscount,             color: '#ef4444', prefix: 'â‚¹' },
+                    { label: 'Refunds',              value: -totalRefunds,              color: '#ef4444', prefix: 'â‚¹' },
+                    { label: 'Net Revenue',          value: netRevenue,                 color: '#3b82f6', prefix: 'â‚¹' },
+                    { label: `COGS (${cogsPercent}%)`, value: -estimatedCOGS,          color: '#ef4444', prefix: 'â‚¹' },
+                    { label: 'Estimated Gross Profit', value: grossProfit,             color: '#10b981', prefix: 'â‚¹' },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#374151' }}>{row.label}</td>
@@ -267,10 +267,10 @@ export default function FinancePage() {
                     </td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#374151' }}>{stats.units}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#10b981' }}>
-                      ₹{stats.revenue.toLocaleString('en-IN')}
+                      â‚¹{stats.revenue.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#374151' }}>
-                      ₹{stats.units ? Math.round(stats.revenue / stats.units) : 0}
+                      â‚¹{stats.units ? Math.round(stats.revenue / stats.units) : 0}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-0.5 rounded-full"
@@ -291,9 +291,9 @@ export default function FinancePage() {
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4 mb-4">
               {[
-                { label: 'Total Refunds',   value: orders.filter(o => o.is_refunded).length, icon: '↩️', color: '#ef4444' },
-                { label: 'Refund Amount',   value: '₹' + totalRefunds.toLocaleString('en-IN'), icon: '💸', color: '#f59e0b' },
-                { label: 'Refund Rate',     value: orders.length ? Math.round((orders.filter(o=>o.is_refunded).length/orders.length)*100) + '%' : '0%', icon: '📊', color: '#8b5cf6' },
+                { label: 'Total Refunds',   value: orders.filter(o => o.is_refunded).length, icon: 'â†©ï¸', color: '#ef4444' },
+                { label: 'Refund Amount',   value: 'â‚¹' + totalRefunds.toLocaleString('en-IN'), icon: 'ðŸ’¸', color: '#f59e0b' },
+                { label: 'Refund Rate',     value: orders.length ? Math.round((orders.filter(o=>o.is_refunded).length/orders.length)*100) + '%' : '0%', icon: 'ðŸ“Š', color: '#8b5cf6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -323,14 +323,14 @@ export default function FinancePage() {
                   <div className="border border-gray-200 rounded-xl p-4">
                     <div className="font-mono font-bold mb-2" style={{ color: '#c8973a' }}>{refundOrder.ref}</div>
                     <div className="text-sm mb-3" style={{ color: '#374151' }}>
-                      {refundOrder.customer_name} — ₹{refundOrder.grand_total}
+                      {refundOrder.customer_name} â€” â‚¹{refundOrder.grand_total}
                     </div>
                     <div className="space-y-3">
                       <input
                         type="number"
                         value={refundAmount}
                         onChange={e => setRefundAmount(e.target.value)}
-                        placeholder="Refund amount (₹)"
+                        placeholder="Refund amount (â‚¹)"
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
                         style={{ color: '#111827' }}
                       />
@@ -371,10 +371,10 @@ export default function FinancePage() {
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>{order.ref}</td>
                       <td className="px-4 py-3" style={{ color: '#374151' }}>{order.customer_name}</td>
-                      <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>₹{order.refund_amount}</td>
+                      <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>â‚¹{order.refund_amount}</td>
                       <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>{order.refund_reason}</td>
                       <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
-                        {order.refunded_at ? new Date(order.refunded_at).toLocaleDateString('en-IN') : '—'}
+                        {order.refunded_at ? new Date(order.refunded_at).toLocaleDateString('en-IN') : 'â€”'}
                       </td>
                     </tr>
                   ))}
@@ -401,7 +401,7 @@ export default function FinancePage() {
                       {field.label}
                     </label>
                     <div className="flex items-center gap-2">
-                      <span style={{ color: '#6b7280' }}>₹</span>
+                      <span style={{ color: '#6b7280' }}>â‚¹</span>
                       <input
                         type="number"
                         value={field.val}
@@ -415,14 +415,14 @@ export default function FinancePage() {
                 <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 12, marginTop: 8 }}>
                   <div className="flex justify-between font-bold">
                     <span style={{ color: '#374151' }}>Total Fixed Costs</span>
-                    <span style={{ color: '#ef4444' }}>₹{fixedCosts.toLocaleString('en-IN')}/month</span>
+                    <span style={{ color: '#ef4444' }}>â‚¹{fixedCosts.toLocaleString('en-IN')}/month</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 space-y-3">
                 {[
-                  { label: 'Avg Order Value (₹)',  val: avgOrderValue, set: setAvgOrderValue },
+                  { label: 'Avg Order Value (â‚¹)',  val: avgOrderValue, set: setAvgOrderValue },
                   { label: 'COGS % of revenue',    val: cogsPercent,   set: setCogsPercent },
                 ].map(field => (
                   <div key={field.label}>
@@ -446,10 +446,10 @@ export default function FinancePage() {
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Break-even Results</h3>
                 <div className="space-y-4">
                   {[
-                    { label: 'Fixed Costs/Month',       value: '₹' + fixedCosts.toLocaleString('en-IN'),          color: '#ef4444' },
-                    { label: 'Contribution/Order',      value: '₹' + Math.round(contributionMargin).toLocaleString('en-IN'), color: '#3b82f6' },
+                    { label: 'Fixed Costs/Month',       value: 'â‚¹' + fixedCosts.toLocaleString('en-IN'),          color: '#ef4444' },
+                    { label: 'Contribution/Order',      value: 'â‚¹' + Math.round(contributionMargin).toLocaleString('en-IN'), color: '#3b82f6' },
                     { label: 'Break-even Orders/Month', value: breakEvenOrders + ' orders',                        color: '#f59e0b' },
-                    { label: 'Break-even Revenue',      value: '₹' + breakEvenRevenue.toLocaleString('en-IN'),     color: '#10b981' },
+                    { label: 'Break-even Revenue',      value: 'â‚¹' + breakEvenRevenue.toLocaleString('en-IN'),     color: '#10b981' },
                   ].map(row => (
                     <div key={row.label} className="flex justify-between p-3 rounded-lg"
                       style={{ background: '#f9fafb' }}>
@@ -469,12 +469,12 @@ export default function FinancePage() {
                   </div>
                   <div className="flex justify-between">
                     <span style={{ color: '#6b7280' }}>Revenue this period</span>
-                    <span className="font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
+                    <span className="font-bold">â‚¹{totalRevenue.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span style={{ color: '#6b7280' }}>vs Break-even</span>
                     <span className="font-bold" style={{ color: orders.length >= breakEvenOrders ? '#10b981' : '#ef4444' }}>
-                      {orders.length >= breakEvenOrders ? '✅ Profitable' : `Need ${breakEvenOrders - orders.length} more orders`}
+                      {orders.length >= breakEvenOrders ? 'âœ… Profitable' : `Need ${breakEvenOrders - orders.length} more orders`}
                     </span>
                   </div>
                 </div>
@@ -505,13 +505,13 @@ export default function FinancePage() {
                   <tr key={month} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium" style={{ color: '#111827' }}>{month}</td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#10b981' }}>
-                      ₹{data.revenue.toLocaleString('en-IN')}
+                      â‚¹{data.revenue.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#ef4444' }}>
-                      -₹{data.refunds.toLocaleString('en-IN')}
+                      -â‚¹{data.refunds.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#3b82f6' }}>
-                      ₹{(data.revenue - data.refunds).toLocaleString('en-IN')}
+                      â‚¹{(data.revenue - data.refunds).toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#374151' }}>
                       {orders.filter(o => {

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -31,14 +31,14 @@ export default function ActivityPage() {
 
   function getIcon(entityType: string) {
     const icons: Record<string, string> = {
-      order:    '📦',
-      product:  '🦴',
-      customer: '👤',
-      coupon:   '🏷️',
-      banner:   '🖼️',
-      system:   '⚙️',
+      order:    'ðŸ“¦',
+      product:  'ðŸ¦´',
+      customer: 'ðŸ‘¤',
+      coupon:   'ðŸ·ï¸',
+      banner:   'ðŸ–¼ï¸',
+      system:   'âš™ï¸',
     }
-    return icons[entityType] || '📝'
+    return icons[entityType] || 'ðŸ“'
   }
 
   function getColor(action: string) {
@@ -74,7 +74,7 @@ export default function ActivityPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -122,7 +122,7 @@ export default function ActivityPage() {
           </div>
         ) : logs.length === 0 ? (
           <div className="bg-white rounded-xl p-8 text-center">
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📝</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>ðŸ“</div>
             <div className="font-medium mb-2" style={{ color: '#374151' }}>No activity yet</div>
             <div className="text-sm" style={{ color: '#9ca3af' }}>
               Actions like updating orders, editing products, and creating coupons will appear here

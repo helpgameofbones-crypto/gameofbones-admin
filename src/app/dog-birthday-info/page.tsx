@@ -71,16 +71,16 @@ export default function DogBirthdayPage() {
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>📅 Upcoming ({upcoming.length})</h2>
         {upcoming.length === 0 ? (
-          <p style={{ color: '#7a6a5a' }}>No upcoming birthdays</p>
+          <p style={{ color: '#3a3028' }}>No upcoming birthdays</p>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
             {upcoming.map(b => (
               <div key={b.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>PHONE</p><p style={{ color: '#1a1008' }}>{b.phone}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>PHONE</p><p style={{ color: '#1a1008' }}>{b.phone}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
               </div>
             ))}
           </div>
@@ -90,16 +90,16 @@ export default function DogBirthdayPage() {
       <div>
         <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>✅ Past ({past.length})</h2>
         {past.length === 0 ? (
-          <p style={{ color: '#7a6a5a' }}>No past birthdays</p>
+          <p style={{ color: '#3a3028' }}>No past birthdays</p>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
             {past.map(b => (
               <div key={b.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', opacity: '0.6', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>EMAIL SENT</p><p style={{ color: '#1a1008' }}>{b.last_discount_sent ? new Date(b.last_discount_sent).toLocaleDateString() : 'Pending'}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#7a6a5a', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>EMAIL SENT</p><p style={{ color: '#1a1008' }}>{b.last_discount_sent ? new Date(b.last_discount_sent).toLocaleDateString() : 'Pending'}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
               </div>
             ))}
           </div>

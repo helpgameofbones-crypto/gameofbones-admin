@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -61,7 +61,7 @@ export default function RTOPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -88,9 +88,9 @@ export default function RTOPage() {
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'High Risk Orders',   value: highCount, color: '#ef4444', bg: '#fef2f2', icon: '🔴' },
-            { label: 'Medium Risk Orders', value: medCount,  color: '#f59e0b', bg: '#fefce8', icon: '🟡' },
-            { label: 'Low Risk Orders',    value: lowCount,  color: '#10b981', bg: '#f0fdf4', icon: '🟢' },
+            { label: 'High Risk Orders',   value: highCount, color: '#ef4444', bg: '#fef2f2', icon: 'ðŸ”´' },
+            { label: 'Medium Risk Orders', value: medCount,  color: '#f59e0b', bg: '#fefce8', icon: 'ðŸŸ¡' },
+            { label: 'Low Risk Orders',    value: lowCount,  color: '#10b981', bg: '#f0fdf4', icon: 'ðŸŸ¢' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>
@@ -144,7 +144,7 @@ export default function RTOPage() {
                     <div className="text-xs" style={{ color: '#9ca3af' }}>{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
-                    ₹{order.grand_total?.toLocaleString('en-IN')}
+                    â‚¹{order.grand_total?.toLocaleString('en-IN')}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-1 rounded-full font-medium"
@@ -156,7 +156,7 @@ export default function RTOPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm" style={{ color: '#374151' }}>
-                    {order.shipping_address?.state || '—'}
+                    {order.shipping_address?.state || 'â€”'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-bold" style={{ color: order.risk.color }}>
@@ -173,7 +173,7 @@ export default function RTOPage() {
                     <a href={`tel:${order.customer_phone}`}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
                       style={{ background: order.risk.level === 'High' ? '#ef4444' : '#6b7280' }}>
-                      📞 Call
+                      ðŸ“ž Call
                     </a>
                   </td>
                 </tr>
@@ -187,7 +187,7 @@ export default function RTOPage() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
               { factor: 'COD Payment',            points: '+30', color: '#ef4444' },
-              { factor: 'COD order above ₹1000',  points: '+20', color: '#ef4444' },
+              { factor: 'COD order above â‚¹1000',  points: '+20', color: '#ef4444' },
               { factor: 'Northeast state',         points: '+25', color: '#f59e0b' },
               { factor: 'Incomplete address',      points: '+10', color: '#f59e0b' },
               { factor: 'No email provided',       points: '+10', color: '#f59e0b' },

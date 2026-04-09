@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Plus, X, Shield, Eye, Edit, Trash2, User } from 'lucide-react'
@@ -9,10 +9,10 @@ const supabase = createClient(
 )
 
 const ROLES = {
-  admin: { label: 'Admin', color: 'bg-red-100 text-red-700', description: 'Full access to everything', icon: '👑' },
-  manager: { label: 'Manager', color: 'bg-blue-100 text-blue-700', description: 'Orders, customers, inventory — no finance', icon: '🛠️' },
-  operations: { label: 'Operations', color: 'bg-green-100 text-green-700', description: 'Orders and shipping only', icon: '📦' },
-  viewer: { label: 'Viewer', color: 'bg-gray-100 text-gray-700', description: 'Read-only access to dashboard and orders', icon: '👁️' },
+  admin: { label: 'Admin', color: 'bg-red-100 text-red-700', description: 'Full access to everything', icon: 'ðŸ‘‘' },
+  manager: { label: 'Manager', color: 'bg-blue-100 text-blue-700', description: 'Orders, customers, inventory â€” no finance', icon: 'ðŸ› ï¸' },
+  operations: { label: 'Operations', color: 'bg-green-100 text-green-700', description: 'Orders and shipping only', icon: 'ðŸ“¦' },
+  viewer: { label: 'Viewer', color: 'bg-gray-100 text-gray-700', description: 'Read-only access to dashboard and orders', icon: 'ðŸ‘ï¸' },
 }
 
 const PERMISSIONS: Record<string, string[]> = {
@@ -190,7 +190,7 @@ export default function TeamAccessPage() {
                 {member.invited_at && (
                   <div className="mt-2 text-xs text-gray-400">
                     Added {new Date(member.invited_at).toLocaleDateString('en-IN')}
-                    {member.last_active && ' · Last active ' + new Date(member.last_active).toLocaleDateString('en-IN')}
+                    {member.last_active && ' Â· Last active ' + new Date(member.last_active).toLocaleDateString('en-IN')}
                   </div>
                 )}
               </div>

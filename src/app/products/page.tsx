@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -69,8 +69,8 @@ export default function ProductsPage() {
       videos: editing.videos,
     }).eq('id', editing.id)
     setSaving(false)
-    if (error) { setMsg('❌ ' + error.message); return }
-    setMsg('✅ Saved!')
+    if (error) { setMsg('âŒ ' + error.message); return }
+    setMsg('âœ… Saved!')
     fetchProducts()
     setTimeout(() => setMsg(''), 3000)
   }
@@ -84,7 +84,7 @@ export default function ProductsPage() {
     const bucket = type === 'image' ? 'product-images' : 'product-videos'
 
     const { error: upErr } = await supabase.storage.from(bucket).upload(filename, file, { upsert: true })
-    if (upErr) { setMsg('❌ Upload failed: ' + upErr.message); setUploading(null); return }
+    if (upErr) { setMsg('âŒ Upload failed: ' + upErr.message); setUploading(null); return }
 
     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filename)
     const publicUrl = urlData.publicUrl
@@ -104,7 +104,7 @@ export default function ProductsPage() {
       await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
     }
 
-    setMsg('✅ Uploaded!')
+    setMsg('âœ… Uploaded!')
     setUploading(null)
     fetchProducts()
     setTimeout(() => setMsg(''), 3000)
@@ -124,7 +124,7 @@ export default function ProductsPage() {
       setEditing({ ...editing, videos: newVideos })
       await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
     }
-    setMsg('✅ Removed')
+    setMsg('âœ… Removed')
     fetchProducts()
     setTimeout(() => setMsg(''), 2000)
   }
@@ -146,7 +146,7 @@ export default function ProductsPage() {
       images: [],
       videos: [],
     })
-    if (error) { setMsg('❌ ' + error.message); return }
+    if (error) { setMsg('âŒ ' + error.message); return }
     setAddingNew(false)
     setNewForm({ name: '', price: '', stock: '100', sku: '', category: '', description: '' })
     fetchProducts()
@@ -166,7 +166,7 @@ export default function ProductsPage() {
       {/* Header */}
       <div style={{ background: '#1a1008', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 24 }}>🐾</span>
+          <span style={{ fontSize: 24 }}>ðŸ¾</span>
           <div>
             <div style={{ fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -195,7 +195,7 @@ export default function ProductsPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {[['all', `All (${products.length})`], ['low', `⚠ Low (${lowCount})`], ['out', `🔴 Out (${outCount})`]].map(([key, label]) => (
+          {[['all', `All (${products.length})`], ['low', `âš  Low (${lowCount})`], ['out', `ðŸ”´ Out (${outCount})`]].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{ padding: '7px 16px', borderRadius: 20, border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer',
                 background: tab === key ? '#1a1008' : '#e5ddd0', color: tab === key ? 'white' : '#5a4a3a' }}>{label}</button>
@@ -221,15 +221,15 @@ export default function ProductsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {p.image_url
                         ? <img src={p.image_url} alt={p.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddd0' }} />
-                        : <div style={{ width: 40, height: 40, background: '#f0ebe3', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🦴</div>
+                        : <div style={{ width: 40, height: 40, background: '#f0ebe3', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>ðŸ¦´</div>
                       }
                       <div>
                         <div style={{ fontWeight: 600, color: '#1a1008', fontSize: 14 }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: '#8a7a6a' }}>{p.category || '—'}</div>
+                        <div style={{ fontSize: 11, color: '#8a7a6a' }}>{p.category || 'â€”'}</div>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1a1008' }}>₹{p.price}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1a1008' }}>â‚¹{p.price}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontWeight: 700, color: p.stock === 0 ? '#dc2626' : p.stock <= (p.reorder_level || 10) ? '#d97706' : '#16a34a', fontSize: 15 }}>{p.stock}</span>
                   </td>
@@ -239,7 +239,7 @@ export default function ProductsPage() {
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: 12, color: '#8a7a6a' }}>
-                    {(p.images || []).filter(Boolean).length} img · {(p.videos || []).filter(Boolean).length} vid
+                    {(p.images || []).filter(Boolean).length} img Â· {(p.videos || []).filter(Boolean).length} vid
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -261,11 +261,11 @@ export default function ProductsPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 16px', overflowY: 'auto' }}>
           <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 700, padding: 32, position: 'relative' }}>
             {/* Close */}
-            <button onClick={() => setEditing(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8a7a6a' }}>✕</button>
+            <button onClick={() => setEditing(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8a7a6a' }}>âœ•</button>
 
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 24 }}>{editing.name}</h2>
 
-            {/* ── IMAGES SECTION ── */}
+            {/* â”€â”€ IMAGES SECTION â”€â”€ */}
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Images (up to 5)</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
@@ -281,7 +281,7 @@ export default function ProductsPage() {
                             : isUploading
                               ? <div style={{ fontSize: 11, color: '#8a7a6a', textAlign: 'center' }}>Uploading...</div>
                               : <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: 24 }}>📷</div>
+                                  <div style={{ fontSize: 24 }}>ðŸ“·</div>
                                   <div style={{ fontSize: 10, color: '#8a7a6a', marginTop: 4 }}>Add Photo {i + 1}</div>
                                 </div>
                           }
@@ -291,7 +291,7 @@ export default function ProductsPage() {
                       </label>
                       {url && (
                         <button onClick={() => removeMedia('image', i)}
-                          style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                          style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>âœ•</button>
                       )}
                       {i === 0 && url && (
                         <div style={{ position: 'absolute', bottom: 4, left: 4, background: '#c8973a', color: 'white', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3 }}>MAIN</div>
@@ -303,7 +303,7 @@ export default function ProductsPage() {
               <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 8 }}>First image is the main product image shown on website</div>
             </div>
 
-            {/* ── VIDEOS SECTION ── */}
+            {/* â”€â”€ VIDEOS SECTION â”€â”€ */}
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Videos (up to 2)</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -319,7 +319,7 @@ export default function ProductsPage() {
                             : isUploading
                               ? <div style={{ textAlign: 'center', color: '#8a7a6a', fontSize: 12 }}>Uploading...</div>
                               : <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: 28 }}>🎥</div>
+                                  <div style={{ fontSize: 28 }}>ðŸŽ¥</div>
                                   <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 6 }}>Add Video {i + 1}</div>
                                   <div style={{ fontSize: 10, color: '#b0a090', marginTop: 2 }}>MP4, MOV, up to 50MB</div>
                                 </div>
@@ -330,7 +330,7 @@ export default function ProductsPage() {
                       </label>
                       {url && (
                         <button onClick={() => removeMedia('video', i)}
-                          style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                          style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>âœ•</button>
                       )}
                     </div>
                   )
@@ -338,13 +338,13 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* ── PRODUCT DETAILS ── */}
+            {/* â”€â”€ PRODUCT DETAILS â”€â”€ */}
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               {[
                 ['Product Name', 'name', 'text'],
-                ['Selling Price (₹)', 'price', 'number'],
-                ['Base COGS (₹)', 'cost_price', 'number'],
+                ['Selling Price (â‚¹)', 'price', 'number'],
+                ['Base COGS (â‚¹)', 'cost_price', 'number'],
                 ['Stock', 'stock', 'number'],
                 ['Reorder Level', 'reorder_level', 'number'],
                 ['Best Before (days)', 'best_before_days', 'number'],
@@ -399,7 +399,7 @@ export default function ProductsPage() {
                             }} style={{ width: 80, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
                           </td>
                           <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, color: margin && margin > 50 ? '#16a34a' : margin && margin > 30 ? '#d97706' : '#dc2626' }}>
-                            {margin !== null ? `${margin}%` : '—'}
+                            {margin !== null ? `${margin}%` : 'â€”'}
                           </td>
                           <td style={{ padding: '8px 12px' }}>
                             <input type="number" value={s.stock || ''} onChange={e => {
@@ -415,7 +415,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Msg + Save */}
-            {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: msg.startsWith('❌') ? '#fee2e2' : '#dcfce7', color: msg.startsWith('❌') ? '#dc2626' : '#16a34a', fontSize: 13, fontWeight: 600, marginBottom: 16 }}>{msg}</div>}
+            {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: msg.startsWith('âŒ') ? '#fee2e2' : '#dcfce7', color: msg.startsWith('âŒ') ? '#dc2626' : '#16a34a', fontSize: 13, fontWeight: 600, marginBottom: 16 }}>{msg}</div>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setEditing(null)} style={{ padding: '10px 20px', background: '#f0ebe3', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#5a4a3a' }}>Cancel</button>
               <button onClick={saveProduct} disabled={saving}
@@ -433,7 +433,7 @@ export default function ProductsPage() {
           <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 500, padding: 32 }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 20 }}>Add New Product</h2>
             <div style={{ display: 'grid', gap: 12 }}>
-              {[['Product Name *', 'name', 'text'], ['Selling Price (₹) *', 'price', 'number'], ['Initial Stock', 'stock', 'number'], ['SKU', 'sku', 'text'], ['Category', 'category', 'text']].map(([label, field, type]) => (
+              {[['Product Name *', 'name', 'text'], ['Selling Price (â‚¹) *', 'price', 'number'], ['Initial Stock', 'stock', 'number'], ['SKU', 'sku', 'text'], ['Category', 'category', 'text']].map(([label, field, type]) => (
                 <div key={field}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 4 }}>{label}</label>
                   <input type={type} value={(newForm as any)[field]} onChange={e => setNewForm({ ...newForm, [field]: e.target.value })}

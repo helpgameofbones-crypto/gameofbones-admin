@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
     setLoading(false)
   }
 
-  // ── Calculations ──────────────────────────────────────────────────────
+  // â”€â”€ Calculations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || 0), 0)
   const totalOrders     = orders.length
@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -199,15 +199,15 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        {/* ── OVERVIEW TAB ── */}
+        {/* â”€â”€ OVERVIEW TAB â”€â”€ */}
         {tab === 'overview' && (
           <div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',     value: '₹' + totalRevenue.toLocaleString('en-IN'), icon: '💰', color: '#10b981' },
-                { label: 'Total Orders',      value: totalOrders,                                  icon: '📦', color: '#3b82f6' },
-                { label: 'Avg Order Value',   value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '📊', color: '#8b5cf6' },
-                { label: 'RTO Rate',          value: rtoRate + '%',                                icon: '↩️', color: '#ef4444' },
+                { label: 'Total Revenue',     value: 'â‚¹' + totalRevenue.toLocaleString('en-IN'), icon: 'ðŸ’°', color: '#10b981' },
+                { label: 'Total Orders',      value: totalOrders,                                  icon: 'ðŸ“¦', color: '#3b82f6' },
+                { label: 'Avg Order Value',   value: 'â‚¹' + avgOrderValue.toLocaleString('en-IN'), icon: 'ðŸ“Š', color: '#8b5cf6' },
+                { label: 'RTO Rate',          value: rtoRate + '%',                                icon: 'â†©ï¸', color: '#ef4444' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
                         <td className="py-3 font-mono font-bold" style={{ color: '#c8973a' }}>{code}</td>
                         <td className="py-3 font-bold" style={{ color: '#111827' }}>{data.count}</td>
                         <td className="py-3 font-bold" style={{ color: '#ef4444' }}>
-                          -₹{data.discount.toLocaleString('en-IN')}
+                          -â‚¹{data.discount.toLocaleString('en-IN')}
                         </td>
                       </tr>
                     ))}
@@ -294,7 +294,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── CATEGORIES TAB ── */}
+        {/* â”€â”€ CATEGORIES TAB â”€â”€ */}
         {tab === 'categories' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium capitalize" style={{ color: '#374151' }}>{cat}</span>
                       <span className="font-bold" style={{ color: '#111827' }}>
-                        ₹{rev.toLocaleString('en-IN')}
+                        â‚¹{rev.toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-4">
@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── GEOGRAPHY TAB ── */}
+        {/* â”€â”€ GEOGRAPHY TAB â”€â”€ */}
         {tab === 'geography' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
@@ -395,14 +395,14 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── OPERATIONS TAB ── */}
+        {/* â”€â”€ OPERATIONS TAB â”€â”€ */}
         {tab === 'operations' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Delivered Orders', value: deliveredOrders, icon: '✅', color: '#10b981' },
-                { label: 'RTO Orders',        value: rtoOrders,       icon: '↩️', color: '#ef4444' },
-                { label: 'RTO Rate',          value: rtoRate + '%',   icon: '📊', color: '#f59e0b' },
+                { label: 'Delivered Orders', value: deliveredOrders, icon: 'âœ…', color: '#10b981' },
+                { label: 'RTO Orders',        value: rtoOrders,       icon: 'â†©ï¸', color: '#ef4444' },
+                { label: 'RTO Rate',          value: rtoRate + '%',   icon: 'ðŸ“Š', color: '#f59e0b' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -415,7 +415,7 @@ export default function AnalyticsPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Repeat Purchase Rate</h3>
               <div className="text-center py-8" style={{ color: '#9ca3af' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🔄</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>ðŸ”„</div>
                 <div style={{ fontSize: 14 }}>
                   Repeat purchase data will appear here once you have multiple orders from the same customers
                 </div>
@@ -424,14 +424,14 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── P&L TAB ── */}
+        {/* â”€â”€ P&L TAB â”€â”€ */}
         {tab === 'pnl' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',    value: '₹' + totalRevenue.toLocaleString('en-IN'),    icon: '💰', color: '#10b981' },
-                { label: 'Est. COGS (40%)',  value: '₹' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: '📦', color: '#ef4444' },
-                { label: 'Est. Gross Profit', value: '₹' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: '📈', color: '#3b82f6' },
+                { label: 'Total Revenue',    value: 'â‚¹' + totalRevenue.toLocaleString('en-IN'),    icon: 'ðŸ’°', color: '#10b981' },
+                { label: 'Est. COGS (40%)',  value: 'â‚¹' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: 'ðŸ“¦', color: '#ef4444' },
+                { label: 'Est. Gross Profit', value: 'â‚¹' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: 'ðŸ“ˆ', color: '#3b82f6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -458,7 +458,7 @@ export default function AnalyticsPage() {
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#374151' }}>{row.label}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
-                        {row.isPercent ? row.value : row.sign + '₹' + (typeof row.value === 'number' ? row.value.toLocaleString('en-IN') : row.value)}
+                        {row.isPercent ? row.value : row.sign + 'â‚¹' + (typeof row.value === 'number' ? row.value.toLocaleString('en-IN') : row.value)}
                       </td>
                     </tr>
                   ))}

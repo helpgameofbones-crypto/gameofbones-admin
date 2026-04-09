@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
@@ -35,7 +35,7 @@ export default function LoginPage() {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🐾</div>
+          <div className="text-5xl mb-3">ðŸ¾</div>
           <h1 className="text-2xl font-bold" style={{ color: '#1a1008' }}>
             Game of Bones
           </h1>
@@ -65,7 +65,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               required
               className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors"
             />
@@ -83,7 +83,7 @@ export default function LoginPage() {
             className="w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50"
             style={{ background: '#1a1008' }}
           >
-            {loading ? 'Signing in...' : 'Sign In →'}
+            {loading ? 'Signing in...' : 'Sign In â†’'}
           </button>
         </form>
 

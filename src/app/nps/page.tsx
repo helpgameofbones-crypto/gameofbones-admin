@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -49,7 +49,7 @@ export default function NPSPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -70,16 +70,16 @@ export default function NPSPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>NPS Survey</h1>
           <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
-            Customer satisfaction — sent 7 days after delivery
+            Customer satisfaction â€” sent 7 days after delivery
           </p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'NPS Score',      value: npsScore !== null ? npsScore : '—',   icon: '⭐', color: npsScore !== null && npsScore >= 50 ? '#10b981' : '#f59e0b' },
-            { label: 'Avg Rating',     value: avgScore ? avgScore + '/10' : '—',    icon: '📊', color: '#3b82f6' },
-            { label: 'Response Rate',  value: responseRate + '%',                   icon: '📬', color: '#8b5cf6' },
-            { label: 'Total Surveys',  value: surveys.length,                       icon: '📝', color: '#6b7280' },
+            { label: 'NPS Score',      value: npsScore !== null ? npsScore : 'â€”',   icon: 'â­', color: npsScore !== null && npsScore >= 50 ? '#10b981' : '#f59e0b' },
+            { label: 'Avg Rating',     value: avgScore ? avgScore + '/10' : 'â€”',    icon: 'ðŸ“Š', color: '#3b82f6' },
+            { label: 'Response Rate',  value: responseRate + '%',                   icon: 'ðŸ“¬', color: '#8b5cf6' },
+            { label: 'Total Surveys',  value: surveys.length,                       icon: 'ðŸ“', color: '#6b7280' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <div className="text-2xl mb-2">{card.icon}</div>
@@ -128,7 +128,7 @@ export default function NPSPage() {
                 <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>Loading...</td></tr>
               ) : surveys.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#9ca3af' }}>
-                  <div style={{ fontSize: 36, marginBottom: 8 }}>📬</div>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>ðŸ“¬</div>
                   <div>No surveys sent yet.</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>Surveys are sent automatically 7 days after delivery.</div>
                 </td></tr>
@@ -155,7 +155,7 @@ export default function NPSPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>
-                    {survey.feedback || '—'}
+                    {survey.feedback || 'â€”'}
                   </td>
                   <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
                     {new Date(survey.sent_at).toLocaleDateString('en-IN')}
@@ -163,7 +163,7 @@ export default function NPSPage() {
                   <td className="px-4 py-3 text-xs" style={{ color: '#9ca3af' }}>
                     {survey.responded_at
                       ? new Date(survey.responded_at).toLocaleDateString('en-IN')
-                      : '—'}
+                      : 'â€”'}
                   </td>
                 </tr>
               ))}

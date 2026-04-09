@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -154,7 +154,7 @@ export default function CustomersPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -197,10 +197,10 @@ export default function CustomersPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total Customers', value: customers.length, icon: '👤', color: '#8b5cf6' },
-            { label: 'VIP (₹5000+)',    value: vipCount,         icon: '⭐', color: '#f59e0b' },
-            { label: 'Repeat Buyers',   value: repeatCount,      icon: '🔄', color: '#10b981' },
-            { label: 'Blacklisted',     value: blacklistCount,   icon: '🚫', color: '#ef4444' },
+            { label: 'Total Customers', value: customers.length, icon: 'ðŸ‘¤', color: '#8b5cf6' },
+            { label: 'VIP (â‚¹5000+)',    value: vipCount,         icon: 'â­', color: '#f59e0b' },
+            { label: 'Repeat Buyers',   value: repeatCount,      icon: 'ðŸ”„', color: '#10b981' },
+            { label: 'Blacklisted',     value: blacklistCount,   icon: 'ðŸš«', color: '#ef4444' },
           ].map(card => (
             <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <div className="text-xl mb-1">{card.icon}</div>
@@ -215,12 +215,12 @@ export default function CustomersPage() {
         <div className="flex gap-2 mb-4 flex-wrap">
           {[
             { key: 'all',         label: 'All' },
-            { key: 'vip',         label: '⭐ VIP' },
+            { key: 'vip',         label: 'â­ VIP' },
             { key: 'loyal',       label: 'Loyal (4+ orders)' },
             { key: 'repeat',      label: 'Repeat' },
             { key: 'new',         label: 'New' },
             { key: 'inactive',    label: 'Inactive' },
-            { key: 'blacklisted', label: '🚫 Blacklisted' },
+            { key: 'blacklisted', label: 'ðŸš« Blacklisted' },
           ].map(seg => (
             <button key={seg.key} onClick={() => setFilterSegment(seg.key)}
               className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
@@ -262,7 +262,7 @@ export default function CustomersPage() {
                       <div className="text-xs" style={{ color: '#9ca3af' }}>{customer.email}</div>
                       {customer.notes && (
                         <div className="text-xs mt-0.5 italic" style={{ color: '#c8973a' }}>
-                          📝 {customer.notes.slice(0, 40)}{customer.notes.length > 40 ? '...' : ''}
+                          ðŸ“ {customer.notes.slice(0, 40)}{customer.notes.length > 40 ? '...' : ''}
                         </div>
                       )}
                     </td>
@@ -275,7 +275,7 @@ export default function CustomersPage() {
                       {customer.total_orders}
                     </td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#10b981' }}>
-                      ₹{customer.total_spent?.toLocaleString('en-IN')}
+                      â‚¹{customer.total_spent?.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium"
@@ -311,7 +311,7 @@ export default function CustomersPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div className="font-bold text-lg" style={{ color: '#111827' }}>Add New Customer</div>
               <button onClick={() => setShowAddModal(false)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
+                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
             </div>
             <div className="p-6 space-y-4">
               {[
@@ -361,10 +361,10 @@ export default function CustomersPage() {
             <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
               <div>
                 <div className="font-bold text-lg" style={{ color: '#111827' }}>{selected.name}</div>
-                <div className="text-sm" style={{ color: '#9ca3af' }}>{selected.phone} · {selected.email}</div>
+                <div className="text-sm" style={{ color: '#9ca3af' }}>{selected.phone} Â· {selected.email}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#9ca3af' }}>✕</button>
+                className="text-2xl font-light" style={{ color: '#9ca3af' }}>âœ•</button>
             </div>
 
             <div className="p-6 space-y-5">
@@ -375,7 +375,7 @@ export default function CustomersPage() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold" style={{ color: '#10b981' }}>
-                    ₹{selected.total_spent?.toLocaleString('en-IN')}
+                    â‚¹{selected.total_spent?.toLocaleString('en-IN')}
                   </div>
                   <div className="text-xs" style={{ color: '#6b7280' }}>Total Spent</div>
                 </div>
@@ -385,7 +385,7 @@ export default function CustomersPage() {
                 <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Address</div>
                 <div className="text-sm" style={{ color: '#374151', lineHeight: 1.7 }}>
                   {selected.address_line1}<br />
-                  {selected.city}, {selected.state} — {selected.pincode}
+                  {selected.city}, {selected.state} â€” {selected.pincode}
                 </div>
               </div>
 
@@ -411,7 +411,7 @@ export default function CustomersPage() {
                 style={{ background: selected.is_blacklisted ? '#fef2f2' : '#f9fafb' }}>
                 <div>
                   <div className="text-sm font-medium" style={{ color: '#111827' }}>
-                    {selected.is_blacklisted ? '🚫 Customer is Blacklisted' : 'Blacklist Customer'}
+                    {selected.is_blacklisted ? 'ðŸš« Customer is Blacklisted' : 'Blacklist Customer'}
                   </div>
                   <div className="text-xs" style={{ color: '#6b7280' }}>
                     {selected.is_blacklisted
@@ -440,12 +440,12 @@ export default function CustomersPage() {
                           {new Date(order.created_at).toLocaleDateString('en-IN')}
                         </div>
                         <div className="text-xs mt-1" style={{ color: '#6b7280' }}>
-                          {(order.items || []).map((i: any) => `${i.qty}× ${i.name}`).join(', ')}
+                          {(order.items || []).map((i: any) => `${i.qty}Ã— ${i.name}`).join(', ')}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-bold text-sm" style={{ color: '#111827' }}>
-                          ₹{order.grand_total?.toLocaleString('en-IN')}
+                          â‚¹{order.grand_total?.toLocaleString('en-IN')}
                         </div>
                         <span className="text-xs px-2 py-0.5 rounded-full capitalize"
                           style={{

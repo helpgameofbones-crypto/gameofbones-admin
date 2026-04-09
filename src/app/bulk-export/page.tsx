@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -125,7 +125,7 @@ export default function BulkExportPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐾</span>
+          <span className="text-2xl">ðŸ¾</span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -222,12 +222,12 @@ export default function BulkExportPage() {
                   <td className="px-4 py-3">
                     {(order.items || []).slice(0, 2).map((item: any, i: number) => (
                       <div key={i} className="text-xs" style={{ color: '#6b7280' }}>
-                        {item.qty}× {item.name}
+                        {item.qty}Ã— {item.name}
                       </div>
                     ))}
                   </td>
                   <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
-                    ₹{order.grand_total?.toLocaleString('en-IN')}
+                    â‚¹{order.grand_total?.toLocaleString('en-IN')}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-1 rounded-full font-medium"

@@ -77,7 +77,7 @@ export default function Sidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
-            <Link key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 12px', marginBottom: '4px', borderRadius: '8px', textDecoration: 'none', color: isActive ? '#c8973a' : '#a89a84', background: isActive ? 'rgba(200, 151, 58, 0.1)' : 'transparent', transition: 'all 0.2s ease', borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent' }}>
+            <Link key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 12px', marginBottom: '4px', borderRadius: '8px', textDecoration: 'none', color: isActive ? '#c8973a' : '#4a4038', background: isActive ? 'rgba(200, 151, 58, 0.1)' : 'transparent', transition: 'all 0.2s ease', borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent' }}>
               <span style={{ fontSize: '18px', minWidth: '24px', textAlign: 'center' }}>{item.icon}</span>
               {!collapsed && <span style={{ fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
             </Link>
