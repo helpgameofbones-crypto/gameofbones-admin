@@ -481,23 +481,24 @@ export default function OrdersPage() {
 
               <div>
                 <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#6b7280' }}>Items</div>
-                {(selected.items || []).map((item: any, i: number) => (
-                  <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50">
-                    <span style={{ color: '#374151' }}>{item.qty}× {item.name} ({item.sizeLabel})</span>
-                    <span className="font-medium" style={{ color: '#111827' }}>
-                      ₹{(item.price * item.qty).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex justify-between text-sm pt-2 font-bold">
-                  <span>Total Weight</span>
-                  <span style={{ color: '#374151' }}>{getWeight(selected.items || [])}g</span>
-                </div>
-                <div className="flex justify-between text-sm pt-1 font-bold">
-                  <span>Grand Total</span>
-                  <span style={{ color: '#111827' }}>₹{selected.grand_total?.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
+                {(selected.items || []).length > 0 ? (
+                  (selected.items || []).map((item: any, i: number) => {
+                    const qty = parseInt(item.quantity) || parseInt(item.qty) || 1;
+                    const price = parseFloat(item.price) || 0;
+                    const subtotal = Math.max(0, price * qty);
+                    return (
+                      <div key={i} className="flex justify-between text-sm py-2 border-b border-gray-100" style={{ color: '#374151' }}>
+                        <div>
+                          <div>{qty}× {item.name || 'Item'}</div>
+                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>₹{price.toFixed(2)} each</div>
+                        </div>
+                        <div style={{ fontWeight: '600', color: '#111827' }}>₹{subtotal.toFixed(2)}</div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ color: '#9ca3af' }}>No items</div>
+                )}
 
               {/* Order note */}
               <div>
@@ -559,6 +560,7 @@ export default function OrdersPage() {
     </div>
   )
 }
+
 
 
 
