@@ -1,4 +1,14 @@
 ﻿'use client';
+
+interface Coupon {
+  id: string;
+  code: string;
+  discountPercent: number;
+  expiryDate: string;
+  usagePerCustomer: number;
+  usageLimit: number;
+  active: boolean;
+}
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,7 +18,7 @@ const supabase = createClient(
 );
 
 export default function CouponsPage() {
-  const [coupons, setCoupons] = useState([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [couponData, setCouponData] = useState({
     code: '',
