@@ -9,7 +9,6 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('Received body:', body);
     
     const { 
       customerName, 
@@ -23,8 +22,8 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const insertData: any = {
-      customer_name: customerName,
       customer_phone: customerPhone,
+      customer_name: customerName,
     };
 
     if (customerEmail) insertData.customer_email = customerEmail;
@@ -33,21 +32,18 @@ export async function POST(req: NextRequest) {
     if (transactionId) insertData.transaction_id = transactionId;
     if (notes) insertData.notes = notes;
     if (items) insertData.items = items;
-
-    console.log('Insert data:', insertData);
+    
+    insertData.status = 'confirmed';
 
     const { data, error } = await supabase
       .from('orders')
-      .insert([insertData]);
+      .insert([insertData])
+      .select();
 
     if (error) {
-      console.error('Insert error:', error);
+      console.error('Supabase error:', error);
       return NextResponse.json(
-        { 
-          success: false,
-          error: error.message,
-          details: error
-        },
+        { success: false, error: error.message },
         { status: 500 }
       );
     }
@@ -58,12 +54,9 @@ export async function POST(req: NextRequest) {
       data
     });
   } catch (error) {
-    console.error('API error:', error);
+    console.error('Error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: String(error)
-      },
+      { success: false, error: String(error) },
       { status: 500 }
     );
   }
