@@ -8,6 +8,10 @@ interface Product {
   price: number;
 }
 
+interface OrderItem extends Product {
+  quantity: number;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -15,7 +19,7 @@ const supabase = createClient(
 
 export default function ManualOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -33,7 +37,7 @@ export default function ManualOrderPage() {
     try {
       const { data, error } = await supabase.from('products').select('*');
       if (error) throw error;
-      setProducts(data || []);
+      setProducts((data as Product[]) || []);
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -97,7 +101,6 @@ export default function ManualOrderPage() {
       <h1 style={{ fontSize: '32px', color: '#1a1008', marginBottom: '32px' }}>📝 Manual Order Entry</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
-        {/* Left: Customer & Payment Info */}
         <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
           <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#1a1008' }}>Customer Details</h2>
 
@@ -139,7 +142,6 @@ export default function ManualOrderPage() {
           </div>
         </div>
 
-        {/* Right: Products & Order Summary */}
         <div>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Add Products</h2>
@@ -161,7 +163,7 @@ export default function ManualOrderPage() {
                 {selectedItems.map((item, i) => (
                   <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
                     <div><p style={{ fontWeight: '600', margin: 0 }}>{item.name}</p><p style={{ color: '#7a6a5a', margin: '4px 0 0 0' }}>₹{item.price}</p></div>
-                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value))} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px' }} />
+                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px' }} />
                     <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
                   </div>
                 ))}
