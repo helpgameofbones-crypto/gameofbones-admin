@@ -23,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 function getRTORisk(order: any) {
   let score = 0
   if (order.payment_method === 'cod') score += 30
-  if (order.payment_method === 'cod' && order.grand_total > 1000) score += 20
+  if (order.payment_method === 'cod' && (order.grand_total || order.total_amount) > 1000) score += 20
   const highRTOStates = ['Manipur','Nagaland','Mizoram','Arunachal Pradesh','Meghalaya','Tripura','Sikkim']
   if (highRTOStates.includes(order.shipping_address?.state)) score += 25
   if (!order.shipping_address?.line2) score += 10
@@ -177,7 +177,7 @@ export default function OrdersPage() {
           <div style="display:flex;justify-content:space-between">
             <span>Payment:</span>
             <span style="font-weight:bold;color:${order.payment_method === 'cod' ? '#f59e0b' : '#10b981'}">
-              ${order.payment_method === 'cod' ? 'COD — ₹' + order.grand_total : 'PREPAID'}
+              ${order.payment_method === 'cod' ? 'COD — ₹' + (order.grand_total || order.total_amount) : 'PREPAID'}
             </span>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:4px">
@@ -374,7 +374,7 @@ export default function OrdersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
-                      ₹{order.grand_total?.toLocaleString('en-IN')}
+                      ₹{(order.grand_total || order.total_amount)?.toLocaleString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium"
@@ -559,3 +559,4 @@ export default function OrdersPage() {
     </div>
   )
 }
+
