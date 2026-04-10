@@ -13,7 +13,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
+  const [selectedForBulk, setSelectedForBulk] = useState<Set<string>>(new Set());
+  const [bulkStatusModal, setBulkStatusModal] = useState(false);
 
   useEffect(() => { fetchOrders(); }, [filter]);
 
@@ -39,21 +40,30 @@ export default function OrdersPage() {
     fetchOrders();
   };
 
-  const printSlip = (order: any) => {
+  const bulkUpdateStatus = async (status: string) => {
+    if (selectedForBulk.size === 0) return;
+    const ids = Array.from(selectedForBulk);
+    await Promise.all(ids.map(id => supabase.from('orders').update({ status }).eq('id', id)));
+    setSelectedForBulk(new Set());
+    setBulkStatusModal(false);
+    fetchOrders();
+  };
+
+  const printSingleSlip = (order: any) => {
     const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones - Packing Slip</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>Total: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const printMultipleSlips = () => {
-    if (selectedForPrint.size === 0) {
+  const printBulkSlips = () => {
+    if (selectedForBulk.size === 0) {
       alert('Select orders to print');
       return;
     }
 
-    const selectedOrders = orders.filter(o => selectedForPrint.has(o.id));
-    let html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px">`;
+    const selectedOrders = orders.filter(o => selectedForBulk.has(o.id));
+    let html = `<!DOCTYPE html><html><body style="font-family:Arial">`;
 
     selectedOrders.forEach((order, idx) => {
       const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
@@ -69,17 +79,47 @@ export default function OrdersPage() {
     html += `<script>window.print()</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
-    setSelectedForPrint(new Set());
   };
 
-  const toggleSelectForPrint = (orderId: string) => {
-    const newSet = new Set(selectedForPrint);
+  const printBulkAWB = () => {
+    if (selectedForBulk.size === 0) {
+      alert('Select orders to print');
+      return;
+    }
+
+    const selectedOrders = orders.filter(o => selectedForBulk.has(o.id));
+    let html = `<!DOCTYPE html><html><body style="font-family:Arial;font-size:12px">`;
+
+    selectedOrders.forEach((order, idx) => {
+      html += `<div style="page-break-after:always;border:1px solid #000;padding:10px;margin:10px;width:100mm;height:150mm">
+        <div style="border:2px solid #000;padding:10px">
+          <h3 style="margin:0">GAME OF BONES</h3>
+          <p style="margin:2px 0"><b>AWB: ${order.ref}</b></p>
+          <p style="margin:2px 0"><b>To:</b> ${order.customer_name}</p>
+          <p style="margin:2px 0">${order.customer_phone}</p>
+          <p style="margin:2px 0"><b>Amount: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p>
+          <p style="margin:2px 0"><b>Payment: ${order.payment_method || 'COD'}</b></p>
+          <div style="margin-top:20px;border-top:1px solid #000;padding-top:10px">
+            <p style="margin:5px 0;font-size:24px;text-align:center"><b>|||||||||||||||||</b></p>
+            <p style="text-align:center;font-size:10px">${order.ref}</p>
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `<script>window.print()</script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
+  const toggleSelectForBulk = (orderId: string) => {
+    const newSet = new Set(selectedForBulk);
     if (newSet.has(orderId)) {
       newSet.delete(orderId);
     } else {
       newSet.add(orderId);
     }
-    setSelectedForPrint(newSet);
+    setSelectedForBulk(newSet);
   };
 
   const filtered = orders.filter(o =>
@@ -94,11 +134,21 @@ export default function OrdersPage() {
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '32px', color: '#1a1008', margin: 0 }}>Orders</h1>
-        {selectedForPrint.size > 0 && (
-          <button onClick={printMultipleSlips} style={{ padding: '10px 20px', background: '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-            🖨️ Print {selectedForPrint.size} Slip{selectedForPrint.size > 1 ? 's' : ''}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {selectedForBulk.size > 0 && (
+            <>
+              <button onClick={() => setBulkStatusModal(true)} style={{ padding: '10px 16px', background: '#1a1008', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+                📝 Bulk Status ({selectedForBulk.size})
+              </button>
+              <button onClick={printBulkSlips} style={{ padding: '10px 16px', background: '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+                🖨️ Print Slips
+              </button>
+              <button onClick={printBulkAWB} style={{ padding: '10px 16px', background: '#c8973a', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+                📦 Print AWB
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -113,22 +163,40 @@ export default function OrdersPage() {
 
       <div style={{ display: 'grid', gap: '12px' }}>
         {loading ? <p>Loading...</p> : filtered.length === 0 ? <p>No orders</p> : filtered.map(order => (
-          <div key={order.id} style={{ background: '#fff', border: selectedForPrint.has(order.id) ? '2px solid #2a7c6f' : '1px solid #ddd', padding: '16px', display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center' }}>
-            <input type="checkbox" checked={selectedForPrint.has(order.id)} onChange={() => toggleSelectForPrint(order.id)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
-            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
+          <div key={order.id} style={{ background: '#fff', border: selectedForBulk.has(order.id) ? '2px solid #2a7c6f' : '1px solid #ddd', padding: '16px', display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center', cursor: 'pointer' }}>
+            <input type="checkbox" checked={selectedForBulk.has(order.id)} onChange={() => toggleSelectForBulk(order.id)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
+            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
           </div>
         ))}
       </div>
 
+      {bulkStatusModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+          <div style={{ background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '500px', width: '100%' }}>
+            <h2 style={{ color: '#1a1008', margin: '0 0 24px 0' }}>Update Status for {selectedForBulk.size} Order{selectedForBulk.size > 1 ? 's' : ''}</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {STATUSES.map(s => (
+                <button key={s} onClick={() => bulkUpdateStatus(s)} style={{ padding: '12px', background: '#f0f0f0', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize', borderRadius: '4px' }}>
+                  {s.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setBulkStatusModal(false)} style={{ width: '100%', marginTop: '16px', padding: '12px', background: '#ddd', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ position: 'relative', background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#999', padding: '0', lineHeight: '1' }}>✕</button>
+            <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#999', padding: '0' }}>✕</button>
 
             <h2 style={{ color: '#1a1008', margin: '0 0 24px 0' }}>{selected.ref}</h2>
 
@@ -165,8 +233,11 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => printSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+              <button onClick={() => printSingleSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
                 🖨️ Print Slip
+              </button>
+              <button onClick={() => { printBulkAWB(); setSelectedForBulk(new Set([selected.id])); }} style={{ flex: 1, padding: '12px', background: '#fef3c7', color: '#92400e', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+                📦 Print AWB
               </button>
               <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
                 🗑️ Delete
