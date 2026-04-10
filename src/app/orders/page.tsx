@@ -81,7 +81,7 @@ export default function OrdersPage() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const printBulkAWB = () => {
+    const printBulkAWB = () => {
     if (selectedForBulk.size === 0) {
       alert('Select orders to print');
       return;
@@ -90,24 +90,26 @@ export default function OrdersPage() {
     const selectedOrders = orders.filter(o => selectedForBulk.has(o.id));
     let html = `<!DOCTYPE html><html><body style="font-family:Arial;font-size:12px">`;
 
-    selectedOrders.forEach((order, idx) => {
-      html += `<div style="page-break-after:always;border:1px solid #000;padding:10px;margin:10px;width:100mm;height:150mm">
-        <div style="border:2px solid #000;padding:10px">
-          <h3 style="margin:0">GAME OF BONES</h3>
-          <p style="margin:2px 0"><b>AWB: ${order.ref}</b></p>
-          <p style="margin:2px 0"><b>To:</b> ${order.customer_name}</p>
-          <p style="margin:2px 0">${order.customer_phone}</p>
-          <p style="margin:2px 0"><b>Amount: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p>
-          <p style="margin:2px 0"><b>Payment: ${order.payment_method || 'COD'}</b></p>
-          <div style="margin-top:20px;border-top:1px solid #000;padding-top:10px">
-            <p style="margin:5px 0;font-size:24px;text-align:center"><b>|||||||||||||||||</b></p>
-            <p style="text-align:center;font-size:10px">${order.ref}</p>
+    selectedOrders.forEach((order) => {
+      html += `<div style="page-break-after:always;border:1px solid black;padding:15px;margin:10px;width:4in;height:6in;box-sizing:border-box">
+        <div style="border:2px solid black;padding:10px;height:100%;display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <h3 style="margin:0;font-size:14px">GAME OF BONES</h3>
+            <p style="margin:3px 0;font-weight:bold">AWB: ${order.ref}</p>
+            <p style="margin:3px 0">TO: ${order.customer_name}</p>
+            <p style="margin:3px 0">PH: ${order.customer_phone}</p>
+            <p style="margin:3px 0">Amount: Rs.${(order.grand_total || order.total_amount || 0).toFixed(2)}</p>
+            <p style="margin:3px 0">Payment: ${order.payment_method || 'COD'}</p>
+          </div>
+          <div style="text-align:center;border-top:2px solid black;padding-top:10px">
+            <p style="margin:5px 0;font-size:20px;letter-spacing:2px;font-weight:bold">||||||||||</p>
+            <p style="margin:0;font-size:11px;font-weight:bold">${order.ref}</p>
           </div>
         </div>
       </div>`;
     });
 
-    html += `<script>window.print()</script></body></html>`;
+    html += `</body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   };
