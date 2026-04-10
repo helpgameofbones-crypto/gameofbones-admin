@@ -7,13 +7,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// REBUILT: 2026-04-10 11:50:06
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchOrders(); }, [filter]);
 
@@ -41,9 +41,45 @@ export default function OrdersPage() {
 
   const printSlip = (order: any) => {
     const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones - Packing Slip</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%;margin:20px 0"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>Total: ${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
+    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
+  };
+
+  const printMultipleSlips = () => {
+    if (selectedForPrint.size === 0) {
+      alert('Select orders to print');
+      return;
+    }
+
+    const selectedOrders = orders.filter(o => selectedForPrint.has(o.id));
+    let html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px">`;
+
+    selectedOrders.forEach((order, idx) => {
+      const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
+      html += `<div style="page-break-after:always;border:2px solid #000;padding:20px;margin-bottom:20px">
+        <h2>Game of Bones - Packing Slip</h2>
+        <p><b>${order.ref}</b></p>
+        <p>${order.customer_name}<br>${order.customer_phone}</p>
+        <table border="1" style="width:100%;margin:20px 0"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table>
+        <p><b>Total: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p>
+      </div>`;
+    });
+
+    html += `<script>window.print()</script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+    setSelectedForPrint(new Set());
+  };
+
+  const toggleSelectForPrint = (orderId: string) => {
+    const newSet = new Set(selectedForPrint);
+    if (newSet.has(orderId)) {
+      newSet.delete(orderId);
+    } else {
+      newSet.add(orderId);
+    }
+    setSelectedForPrint(newSet);
   };
 
   const filtered = orders.filter(o =>
@@ -56,7 +92,14 @@ export default function OrdersPage() {
 
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: '32px', color: '#1a1008', marginBottom: '24px' }}>Orders</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '32px', color: '#1a1008', margin: 0 }}>Orders</h1>
+        {selectedForPrint.size > 0 && (
+          <button onClick={printMultipleSlips} style={{ padding: '10px 20px', background: '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
+            🖨️ Print {selectedForPrint.size} Slip{selectedForPrint.size > 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
 
       <div style={{ marginBottom: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {['all', ...STATUSES].map(s => (
@@ -66,31 +109,28 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ref, name, phone..." style={{ width: '100%', padding: '12px', marginBottom: '24px', border: '2px solid #ddd', fontSize: '14px', color: '#1a1008', fontWeight: '600' }} />
+      <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ref, name, phone..." style={{ width: '100%', padding: '12px', marginBottom: '24px', border: '2px solid #ddd', fontSize: '14px', color: '#1a1008' }} />
 
       <div style={{ display: 'grid', gap: '12px' }}>
-        {loading ? (
-          <p>Loading...</p>
-        ) : filtered.length === 0 ? (
-          <p>No orders</p>
-        ) : (
-          filtered.map(order => (
-            <div key={order.id} onClick={() => setSelected(order)} style={{ background: '#fff', border: '1px solid #ddd', padding: '16px', cursor: 'pointer', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px' }}>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
-              <div><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
-            </div>
-          ))
-        )}
+        {loading ? <p>Loading...</p> : filtered.length === 0 ? <p>No orders</p> : filtered.map(order => (
+          <div key={order.id} style={{ background: '#fff', border: selectedForPrint.has(order.id) ? '2px solid #2a7c6f' : '1px solid #ddd', padding: '16px', display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center' }}>
+            <input type="checkbox" checked={selectedForPrint.has(order.id)} onChange={() => toggleSelectForPrint(order.id)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
+            <div onClick={() => setSelected(order)} style={{ cursor: 'pointer' }}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
+          </div>
+        ))}
       </div>
 
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <h2 style={{ color: '#1a1008', margin: 0, marginBottom: '24px' }}>{selected.ref}</h2>
+          <div style={{ position: 'relative', background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#999', padding: '0', lineHeight: '1' }}>✕</button>
+
+            <h2 style={{ color: '#1a1008', margin: '0 0 24px 0' }}>{selected.ref}</h2>
 
             <div style={{ marginBottom: '24px' }}>
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0' }}>Customer</p>
@@ -102,15 +142,15 @@ export default function OrdersPage() {
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Items</p>
               {(selected.items || []).map((item: any, i: number) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee', color: '#1a1008' }}>
-                  <span>{(item.quantity || item.qty || 1)} {item.name}</span>
-                  <span style={{ fontWeight: '600' }}>{((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
+                  <span>{(item.quantity || item.qty || 1)}× {item.name}</span>
+                  <span style={{ fontWeight: '600' }}>₹{((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
                 </div>
               ))}
             </div>
 
             <div style={{ borderTop: '2px solid #eee', paddingTop: '16px', marginBottom: '24px' }}>
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p>
-              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: '8px 0 0 0' }}>{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
+              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: '8px 0 0 0' }}>₹{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
             </div>
 
             <div style={{ marginBottom: '24px' }}>
@@ -126,13 +166,10 @@ export default function OrdersPage() {
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => printSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                 Print Slip
+                🖨️ Print Slip
               </button>
               <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                 Delete
-              </button>
-              <button onClick={() => setSelected(null)} style={{ flex: 1, padding: '12px', background: '#f0f0f0', color: '#666', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                Close
+                🗑️ Delete
               </button>
             </div>
           </div>
