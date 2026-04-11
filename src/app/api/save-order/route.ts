@@ -20,17 +20,45 @@ export async function POST(req: NextRequest) {
   try {
     const order = await req.json()
     
+    console.log('Save order API received:', order)
+    
+    if (!order.ref || !order.customer_phone) {
+      return NextResponse.json(
+        { error: 'Missing required fields: ref, customer_phone' },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+    
     const { error, data } = await supabase
       .from('orders')
       .insert([order])
       .select()
     
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400, headers: corsHeaders })
+      console.error('Supabase error:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+    
+    console.log('Order saved successfully:', data)
+    
+    // Send confirmation email
+    if (order.customer_email) {
+      fetch('https://gameofbones-admin.vercel.app/api/order-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+      }).catch(e => console.log('Email send skipped:', e))
     }
     
     return NextResponse.json({ success: true, order: data }, { status: 201, headers: corsHeaders })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500, headers: corsHeaders })
+    console.error('Save order error:', e)
+    return NextResponse.json(
+      { error: e.message },
+      { status: 500, headers: corsHeaders }
+    )
   }
 }
