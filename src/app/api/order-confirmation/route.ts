@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -16,9 +16,12 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   try {
     const { order } = await req.json()
-    if (!order || !order.customer_email) {
-      return NextResponse.json({ error: 'Missing email' }, { status: 400, headers: corsHeaders })
+    
+    if (!order) {
+      return NextResponse.json({ error: 'Missing order' }, { status: 400, headers: corsHeaders })
     }
+    
+    const toEmail = order.customer_email || 'hello@gameofbones.in'
 
     const itemsHtml = (order.items || []).map((item: any) =>
       `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${item.name}${item.size ? ' - ' + item.size : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(item.price * item.qty).toLocaleString('en-IN')}</td></tr>`
@@ -59,7 +62,7 @@ ${order.payment_method === 'cod' ? '<div style="background:#fef9ec;border:1px so
 
     await resend.emails.send({
       from: 'Game of Bones <onboarding@resend.dev>',
-      to: order.customer_email,
+      to: toEmail,
       subject: `Order Confirmed: ${order.ref}`,
       html,
     })
