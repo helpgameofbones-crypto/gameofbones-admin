@@ -43,8 +43,7 @@ export async function DELETE(request: NextRequest) {
     const { id } = await request.json();
 
     if (!id) {
-      return NextResponse.json({ error: 'ID is req
-uired' }, { status: 400 });
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
     const { error } = await supabase
