@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -12,27 +12,74 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [range, setRange]     = useState('30')
   const [tab, setTab]         = useState('overview')
+  
+  // Google Analytics data
+  const [gaData, setGaData] = useState({
+    activeUsers: 0,
+    sessions: 0,
+    bounceRate: 0,
+    conversions: 0
+  })
+  const [trafficSources, setTrafficSources] = useState<any[]>([])
 
   useEffect(() => { fetchData() }, [range])
 
+  // Fetch GA data
+  useEffect(() => {
+    async function fetchGA() {
+      try {
+        const res = await fetch('/api/analytics')
+        const data = await res.json()
+        if (data && !data.error) {
+          setGaData(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch GA data:', error)
+      }
+    }
+    
+    async function fetchTraffic() {
+      try {
+        const res = await fetch('/api/analytics/traffic-sources')
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          setTrafficSources(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch traffic sources:', error)
+      }
+    }
+
+    fetchGA()
+    fetchTraffic()
+  }, [])
+
   async function fetchData() {
     setLoading(true)
-    const from = new Date()
-    from.setDate(from.getDate() - parseInt(range))
-
+    
+    // Fetch all orders (no date filter for test data to work)
     const { data } = await supabase
       .from('orders')
       .select('*')
-      .gte('created_at', from.toISOString())
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
 
-    setOrders(data || [])
+    // Filter by date range client-side for flexibility
+    const now = new Date()
+    const rangeMs = parseInt(range) * 24 * 60 * 60 * 1000
+    const cutoff = new Date(now.getTime() - rangeMs)
+
+    const filtered = (data || []).filter(o => {
+      const orderDate = new Date(o.created_at)
+      return orderDate >= cutoff
+    })
+
+    setOrders(filtered)
     setLoading(false)
   }
 
   //  Calculations 
 
-  const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || 0), 0)
+  const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0)
   const totalOrders     = orders.length
   const avgOrderValue   = totalOrders ? Math.round(totalRevenue / totalOrders) : 0
   const codOrders       = orders.filter(o => o.payment_method === 'cod').length
@@ -40,15 +87,18 @@ export default function AnalyticsPage() {
   const codPct          = totalOrders ? Math.round((codOrders / totalOrders) * 100) : 0
   const rtoOrders       = orders.filter(o => o.status === 'rto').length
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length
-  const rtoRate         = (codOrders + prepaidOrders) ? Math.round((rtoOrders / totalOrders) * 100) : 0
+  const rtoRate         = totalOrders ? Math.round((rtoOrders / totalOrders) * 100) : 0
 
   // Revenue by category
   const categoryRevenue: Record<string, number> = {}
   orders.forEach(o => {
-    ;(o.items || []).forEach((item: any) => {
-      const cat = item.filter || item.category || 'Other'
-      categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (item.price * item.qty)
-    })
+    if (o.items && Array.isArray(o.items)) {
+      o.items.forEach((item: any) => {
+        const cat = item.category || item.product_name || 'Other'
+        const itemTotal = (item.price || item.pack_price || 0) * (item.qty || item.quantity || 1)
+        categoryRevenue[cat] = (categoryRevenue[cat] || 0) + itemTotal
+      })
+    }
   })
   const topCategories = Object.entries(categoryRevenue)
     .sort((a, b) => b[1] - a[1])
@@ -112,7 +162,7 @@ export default function AnalyticsPage() {
   const monthlyRevenue: Record<string, number> = {}
   orders.forEach(o => {
     const month = new Date(o.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
-    monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (o.grand_total || 0)
+    monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (o.grand_total || o.total_amount || 0)
   })
 
   // AOV trend by week
@@ -123,7 +173,7 @@ export default function AnalyticsPage() {
     weekStart.setDate(date.getDate() - date.getDay())
     const key = weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
     if (!weeklyAOV[key]) weeklyAOV[key] = { revenue: 0, orders: 0 }
-    weeklyAOV[key].revenue += (o.grand_total || 0)
+    weeklyAOV[key].revenue += (o.grand_total || o.total_amount || 0)
     weeklyAOV[key].orders++
   })
 
@@ -204,10 +254,28 @@ export default function AnalyticsPage() {
           <div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',     value: '' + totalRevenue.toLocaleString('en-IN'), icon: '', color: '#10b981' },
+                { label: 'Total Revenue',     value: '₹' + totalRevenue.toLocaleString('en-IN'), icon: '', color: '#10b981' },
                 { label: 'Total Orders',      value: totalOrders,                                  icon: '', color: '#3b82f6' },
-                { label: 'Avg Order Value',   value: '' + avgOrderValue.toLocaleString('en-IN'), icon: '', color: '#8b5cf6' },
+                { label: 'Avg Order Value',   value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '', color: '#8b5cf6' },
                 { label: 'RTO Rate',          value: rtoRate + '%',                                icon: '', color: '#ef4444' },
+              ].map(card => (
+                <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <div className="text-2xl mb-2">{card.icon}</div>
+                  <div className="text-2xl font-bold" style={{ color: card.color }}>
+                    {loading ? '...' : card.value}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* GA KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: 'Visitors (30d)',     value: gaData.activeUsers,               icon: '👥', color: '#06b6d4' },
+                { label: 'Sessions (30d)',     value: gaData.sessions,                  icon: '📊', color: '#3b82f6' },
+                { label: 'Bounce Rate',        value: gaData.bounceRate.toFixed(1) + '%', icon: '📉', color: '#f59e0b' },
+                { label: 'Conversions (30d)',  value: gaData.conversions,               icon: '✅', color: '#10b981' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -262,6 +330,24 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
+            {/* Traffic Sources */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
+              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Traffic Sources (Last 30 Days)</h3>
+              {trafficSources.length === 0 ? (
+                <div style={{ color: '#2a1f1a', fontSize: 14 }}>Loading...</div>
+              ) : (
+                trafficSources.map((source, i) => (
+                  <div key={source.source} className="flex items-center gap-3 mb-3">
+                    <div className="w-6 text-xs font-bold text-center" style={{ color: '#c8973a' }}>
+                      {i + 1}
+                    </div>
+                    <div className="text-sm flex-1" style={{ color: '#1a1008' }}>{source.source}</div>
+                    <div className="font-bold text-sm" style={{ color: '#111827' }}>{source.sessions}</div>
+                  </div>
+                ))
+              )}
+            </div>
+
             {/* Coupon usage */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Coupon Usage</h3>
@@ -283,7 +369,7 @@ export default function AnalyticsPage() {
                         <td className="py-3 font-mono font-bold" style={{ color: '#c8973a' }}>{code}</td>
                         <td className="py-3 font-bold" style={{ color: '#111827' }}>{data.count}</td>
                         <td className="py-3 font-bold" style={{ color: '#ef4444' }}>
-                          -{data.discount.toLocaleString('en-IN')}
+                          -₹{data.discount.toLocaleString('en-IN')}
                         </td>
                       </tr>
                     ))}
@@ -304,15 +390,15 @@ export default function AnalyticsPage() {
               ) : topCategories.map(([cat, rev]) => {
                 const pct = Math.round((rev / maxCatRevenue) * 100)
                 const colors: Record<string, string> = {
-                  jerky: '#c8973a', fish: '#3b82f6', organ: '#8b5cf6',
-                  chew: '#10b981', wholeprey: '#ef4444', bundle: '#f59e0b'
+                  'Chicken Hearts': '#c8973a', 'Beef Heart': '#3b82f6', 'Buffalo Bone': '#8b5cf6',
+                  'Goat Bone': '#10b981', wholeprey: '#ef4444', bundle: '#f59e0b', Other: '#6b7280'
                 }
                 return (
                   <div key={cat} className="mb-4">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium capitalize" style={{ color: '#1a1008' }}>{cat}</span>
                       <span className="font-bold" style={{ color: '#111827' }}>
-                        {rev.toLocaleString('en-IN')}
+                        ₹{rev.toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-4">
@@ -429,9 +515,9 @@ export default function AnalyticsPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',    value: '' + totalRevenue.toLocaleString('en-IN'),    icon: '', color: '#10b981' },
-                { label: 'Est. COGS (40%)',  value: '' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: '', color: '#ef4444' },
-                { label: 'Est. Gross Profit', value: '' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: '', color: '#3b82f6' },
+                { label: 'Total Revenue',    value: '₹' + totalRevenue.toLocaleString('en-IN'),    icon: '', color: '#10b981' },
+                { label: 'Est. COGS (40%)',  value: '₹' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: '', color: '#ef4444' },
+                { label: 'Est. Gross Profit', value: '₹' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: '', color: '#3b82f6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -448,17 +534,17 @@ export default function AnalyticsPage() {
               <table className="w-full text-sm">
                 <tbody>
                   {[
-                    { label: 'Gross Revenue',          value: totalRevenue,                    color: '#10b981', sign: '' },
-                    { label: 'Discounts Given',         value: orders.reduce((s,o) => s+(o.discount||0),0), color: '#ef4444', sign: '-' },
-                    { label: 'Net Revenue',             value: totalRevenue - orders.reduce((s,o) => s+(o.discount||0),0), color: '#3b82f6', sign: '' },
-                    { label: 'Est. Cost of Goods (40%)', value: Math.round(estimatedCOGS),    color: '#ef4444', sign: '-' },
-                    { label: 'Est. Gross Profit',       value: Math.round(estimatedProfit),   color: '#10b981', sign: '' },
+                    { label: 'Gross Revenue',          value: totalRevenue,                    color: '#10b981', sign: '₹' },
+                    { label: 'Discounts Given',         value: orders.reduce((s,o) => s+(o.discount||0),0), color: '#ef4444', sign: '-₹' },
+                    { label: 'Net Revenue',             value: totalRevenue - orders.reduce((s,o) => s+(o.discount||0),0), color: '#3b82f6', sign: '₹' },
+                    { label: 'Est. Cost of Goods (40%)', value: Math.round(estimatedCOGS),    color: '#ef4444', sign: '-₹' },
+                    { label: 'Est. Gross Profit',       value: Math.round(estimatedProfit),   color: '#10b981', sign: '₹' },
                     { label: 'Profit Margin',           value: profitMargin + '%',             color: '#8b5cf6', sign: '', isPercent: true },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#1a1008' }}>{row.label}</td>
                       <td className="py-3 font-bold text-right" style={{ color: row.color }}>
-                        {row.isPercent ? row.value : row.sign + '' + (typeof row.value === 'number' ? row.value.toLocaleString('en-IN') : row.value)}
+                        {row.isPercent ? row.value : row.sign + (typeof row.value === 'number' ? row.value.toLocaleString('en-IN') : row.value)}
                       </td>
                     </tr>
                   ))}
