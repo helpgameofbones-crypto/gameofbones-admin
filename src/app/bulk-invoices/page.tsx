@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Download, FileText, Calendar, Loader } from 'lucide-react'
@@ -23,7 +23,7 @@ export default function BulkInvoicesPage() {
     setLoading(true)
     let query = supabase
       .from('orders')
-      .select('id, order_number, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, payment_method, status, created_at')
+      .select('id, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, payment_method, status, created_at')
       .gte('created_at', dateFrom + 'T00:00:00')
       .lte('created_at', dateTo + 'T23:59:59')
       .order('created_at', { ascending: false })
