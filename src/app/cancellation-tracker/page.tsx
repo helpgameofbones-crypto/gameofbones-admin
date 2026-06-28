@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { XCircle, MapPin, TrendingDown } from 'lucide-react'
@@ -19,7 +19,7 @@ export default function CancellationTrackerPage() {
     setLoading(true)
     const { data } = await supabase
       .from('orders')
-      .select('id, order_number, ref, customer_name, customer_phone, shipping_address, payment_method, grand_total, total_amount, status, created_at, cancellation_reason')
+      .select('id, ref, customer_name, customer_phone, shipping_address, payment_method, grand_total, total_amount, status, created_at, cancellation_reason')
       .eq('status', 'cancelled')
       .order('created_at', { ascending: false })
     setOrders(data || [])
