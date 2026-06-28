@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { AlertTriangle, CheckCircle, Phone, Package } from 'lucide-react'
@@ -19,7 +19,7 @@ export default function DuplicateOrdersPage() {
     setLoading(true)
     const { data } = await supabase
       .from('orders')
-      .select('id, order_number, ref, customer_name, customer_phone, grand_total, total_amount, status, created_at, items, payment_method')
+      .select('id, ref, customer_name, customer_phone, grand_total, total_amount, status, created_at, items, payment_method')
       .order('created_at', { ascending: false })
     setOrders(data || [])
     setLoading(false)
