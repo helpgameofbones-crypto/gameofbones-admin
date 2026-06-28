@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Truck, Clock, Search, CheckCircle } from 'lucide-react'
@@ -28,7 +28,7 @@ export default function DeliveryEstimatorPage() {
   async function fetchData() {
     setLoading(true)
     const [{ data: ords }, { data: pins }] = await Promise.all([
-      supabase.from('orders').select('id, order_number, ref, customer_name, customer_phone, shipping_address, status, created_at, dispatched_at, awb_number, estimated_delivery').neq('status', 'cancelled'),
+      supabase.from('orders').select('id, ref, customer_name, customer_phone, shipping_address, status, created_at, dispatched_at, delhivery_awb, estimated_delivery').neq('status', 'cancelled'),
       supabase.from('serviceable_pincodes').select('pincode, zone, city, state'),
     ])
     setOrders(ords || [])
