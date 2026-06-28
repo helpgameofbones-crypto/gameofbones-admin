@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Search, Plus, Send, FileText } from 'lucide-react'
@@ -22,7 +22,7 @@ export default function OrderNotesPage() {
     setLoading(true)
     const { data } = await supabase
       .from('orders')
-      .select('id, order_number, ref, customer_name, customer_phone, status, created_at, grand_total, total_amount, order_notes')
+      .select('id, ref, customer_name, customer_phone, status, created_at, grand_total, total_amount, order_notes')
       .order('created_at', { ascending: false })
     setOrders(data || [])
     setLoading(false)
