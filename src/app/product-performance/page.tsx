@@ -1,72 +1,133 @@
-﻿'use client'
-import { useEffect, useState } from 'react'
+'use client';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
+
+interface ProductPerf {
+  name: string; category: string; totalOrders: number; totalRevenue: number;
+  avgOrderValue: number; lastOrdered: string; returnRate: number;
+}
 
 export default function ProductPerformancePage() {
-  const [data, setData] = useState<any>(null)
-  const [days, setDays] = useState(30)
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState<ProductPerf[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<'totalRevenue' | 'totalOrders'>('totalRevenue');
 
-  useEffect(() => { fetchData() }, [days])
+  useEffect(() => { fetchPerformance(); }, []);
 
-  async function fetchData() {
-    setLoading(true)
-    const res = await fetch(`/api/product-performance?days=${days}`)
-    setData(await res.json())
-    setLoading(false)
+  async function fetchPerformance() {
+    setLoading(true);
+    const { data: orders } = await supabase.from('orders').select('items,grand_total,total_amount,status,created_at').neq('status', 'cancelled');
+    const { data: dbProducts } = await supabase.from('products').select('name,category,is_active');
+
+    if (!orders) { setLoading(false); return; }
+
+    const map = new Map<string, ProductPerf>();
+    orders.forEach((o: any) => {
+      let items = o.items;
+      if (typeof items === 'string') try { items = JSON.parse(items); } catch { return; }
+      if (!Array.isArray(items)) return;
+
+      items.forEach((item: any) => {
+        const name = typeof item === 'string' ? item : (item.name || item.product || '');
+        if (!name) return;
+        if (!map.has(name)) {
+          const dbP = dbProducts?.find((p: any) => p.name.toLowerCase() === name.toLowerCase());
+          map.set(name, { name, category: dbP?.category || 'Unknown', totalOrders: 0, totalRevenue: 0, avgOrderValue: 0, lastOrdered: '', returnRate: 0 });
+        }
+        const p = map.get(name)!;
+        p.totalOrders++;
+        const price = typeof item === 'object' ? (item.price || 0) * (item.qty || 1) : 0;
+        p.totalRevenue += price;
+        if (!p.lastOrdered || o.created_at > p.lastOrdered) p.lastOrdered = o.created_at;
+      });
+    });
+
+    const arr = Array.from(map.values());
+    arr.forEach(p => { p.avgOrderValue = p.totalOrders > 0 ? Math.round(p.totalRevenue / p.totalOrders) : 0; });
+    setProducts(arr);
+    setLoading(false);
   }
 
+  const sorted = [...products].sort((a, b) => sortBy === 'totalRevenue' ? b.totalRevenue - a.totalRevenue : b.totalOrders - a.totalOrders);
+  const topProduct = sorted[0];
+  const totalRev = products.reduce((s, p) => s + p.totalRevenue, 0);
+
   return (
-    <div style={{minHeight:'100vh',background:'#f9f6f2',fontFamily:'Inter,sans-serif'}}>
-      <div style={{background:'#1a1008',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{fontWeight:700,color:'#c8973a',fontSize:18}}>Game of Bones  Product Performance</div>
-        <select value={days} onChange={e=>setDays(Number(e.target.value))} style={{padding:'7px 14px',borderRadius:8,fontSize:13,border:'none'}}>
-          <option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last 12 months</option>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Product Performance</h1>
+      <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>Revenue and order analytics per product</p>
+
+      {/* Top performer */}
+      {topProduct && (
+        <div style={{ background: 'linear-gradient(135deg, #1a1008, #3d2b1f)', color: '#fff', borderRadius: 8, padding: 28, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.15em', textTransform: 'uppercase', color: '#c8973a', marginBottom: 8 }}>🏆 Top Performer</div>
+            <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>{topProduct.name}</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,.6)' }}>{topProduct.totalOrders} orders · ₹{topProduct.totalRevenue.toLocaleString('en-IN')} revenue</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: '#c8973a', fontFamily: 'Georgia, serif' }}>
+              {totalRev > 0 ? Math.round(topProduct.totalRevenue / totalRev * 100) : 0}%
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>of total revenue</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+          style={{ padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }}>
+          <option value="totalRevenue">Sort by Revenue</option>
+          <option value="totalOrders">Sort by Orders</option>
         </select>
       </div>
 
-      <div style={{padding:'32px 24px',maxWidth:1100,margin:'0 auto'}}>
-        {loading ? <div style={{textAlign:'center',padding:60,color:'#8a7a6a'}}>Loading...</div> : data && (<>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:24}}>
-            {[
-              {label:'Total Revenue',value:`${data.totalRevenue?.toLocaleString('en-IN')}`,color:'#c8973a'},
-              {label:'Units Sold',value:data.totalUnits?.toLocaleString('en-IN'),color:'#1a1008'},
-              {label:'Orders',value:data.ordersCount,color:'#2a7c6f'},
-            ].map(({label,value,color})=>(
-              <div key={label} style={{background:'white',borderRadius:12,padding:'20px 24px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#8a7a6a',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>{label}</div>
-                <div style={{fontSize:28,fontWeight:800,color}}>{value}</div>
-              </div>
+      {loading ? <p>Loading...</p> : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+              <th style={{ padding: '10px 12px', textAlign: 'left', width: 40 }}>#</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Product</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Category</th>
+              <th style={{ padding: '10px 12px', textAlign: 'center' }}>Orders</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right' }}>Revenue</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right' }}>Avg Price</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right' }}>% of Revenue</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Last Ordered</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p, i) => (
+              <tr key={p.name} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <td style={{ padding: 12, fontWeight: 700, color: i < 3 ? '#c8973a' : '#9ca3af' }}>{i + 1}</td>
+                <td style={{ padding: 12, fontWeight: 600 }}>{p.name}</td>
+                <td style={{ padding: 12 }}>
+                  <span style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{p.category}</span>
+                </td>
+                <td style={{ padding: 12, textAlign: 'center', fontWeight: 700 }}>{p.totalOrders}</td>
+                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>₹{p.totalRevenue.toLocaleString('en-IN')}</td>
+                <td style={{ padding: 12, textAlign: 'right', fontFamily: 'monospace', color: '#6b7280' }}>₹{p.avgOrderValue.toLocaleString('en-IN')}</td>
+                <td style={{ padding: 12, textAlign: 'right' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                    <div style={{ width: 60, height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${totalRev > 0 ? Math.min(p.totalRevenue / totalRev * 100, 100) : 0}%`, background: '#c8973a', borderRadius: 3 }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: '#6b7280', width: 32 }}>{totalRev > 0 ? Math.round(p.totalRevenue / totalRev * 100) : 0}%</span>
+                  </div>
+                </td>
+                <td style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>
+                  {p.lastOrdered ? new Date(p.lastOrdered).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                </td>
+              </tr>
             ))}
-          </div>
-
-          <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead><tr style={{background:'#f9f6f2',borderBottom:'1px solid #e5ddd0'}}>
-                {['Product','Units Sold','Revenue','Margin','Stock','Status'].map(h=>(
-                  <th key={h} style={{padding:'12px 16px',textAlign:'left',fontSize:11,fontWeight:700,color:'#8a7a6a',textTransform:'uppercase',letterSpacing:'.08em'}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>{data.report?.map((p:any,i:number)=>(
-                <tr key={p.name} style={{borderBottom:'1px solid #f0ebe3',background:i%2===0?'white':'#fafafa'}}>
-                  <td style={{padding:'12px 16px',fontWeight:600,color:'#1a1008',fontSize:14}}>{p.name}</td>
-                  <td style={{padding:'12px 16px',fontSize:14,color:'#1a1008'}}>{p.units_sold}</td>
-                  <td style={{padding:'12px 16px',fontWeight:700,color:'#c8973a',fontSize:14}}>{p.revenue?.toLocaleString('en-IN')}</td>
-                  <td style={{padding:'12px 16px',fontSize:14}}>
-                    {p.margin!==null ? <span style={{color:p.margin>=50?'#16a34a':p.margin>=30?'#d97706':'#dc2626',fontWeight:700}}>{p.margin}%</span> : <span style={{color:'#8a7a6a'}}></span>}
-                  </td>
-                  <td style={{padding:'12px 16px',fontSize:14,fontWeight:700,color:p.stock===0?'#dc2626':p.low_stock?'#d97706':'#16a34a'}}>{p.stock}</td>
-                  <td style={{padding:'12px 16px'}}>
-                    {p.out_of_stock ? <span style={{background:'#fee2e2',color:'#dc2626',padding:'2px 8px',borderRadius:12,fontSize:11,fontWeight:700}}>Out of Stock</span>
-                    : p.low_stock ? <span style={{background:'#fef9c3',color:'#d97706',padding:'2px 8px',borderRadius:12,fontSize:11,fontWeight:700}}>Low Stock</span>
-                    : p.units_sold===0 ? <span style={{background:'#f3f4f6',color:'#6b7280',padding:'2px 8px',borderRadius:12,fontSize:11,fontWeight:700}}>No Sales</span>
-                    : <span style={{background:'#dcfce7',color:'#16a34a',padding:'2px 8px',borderRadius:12,fontSize:11,fontWeight:700}}>Active</span>}
-                  </td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </>)}
-      </div>
+          </tbody>
+        </table>
+      )}
     </div>
-  )
+  );
 }
