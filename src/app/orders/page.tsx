@@ -1,251 +1,257 @@
-﻿'use client';
+'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
+interface Order {
+  id: number; ref: string; status: string; customer_name: string; customer_phone: string;
+  customer_email: string; items: any; grand_total: number; total_amount: number;
+  payment_method: string; shipping_address: any; delhivery_awb: string;
+  coupon_code: string; created_at: string; estimated_delivery: string;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
+  shipped: '#8b5cf6', out_for_delivery: '#06b6d4', delivered: '#16a34a',
+  cancelled: '#ef4444', returned: '#dc2626'
+};
+
+function parseItems(items: any): string[] {
+  if (!items) return [];
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch { return [items]; }
+  }
+  if (Array.isArray(items)) {
+    return items.map((it: any) => {
+      if (typeof it === 'string') return it;
+      if (it.name) return `${it.name}${it.sizeLabel ? ' ('+it.sizeLabel+')' : ''}${it.qty > 1 ? ' x'+it.qty : ''}`;
+      if (it.product) return it.product;
+      return JSON.stringify(it);
+    });
+  }
+  if (typeof items === 'object') {
+    return Object.entries(items).map(([k, v]) => `${k}: ${v}`);
+  }
+  return [String(items)];
+}
+
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [selected, setSelected] = useState<any>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selectedForBulk, setSelectedForBulk] = useState<Set<string>>(new Set());
-  const [bulkStatusModal, setBulkStatusModal] = useState(false);
+  const [selected, setSelected] = useState<Order | null>(null);
 
-  useEffect(() => { fetchOrders(); }, [filter]);
+  useEffect(() => { fetchOrders(); }, []);
 
-  const fetchOrders = async () => {
+  async function fetchOrders() {
     setLoading(true);
-    let q = supabase.from('orders').select('*').order('created_at', { ascending: false });
-    if (filter !== 'all') q = q.eq('status', filter);
-    const { data } = await q;
-    setOrders(data || []);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (data) setOrders(data);
     setLoading(false);
-  };
+  }
 
-  const deleteOrder = async (id: string, ref: string) => {
-    if (!confirm(`Delete order ${ref}?`)) return;
-    await supabase.from('orders').delete().eq('id', id);
-    setSelected(null);
-    fetchOrders();
-  };
+  async function updateStatus(id: number, newStatus: string) {
+    await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    if (selected?.id === id) setSelected({ ...selected, status: newStatus });
+  }
 
-  const updateStatus = async (id: string, status: string) => {
-    await supabase.from('orders').update({ status }).eq('id', id);
-    setSelected({ ...selected, status });
-    fetchOrders();
-  };
-
-  const bulkUpdateStatus = async (status: string) => {
-    if (selectedForBulk.size === 0) return;
-    const ids = Array.from(selectedForBulk);
-    await Promise.all(ids.map(id => supabase.from('orders').update({ status }).eq('id', id)));
-    setSelectedForBulk(new Set());
-    setBulkStatusModal(false);
-    fetchOrders();
-  };
-
-  const printSingleSlip = (order: any) => {
-    const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial;padding:20px"><h2>Game of Bones - Packing Slip</h2><p><b>${order.ref}</b></p><p>${order.customer_name}<br>${order.customer_phone}</p><table border="1" style="width:100%"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table><p><b>Total: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p><script>window.print()</script></body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
-  };
-
-  const printBulkSlips = () => {
-    if (selectedForBulk.size === 0) {
-      alert('Select orders to print');
-      return;
+  const filtered = orders.filter(o => {
+    if (filter !== 'all' && o.status !== filter) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      return (o.ref || '').toLowerCase().includes(s) ||
+        (o.customer_name || '').toLowerCase().includes(s) ||
+        (o.customer_phone || '').includes(s) ||
+        (o.delhivery_awb || '').includes(s);
     }
+    return true;
+  });
 
-    const selectedOrders = orders.filter(o => selectedForBulk.has(o.id));
-    let html = `<!DOCTYPE html><html><body style="font-family:Arial">`;
-
-    selectedOrders.forEach((order, idx) => {
-      const itemsHtml = (order.items || []).map((item: any) => `<tr><td>${item.name}</td><td>${item.quantity || 1}</td></tr>`).join('');
-      html += `<div style="page-break-after:always;border:2px solid #000;padding:20px;margin-bottom:20px">
-        <h2>Game of Bones - Packing Slip</h2>
-        <p><b>${order.ref}</b></p>
-        <p>${order.customer_name}<br>${order.customer_phone}</p>
-        <table border="1" style="width:100%;margin:20px 0"><tr><th>Item</th><th>Qty</th></tr>${itemsHtml}</table>
-        <p><b>Total: ₹${(order.grand_total || order.total_amount || 0).toFixed(2)}</b></p>
-      </div>`;
-    });
-
-    html += `<script>window.print()</script></body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
-  };
-
-    const printBulkAWB = () => {
-    if (selectedForBulk.size === 0) {
-      alert('Select orders to print');
-      return;
-    }
-
-    const selectedOrders = orders.filter(o => selectedForBulk.has(o.id));
-    let html = `<!DOCTYPE html><html><body style="font-family:Arial;font-size:12px">`;
-
-    selectedOrders.forEach((order) => {
-      html += `<div style="page-break-after:always;border:1px solid black;padding:15px;margin:10px;width:4in;height:6in;box-sizing:border-box">
-        <div style="border:2px solid black;padding:10px;height:100%;display:flex;flex-direction:column;justify-content:space-between">
-          <div>
-            <h3 style="margin:0;font-size:14px">GAME OF BONES</h3>
-            <p style="margin:3px 0;font-weight:bold">AWB: ${order.ref}</p>
-            <p style="margin:3px 0">TO: ${order.customer_name}</p>
-            <p style="margin:3px 0">PH: ${order.customer_phone}</p>
-            <p style="margin:3px 0">Amount: Rs.${(order.grand_total || order.total_amount || 0).toFixed(2)}</p>
-            <p style="margin:3px 0">Payment: ${order.payment_method || 'COD'}</p>
-          </div>
-          <div style="text-align:center;border-top:2px solid black;padding-top:10px">
-            <p style="margin:5px 0;font-size:20px;letter-spacing:2px;font-weight:bold">||||||||||</p>
-            <p style="margin:0;font-size:11px;font-weight:bold">${order.ref}</p>
-          </div>
-        </div>
-      </div>`;
-    });
-
-    html += `</body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
-  };
-
-  const toggleSelectForBulk = (orderId: string) => {
-    const newSet = new Set(selectedForBulk);
-    if (newSet.has(orderId)) {
-      newSet.delete(orderId);
-    } else {
-      newSet.add(orderId);
-    }
-    setSelectedForBulk(newSet);
-  };
-
-  const filtered = orders.filter(o =>
-    o.ref?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customer_phone?.includes(search)
-  );
-
-  const STATUSES = ['placed', 'confirmed', 'packed', 'labelled', 'pickup_ready', 'dispatched', 'delivered', 'rto'];
+  const statusCounts = orders.reduce((acc, o) => {
+    acc[o.status] = (acc[o.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
-    <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '32px', color: '#1a1008', margin: 0 }}>Orders</h1>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          {selectedForBulk.size > 0 && (
-            <>
-              <button onClick={() => setBulkStatusModal(true)} style={{ padding: '10px 16px', background: '#1a1008', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                📝 Bulk Status ({selectedForBulk.size})
-              </button>
-              <button onClick={printBulkSlips} style={{ padding: '10px 16px', background: '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                🖨️ Print Slips
-              </button>
-              <button onClick={printBulkAWB} style={{ padding: '10px 16px', background: '#c8973a', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                📦 Print AWB
-              </button>
-            </>
-          )}
+    <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Orders</h1>
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>{orders.length} total orders</p>
         </div>
+        <button onClick={fetchOrders} style={{ padding: '8px 16px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+          ↻ Refresh
+        </button>
       </div>
 
-      <div style={{ marginBottom: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {['all', ...STATUSES].map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: '8px 16px', background: filter === s ? '#1a1008' : '#fff', color: filter === s ? '#fff' : '#1a1008', border: '1px solid #ddd', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>
-            {s.replace('_', ' ')}
+      {/* Status filter tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {['all', 'placed', 'confirmed', 'dispatched', 'shipped', 'delivered', 'cancelled'].map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase',
+              background: filter === s ? '#1a1008' : '#f3f4f6', color: filter === s ? '#fff' : '#6b7280',
+              border: 'none', borderRadius: 4, cursor: 'pointer', letterSpacing: '.05em' }}>
+            {s} {statusCounts[s] ? `(${statusCounts[s]})` : s === 'all' ? `(${orders.length})` : ''}
           </button>
         ))}
       </div>
 
-      <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ref, name, phone..." style={{ width: '100%', padding: '12px', marginBottom: '24px', border: '2px solid #ddd', fontSize: '14px', color: '#1a1008' }} />
+      {/* Search */}
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone, AWB..."
+        style={{ width: '100%', maxWidth: 400, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14, marginBottom: 16 }} />
 
-      <div style={{ display: 'grid', gap: '12px' }}>
-        {loading ? <p>Loading...</p> : filtered.length === 0 ? <p>No orders</p> : filtered.map(order => (
-          <div key={order.id} style={{ background: '#fff', border: selectedForBulk.has(order.id) ? '2px solid #2a7c6f' : '1px solid #ddd', padding: '16px', display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', gap: '16px', alignItems: 'center', cursor: 'pointer' }}>
-            <input type="checkbox" checked={selectedForBulk.has(order.id)} onChange={() => toggleSelectForBulk(order.id)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>REF</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>{order.ref}</p></div>
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>CUSTOMER</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.customer_name}</p></div>
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>ITEMS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{(order.items || []).length}</p></div>
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p><p style={{ color: '#c8973a', fontWeight: '600', margin: '4px 0 0 0' }}>₹{(order.grand_total || order.total_amount || 0).toFixed(2)}</p></div>
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>PAYMENT</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.payment_method}</p></div>
-            <div onClick={() => setSelected(order)}><p style={{ fontSize: '11px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>STATUS</p><p style={{ color: '#1a1008', margin: '4px 0 0 0' }}>{order.status}</p></div>
+      {loading ? <p>Loading orders...</p> : (
+        <div style={{ display: 'flex', gap: 24 }}>
+          {/* Orders list */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Order</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Customer</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Items</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Amount</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600 }}>Status</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(o => {
+                  const items = parseItems(o.items);
+                  return (
+                    <tr key={o.id} onClick={() => setSelected(o)}
+                      style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected?.id === o.id ? '#fffbeb' : '' }}>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ fontWeight: 700, color: '#1a1008' }}>{o.ref}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{o.payment_method || 'online'}</div>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ fontWeight: 600 }}>{o.customer_name || '—'}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{o.customer_phone}</div>
+                      </td>
+                      <td style={{ padding: '12px', maxWidth: 250 }}>
+                        {items.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {items.slice(0, 3).map((item, i) => (
+                              <span key={i} style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>• {item}</span>
+                            ))}
+                            {items.length > 3 && <span style={{ fontSize: 11, color: '#9ca3af' }}>+{items.length - 3} more</span>}
+                          </div>
+                        ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>
+                        ₹{(o.grand_total || o.total_amount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <span style={{ background: (STATUS_COLORS[o.status] || '#6b7280') + '18',
+                          color: STATUS_COLORS[o.status] || '#6b7280',
+                          fontSize: 10, fontWeight: 700, padding: '3px 10px', textTransform: 'uppercase',
+                          letterSpacing: '.06em', borderRadius: 20 }}>
+                          {o.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', fontSize: 12, color: '#6b7280' }}>
+                        {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
 
-      {bulkStatusModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-          <div style={{ background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '500px', width: '100%' }}>
-            <h2 style={{ color: '#1a1008', margin: '0 0 24px 0' }}>Update Status for {selectedForBulk.size} Order{selectedForBulk.size > 1 ? 's' : ''}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {STATUSES.map(s => (
-                <button key={s} onClick={() => bulkUpdateStatus(s)} style={{ padding: '12px', background: '#f0f0f0', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize', borderRadius: '4px' }}>
-                  {s.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setBulkStatusModal(false)} style={{ width: '100%', marginTop: '16px', padding: '12px', background: '#ddd', color: '#1a1008', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+          {/* Order detail panel */}
+          {selected && (
+            <div style={{ width: 380, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Order #{selected.ref}</h3>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af' }}>✕</button>
+              </div>
 
-      {selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ position: 'relative', background: '#fff', padding: '40px', borderRadius: '8px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#999', padding: '0' }}>✕</button>
+              {/* Status changer */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', letterSpacing: '.08em' }}>Status</label>
+                <select value={selected.status} onChange={e => updateStatus(selected.id, e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13, marginTop: 4, cursor: 'pointer' }}>
+                  {['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'].map(s => (
+                    <option key={s} value={s}>{s.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
 
-            <h2 style={{ color: '#1a1008', margin: '0 0 24px 0' }}>{selected.ref}</h2>
+              {/* Customer */}
+              <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Customer</div>
+                <div style={{ fontWeight: 600 }}>{selected.customer_name}</div>
+                <div style={{ fontSize: 13, color: '#6b7280' }}>📱 {selected.customer_phone}</div>
+                {selected.customer_email && <div style={{ fontSize: 13, color: '#6b7280' }}>📧 {selected.customer_email}</div>}
+              </div>
 
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0' }}>Customer</p>
-              <p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{selected.customer_name}</p>
-              <p style={{ color: '#2a1f1a', margin: '4px 0 0 0' }}>{selected.customer_phone}</p>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Items</p>
-              {(selected.items || []).map((item: any, i: number) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee', color: '#1a1008' }}>
-                  <span>{(item.quantity || item.qty || 1)}× {item.name}</span>
-                  <span style={{ fontWeight: '600' }}>₹{((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ borderTop: '2px solid #eee', paddingTop: '16px', marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: 0 }}>TOTAL</p>
-              <p style={{ fontSize: '28px', fontWeight: '700', color: '#c8973a', margin: '8px 0 0 0' }}>₹{(selected.grand_total || selected.total_amount || 0).toFixed(2)}</p>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 12px 0' }}>Status</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {STATUSES.map(s => (
-                  <button key={s} onClick={() => updateStatus(selected.id, s)} style={{ padding: '8px 12px', background: selected.status === s ? '#1a1008' : '#f0f0f0', color: selected.status === s ? '#fff' : '#1a1008', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>
-                    {s.replace('_', ' ')}
-                  </button>
+              {/* Items - FIXED to show product names */}
+              <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Items Ordered</div>
+                {parseItems(selected.items).map((item, i) => (
+                  <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #e5e7eb', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🦴</span>
+                    <span style={{ fontWeight: 500 }}>{item}</span>
+                  </div>
                 ))}
               </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => printSingleSlip(selected)} style={{ flex: 1, padding: '12px', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                🖨️ Print Slip
-              </button>
-              <button onClick={() => { printBulkAWB(); setSelectedForBulk(new Set([selected.id])); }} style={{ flex: 1, padding: '12px', background: '#fef3c7', color: '#92400e', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                📦 Print AWB
-              </button>
-              <button onClick={() => deleteOrder(selected.id, selected.ref)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', borderRadius: '4px' }}>
-                🗑️ Delete
-              </button>
+              {/* Payment & Shipping */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Total</div>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
+                </div>
+                <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Payment</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{(selected.payment_method || 'online').toUpperCase()}</div>
+                </div>
+              </div>
+
+              {/* AWB / Tracking */}
+              {selected.delhivery_awb && (
+                <div style={{ background: '#f0f9ff', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bae6fd' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#0284c7' }}>Delhivery AWB</div>
+                  <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{selected.delhivery_awb}</div>
+                  <a href={`https://www.delhivery.com/track/package/${selected.delhivery_awb}`} target="_blank" rel="noopener"
+                    style={{ fontSize: 12, color: '#0284c7', fontWeight: 600 }}>Track on Delhivery →</a>
+                </div>
+              )}
+
+              {selected.estimated_delivery && (
+                <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginBottom: 12 }}>
+                  📅 Estimated delivery: {selected.estimated_delivery}
+                </div>
+              )}
+
+              {selected.coupon_code && (
+                <div style={{ fontSize: 12, color: '#c8973a', marginBottom: 12 }}>🏷️ Coupon: {selected.coupon_code}</div>
+              )}
+
+              {/* Address */}
+              {selected.shipping_address && (
+                <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
+                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+                    {typeof selected.shipping_address === 'string' ? selected.shipping_address :
+                      Object.values(selected.shipping_address).filter(Boolean).join(', ')}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
