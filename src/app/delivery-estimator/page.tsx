@@ -1,200 +1,149 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import { Search } from 'lucide-react'
+'use client';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
 
-const ZONE_DAYS: Record<string, { min: number; max: number }> = {
-  metro: { min: 1, max: 2 },
-  tier1: { min: 2, max: 3 },
-  tier2: { min: 3, max: 5 },
-  standard: { min: 4, max: 6 },
-  remote: { min: 6, max: 10 },
+const DELHIVERY_TOKEN = '590d454727ba1419777966ef591787d330b5cc30';
+
+interface OrderETA {
+  id: number; ref: string; customer_name: string; customer_phone: string;
+  delhivery_awb: string; status: string; created_at: string;
+  estimated_delivery: string; delhiveryETA: string | null; daysRemaining: number | null;
 }
 
 export default function DeliveryEstimatorPage() {
-  const [orders, setOrders] = useState<any[]>([])
-  const [pincodes, setPincodes] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('active')
+  const [orders, setOrders] = useState<OrderETA[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchOrders(); }, []);
 
-  async function fetchData() {
-    setLoading(true)
-    const [{ data: ords }, { data: pins }] = await Promise.all([
-      supabase.from('orders').select('id, ref, customer_name, customer_phone, shipping_address, status, created_at, dispatched_at, delhivery_awb, estimated_delivery').neq('status', 'cancelled'),
-      supabase.from('serviceable_pincodes').select('pincode, zone, city, state'),
-    ])
-    setOrders(ords || [])
-    setPincodes(pins || [])
-    setLoading(false)
+  async function fetchOrders() {
+    setLoading(true);
+    const { data } = await supabase.from('orders')
+      .select('id,ref,customer_name,customer_phone,delhivery_awb,status,created_at,estimated_delivery')
+      .not('delhivery_awb', 'is', null)
+      .not('status', 'in', '(delivered,cancelled,returned)')
+      .order('created_at', { ascending: false });
+    setOrders((data || []).map((o: any) => ({ ...o, delhiveryETA: null, daysRemaining: null })));
+    setLoading(false);
   }
 
-  async function setEstimate(orderId: string, date: string) {
-    await supabase.from('orders').update({ estimated_delivery: date }).eq('id', orderId)
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, estimated_delivery: date } : o))
+  async function fetchETAs() {
+    setFetching(true);
+    const updated = [...orders];
+    for (const order of updated) {
+      if (!order.delhivery_awb) continue;
+      try {
+        const res = await fetch(`https://track.delhivery.com/api/v1/packages/json/?waybill=${order.delhivery_awb}`, {
+          headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
+        });
+        const data = await res.json();
+        const shipment = data?.ShipmentData?.[0]?.Shipment;
+        if (shipment?.ExpectedDeliveryDate) {
+          order.delhiveryETA = shipment.ExpectedDeliveryDate;
+          const eta = new Date(shipment.ExpectedDeliveryDate);
+          const now = new Date();
+          order.daysRemaining = Math.ceil((eta.getTime() - now.getTime()) / 86400000);
+          // Also update in Supabase
+          await supabase.from('orders').update({ estimated_delivery: shipment.ExpectedDeliveryDate }).eq('id', order.id);
+        }
+      } catch (e) { /* skip */ }
+    }
+    setOrders(updated);
+    setFetching(false);
   }
 
-  function getAddress(addr: any) {
-    if (!addr) return {}
-    if (typeof addr === 'string') { try { return JSON.parse(addr) } catch { return {} } }
-    return addr
-  }
-
-  function estimateDelivery(order: any) {
-    const addr = getAddress(order.shipping_address)
-    const pincode = pincodes.find(p => p.pincode === addr.pincode)
-    const zone = pincode?.zone || 'standard'
-    const days = ZONE_DAYS[zone] || ZONE_DAYS.standard
-    const baseDate = order.dispatched_at ? new Date(order.dispatched_at) : new Date(order.created_at)
-    const minDate = new Date(baseDate.getTime() + days.min * 86400000)
-    const maxDate = new Date(baseDate.getTime() + days.max * 86400000)
-    return { minDate, maxDate, zone, city: pincode?.city || addr.city, state: pincode?.state || addr.state }
-  }
-
-  function isLate(order: any) {
-    if (!order.estimated_delivery) return false
-    return new Date(order.estimated_delivery) < new Date() && order.status !== 'delivered'
-  }
-
-  function daysUntil(dateStr: string) {
-    const diff = new Date(dateStr).getTime() - Date.now()
-    const days = Math.ceil(diff / 86400000)
-    if (days < 0) return Math.abs(days) + 'd late'
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Tomorrow'
-    return 'In ' + days + ' days'
-  }
-
-  const filtered = orders.filter(o => {
-    const matchSearch = !search ||
-      o.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      o.ref?.includes(search) || o.order_number?.includes(search)
-    const matchFilter =
-      filter === 'all' ||
-      (filter === 'active' && !['delivered', 'cancelled', 'rto'].includes(o.status)) ||
-      (filter === 'late' && isLate(o)) ||
-      (filter === 'no-estimate' && !o.estimated_delivery)
-    return matchSearch && matchFilter
-  })
-
-  const stats = {
-    active: orders.filter(o => !['delivered', 'cancelled', 'rto'].includes(o.status)).length,
-    late: orders.filter(o => isLate(o)).length,
-    noEstimate: orders.filter(o => !o.estimated_delivery && !['delivered', 'cancelled', 'rto'].includes(o.status)).length,
-    delivered: orders.filter(o => o.status === 'delivered').length,
-  }
+  const overdue = orders.filter(o => o.daysRemaining !== null && o.daysRemaining < 0);
+  const dueToday = orders.filter(o => o.daysRemaining === 0);
+  const upcoming = orders.filter(o => o.daysRemaining !== null && o.daysRemaining > 0);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto" style={{ background: '#f9f6f2', minHeight: '100vh' }}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Delivery Date Estimator</h1>
-        <p className="text-sm text-gray-500 mt-1">Estimated delivery dates based on pincode zone and dispatch time</p>
+    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Delivery Estimator</h1>
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>Estimated delivery dates from Delhivery</p>
+        </div>
+        <button onClick={fetchETAs} disabled={fetching}
+          style={{ padding: '10px 20px', background: fetching ? '#9ca3af' : '#1a1008', color: '#fff', border: 'none', borderRadius: 6, cursor: fetching ? 'wait' : 'pointer', fontWeight: 700 }}>
+          {fetching ? '⏳ Fetching ETAs...' : '📅 Fetch All ETAs'}
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Active Shipments', value: stats.active, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Potentially Late', value: stats.late, color: stats.late > 0 ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600' },
-          { label: 'No Estimate Set', value: stats.noEstimate, color: stats.noEstimate > 0 ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-50 text-gray-600' },
-          { label: 'Delivered', value: stats.delivered, color: 'bg-green-50 text-green-700' },
-        ].map(s => (
-          <div key={s.label} className={"rounded-xl p-4 " + s.color}>
-            <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs font-medium mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-white border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
-        <div className="text-sm font-semibold text-gray-700 mb-3">Delivery Time by Zone</div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          {Object.entries(ZONE_DAYS).map(([zone, days]) => (
-            <div key={zone} className="bg-gray-50 rounded-lg p-2.5 text-center">
-              <div className="text-sm font-bold text-gray-800">{days.min}-{days.max} days</div>
-              <div className="text-xs text-gray-500 capitalize">{zone}</div>
-            </div>
-          ))}
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{orders.length}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>In Transit</div>
+        </div>
+        <div style={{ background: overdue.length > 0 ? '#fef2f2' : '#fff', border: `1px solid ${overdue.length > 0 ? '#fecaca' : '#e5e7eb'}`, borderRadius: 8, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#ef4444' }}>{overdue.length}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overdue</div>
+        </div>
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }}>{dueToday.length}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Due Today</div>
+        </div>
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{upcoming.length}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>On Track</div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search orders..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-white" />
-        </div>
-        <div className="flex gap-2">
-          {[
-            { key: 'active', label: 'Active' },
-            { key: 'late', label: 'Late' },
-            { key: 'no-estimate', label: 'No Estimate' },
-            { key: 'all', label: 'All' },
-          ].map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={"px-3 py-2 rounded-lg text-xs font-medium transition-colors " + (filter === f.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading orders...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">No orders found</div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(order => {
-            const est = estimateDelivery(order)
-            const late = isLate(order)
-            const addr = getAddress(order.shipping_address)
-            return (
-              <div key={order.id} className={"bg-white border rounded-xl p-4 shadow-sm " + (late ? 'border-red-200' : 'border-gray-100')}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">#{order.ref || order.order_number}</div>
-                    <div className="text-xs text-gray-400">{order.customer_name}  {order.customer_phone}</div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">{order.status?.replace(/_/g, ' ')}</span>
-                    <span className={"px-2 py-0.5 rounded-full capitalize font-medium " + (est.zone === 'metro' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600')}>
-                      {est.zone}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {est.city || addr.city}, {est.state || addr.state}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs">
-                      <div className="font-medium text-gray-700">Est: {est.minDate.toLocaleDateString('en-IN')} - {est.maxDate.toLocaleDateString('en-IN')}</div>
-                      <div className="text-gray-400">{ZONE_DAYS[est.zone]?.min}-{ZONE_DAYS[est.zone]?.max} days from {order.dispatched_at ? 'dispatch' : 'order'}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input type="date"
-                        value={order.estimated_delivery?.split('T')[0] || ''}
-                        onChange={e => setEstimate(order.id, e.target.value)}
-                        className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-orange-400 bg-white" />
-                      {order.estimated_delivery && (
-                        <span className={"text-xs font-medium px-2 py-0.5 rounded-full " + (late ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700')}>
-                          {daysUntil(order.estimated_delivery)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {loading ? <p>Loading...</p> : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Order</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Customer</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>AWB</th>
+              <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Ordered</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Est. Delivery</th>
+              <th style={{ padding: '10px 12px', textAlign: 'center' }}>Days Left</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => {
+              const eta = o.delhiveryETA || o.estimated_delivery;
+              const isOverdue = o.daysRemaining !== null && o.daysRemaining < 0;
+              return (
+                <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', background: isOverdue ? '#fef2f2' : '' }}>
+                  <td style={{ padding: 12, fontWeight: 700 }}>{o.ref}</td>
+                  <td style={{ padding: 12 }}>
+                    <div>{o.customer_name || '—'}</div>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>{o.customer_phone}</div>
+                  </td>
+                  <td style={{ padding: 12, fontFamily: 'monospace', fontSize: 12 }}>
+                    <a href={`https://www.delhivery.com/track/package/${o.delhivery_awb}`} target="_blank" style={{ color: '#0284c7' }}>{o.delhivery_awb}</a>
+                  </td>
+                  <td style={{ padding: 12, textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, textTransform: 'uppercase', background: '#f3f4f6' }}>{o.status}</span>
+                  </td>
+                  <td style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>
+                    {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </td>
+                  <td style={{ padding: 12, fontSize: 12, color: eta ? '#16a34a' : '#9ca3af', fontWeight: eta ? 600 : 400 }}>
+                    {eta || 'Click "Fetch All ETAs"'}
+                  </td>
+                  <td style={{ padding: 12, textAlign: 'center' }}>
+                    {o.daysRemaining !== null ? (
+                      <span style={{ fontWeight: 700, color: isOverdue ? '#ef4444' : o.daysRemaining === 0 ? '#f59e0b' : '#16a34a' }}>
+                        {isOverdue ? `${Math.abs(o.daysRemaining)}d overdue` : o.daysRemaining === 0 ? 'Today' : `${o.daysRemaining}d`}
+                      </span>
+                    ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
-  )
+  );
 }
