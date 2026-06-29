@@ -1,169 +1,109 @@
-﻿'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import { Search, Shield, RefreshCw } from 'lucide-react'
+'use client';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
 
-const ACTION_COLORS: Record<string, string> = {
-  create: 'bg-green-100 text-green-700',
-  update: 'bg-blue-100 text-blue-700',
-  delete: 'bg-red-100 text-red-700',
-  login: 'bg-purple-100 text-purple-700',
-  export: 'bg-yellow-100 text-yellow-700',
-  refund: 'bg-orange-100 text-orange-700',
-  status_change: 'bg-cyan-100 text-cyan-700',
+interface AuditEntry {
+  id: number; table_name: string; record_id: string; action: string;
+  old_data: any; new_data: any; changed_by: string; created_at: string;
 }
 
 export default function AuditTrailPage() {
-  const [logs, setLogs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
-  useEffect(() => { fetchLogs() }, [])
+  useEffect(() => { fetchAudit(); }, []);
 
-  async function fetchLogs() {
-    setLoading(true)
-    const { data } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500)
-    setLogs(data || [])
-    setLoading(false)
+  async function fetchAudit() {
+    setLoading(true);
+    const { data } = await supabase.from('audit_log')
+      .select('*').order('created_at', { ascending: false }).limit(200);
+    setEntries(data || []);
+    setLoading(false);
   }
 
-  async function logAction(action: string, entity: string, details: string) {
-    await supabase.from('audit_logs').insert({
-      action,
-      entity,
-      details,
-      user_email: 'admin@gameofbones.in',
-      created_at: new Date().toISOString(),
-    })
-  }
+  const filtered = filter === 'all' ? entries : entries.filter(e => e.action === filter);
 
-  const filtered = logs.filter(log => {
-    const matchSearch = !search ||
-      log.action?.toLowerCase().includes(search.toLowerCase()) ||
-      log.entity?.toLowerCase().includes(search.toLowerCase()) ||
-      log.details?.toLowerCase().includes(search.toLowerCase()) ||
-      log.user_email?.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || log.action === filter
-    const matchDate =
-      (!dateFrom || new Date(log.created_at) >= new Date(dateFrom)) &&
-      (!dateTo || new Date(log.created_at) <= new Date(dateTo + 'T23:59:59'))
-    return matchSearch && matchFilter && matchDate
-  })
-
-  const actionCounts = logs.reduce((acc, log) => {
-    acc[log.action] = (acc[log.action] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const uniqueActions = [...new Set(logs.map(l => l.action))].filter(Boolean)
+  const actionColors: Record<string, string> = {
+    STATUS_CHANGE: '#8b5cf6', INSERT: '#16a34a', UPDATE: '#3b82f6', DELETE: '#ef4444'
+  };
+  const actionIcons: Record<string, string> = {
+    STATUS_CHANGE: '🔄', INSERT: '➕', UPDATE: '✏️', DELETE: '🗑️'
+  };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto" style={{ background: '#f9f6f2', minHeight: '100vh' }}>
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Trail</h1>
-          <p className="text-sm text-gray-500 mt-1">Every action ever taken in the admin panel</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Audit Trail</h1>
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>Track all status changes and system events</p>
         </div>
-        <button onClick={fetchLogs} className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200">
-          <RefreshCw size={14} /> Refresh
-        </button>
+        <button onClick={fetchAudit} style={{ padding: '8px 16px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>↻ Refresh</button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Actions', value: logs.length, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Today', value: logs.filter(l => l.created_at?.startsWith(new Date().toISOString().slice(0, 10))).length, color: 'bg-green-50 text-green-700' },
-          { label: 'This Week', value: logs.filter(l => new Date(l.created_at) > new Date(Date.now() - 7 * 86400000)).length, color: 'bg-orange-50 text-orange-700' },
-          { label: 'Team Members', value: new Set(logs.map(l => l.user_email)).size, color: 'bg-purple-50 text-purple-700' },
-        ].map(s => (
-          <div key={s.label} className={"rounded-xl p-4 " + s.color}>
-            <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs font-medium mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search actions, entities, users..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-white" />
-        </div>
-        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white" />
-        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white" />
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => setFilter('all')}
-          className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50')}>
-          All ({logs.length})
-        </button>
-        {uniqueActions.map(action => (
-          <button key={action} onClick={() => setFilter(action)}
-            className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize " + (filter === action ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50')}>
-            {action} ({actionCounts[action] || 0})
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {['all', 'STATUS_CHANGE', 'INSERT', 'UPDATE', 'DELETE'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{ padding: '6px 14px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+              background: filter === f ? '#1a1008' : '#f3f4f6', color: filter === f ? '#fff' : '#6b7280',
+              border: 'none', borderRadius: 4, cursor: 'pointer', letterSpacing: '.05em' }}>
+            {f === 'all' ? `All (${entries.length})` : `${f.replace('_', ' ')} (${entries.filter(e => e.action === f).length})`}
           </button>
         ))}
       </div>
 
-      {/* Log Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading audit logs...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <Shield size={40} className="mx-auto mb-3 opacity-30" />
-            <p>No audit logs yet</p>
-            <p className="text-xs mt-1">Actions taken in the admin panel will appear here</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {['Time', 'User', 'Action', 'Entity', 'Details'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map(log => (
-                <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                    {new Date(log.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-xs font-medium text-gray-700">{log.user_email || 'Admin'}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={"text-xs font-semibold px-2 py-0.5 rounded-full capitalize " + (ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-600')}>
-                      {log.action}
+      {loading ? <p>Loading audit trail...</p> : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>No audit entries yet</div>
+          <div style={{ fontSize: 13, marginTop: 8 }}>Status changes on orders will appear here automatically.</div>
+        </div>
+      ) : (
+        <div style={{ position: 'relative', paddingLeft: 32 }}>
+          <div style={{ position: 'absolute', left: 11, top: 0, bottom: 0, width: 2, background: '#e5e7eb' }} />
+          {filtered.map(entry => {
+            const color = actionColors[entry.action] || '#6b7280';
+            const icon = actionIcons[entry.action] || '📝';
+            const oldVal = entry.old_data?.status || JSON.stringify(entry.old_data);
+            const newVal = entry.new_data?.status || JSON.stringify(entry.new_data);
+            const time = new Date(entry.created_at);
+
+            return (
+              <div key={entry.id} style={{ position: 'relative', marginBottom: 20, paddingLeft: 20 }}>
+                {/* Timeline dot */}
+                <div style={{ position: 'absolute', left: -26, top: 4, width: 24, height: 24, borderRadius: '50%', background: color + '18', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, zIndex: 1 }}>
+                  {icon}
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <span style={{ background: color + '18', color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>{entry.action.replace('_', ' ')}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, marginLeft: 8 }}>{entry.table_name} #{entry.record_id}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                      {time.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs font-medium text-gray-700 capitalize">{log.entity}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">{log.details}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  </div>
+                  {entry.action === 'STATUS_CHANGE' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      <span style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>{oldVal}</span>
+                      <span style={{ color: '#9ca3af' }}>→</span>
+                      <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>{newVal}</span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>by {entry.changed_by}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )
+  );
 }
