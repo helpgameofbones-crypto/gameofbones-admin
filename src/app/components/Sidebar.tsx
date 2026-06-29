@@ -86,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: '🎮', label: 'Gamification', href: '/gamification', desc: 'Spin wheel prizes, milestones, and streaks' },
       { icon: '💎', label: 'Loyalty', href: '/loyalty', desc: 'Points earned per customer, manual adjustments' },
       { icon: '🔄', label: 'Reorder Alerts', href: '/reorder-alert', desc: 'Remind customers when treats run low' },
+      { icon: '📰', label: 'Blog Articles', href: '/blogs', desc: 'Create, edit, and publish blog posts' },
     ],
   },
   {
