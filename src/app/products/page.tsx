@@ -1,459 +1,294 @@
-﻿'use client'
-import { useEffect, useState, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
+'use client';
+import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-const MAX_IMAGES = 5
-const MAX_VIDEOS = 2
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
+const STORAGE_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [tab, setTab] = useState('all')
-  const [editing, setEditing] = useState<any>(null)
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
-  const [uploading, setUploading] = useState<string | null>(null)
-  const [addingNew, setAddingNew] = useState(false)
-  const [newForm, setNewForm] = useState({ name: '', price: '', stock: '100', sku: '', category: '', description: '' })
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [uploading, setUploading] = useState(false);
+  const imgRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const vidRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
-  useEffect(() => { fetchProducts() }, [])
+  useEffect(() => { fetchProducts(); }, []);
 
   async function fetchProducts() {
-    setLoading(true)
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .order('name')
-    setProducts(data || [])
-    setLoading(false)
+    setLoading(true);
+    const { data } = await supabase.from('products').select('*').order('name');
+    setProducts(data || []);
+    setLoading(false);
   }
 
-  function openEdit(p: any) {
-    setEditing({
-      ...p,
-      images: p.images || [],
-      videos: p.videos || [],
-      image_url: p.image_url || '',
-      sizes: p.sizes || [
-        { label: '60g', price: p.price || 0, cost: 0, stock: p.stock || 100 },
-        { label: '120g', price: Math.round((p.price || 0) * 1.9), cost: 0, stock: 100 },
-        { label: '180g', price: Math.round((p.price || 0) * 2.8), cost: 0, stock: 100 },
-        { label: '240g', price: Math.round((p.price || 0) * 3.7), cost: 0, stock: 100 },
-      ],
-    })
-    setMsg('')
+  function startEdit(p: any) {
+    const images = p.images || [];
+    const videos = p.videos || [];
+    const sizes = (p.sizes || []).map((s: any) => ({
+      ...s,
+      compare_price: s.compare_price || 0,
+      cogs: s.cogs || 0,
+      stock: s.stock || 0,
+    }));
+    setEditing({ ...p, images: [...images], videos: [...videos], sizes, compare_price: p.compare_price || (sizes[0]?.compare_price) || 0 });
   }
 
-  async function saveProduct() {
-    if (!editing) return
-    setSaving(true)
-    const { error } = await supabase.from('products').update({
+  function updateSize(idx: number, field: string, value: string) {
+    const sizes = [...(editing.sizes || [])];
+    sizes[idx] = { ...sizes[idx], [field]: field === 'label' ? value : (parseFloat(value) || 0) };
+    if (sizes[idx].price && sizes[idx].cogs) {
+      sizes[idx].margin = Math.round((1 - sizes[idx].cogs / sizes[idx].price) * 100);
+    }
+    setEditing({ ...editing, sizes });
+  }
+
+  async function uploadFile(file: File, type: 'image' | 'video', slotIdx: number) {
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const name = `${editing.id}/${type}-${slotIdx}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('product-images').upload(name, file, { contentType: file.type, upsert: true });
+    setUploading(false);
+    if (error) { alert('Upload failed: ' + error.message); return; }
+    const url = STORAGE_URL + name;
+    if (type === 'image') {
+      const imgs = [...(editing.images || [])];
+      imgs[slotIdx] = url;
+      setEditing({ ...editing, images: imgs, ...(slotIdx === 0 ? { image_url: url } : {}) });
+    } else {
+      const vids = [...(editing.videos || [])];
+      vids[slotIdx] = url;
+      setEditing({ ...editing, videos: vids });
+    }
+  }
+
+  async function save() {
+    if (!editing) return;
+    const sizes = (editing.sizes || []).map((s: any) => ({
+      label: s.label, price: s.price || 0, compare_price: s.compare_price || 0,
+      cogs: s.cogs || 0, stock: s.stock || 0
+    }));
+    const payload: any = {
       name: editing.name,
-      description: editing.description,
-      price: parseFloat(editing.price) || 0,
-      mrp: parseFloat(editing.mrp) || 0,
-      cost_price: parseFloat(editing.cost_price) || 0,
-      stock: parseInt(editing.stock) || 0,
-      reorder_level: parseInt(editing.reorder_level) || 10,
-      best_before_days: parseInt(editing.best_before_days) || 365,
-      is_active: editing.is_active,
-      is_bestseller: editing.is_bestseller,
-      image_url: editing.image_url,
-      images: editing.images,
-      videos: editing.videos,
-    }).eq('id', editing.id)
-    setSaving(false)
-    if (error) { setMsg(' ' + error.message); return }
-    setMsg(' Saved!')
-    fetchProducts()
-    setTimeout(() => setMsg(''), 3000)
+      price: editing.price || sizes[0]?.price || 0,
+      compare_price: editing.compare_price || sizes[0]?.compare_price || 0,
+      cogs: editing.cogs || 0,
+      stock: editing.stock || 0,
+      reorder_level: editing.reorder_level || 10,
+      best_before_days: editing.best_before_days || 365,
+      is_active: editing.is_active ?? true,
+      is_bestseller: editing.is_bestseller ?? false,
+      sizes,
+      images: editing.images || [],
+      videos: editing.videos || [],
+      image_url: editing.image_url || editing.images?.[0] || null,
+    };
+    await supabase.from('products').update(payload).eq('id', editing.id);
+    setEditing(null);
+    fetchProducts();
   }
 
-  async function uploadFile(file: File, type: 'image' | 'video', slot: number) {
-    if (!editing) return
-    const key = `${type}-${slot}`
-    setUploading(key)
-    const ext = file.name.split('.').pop()
-    const filename = `${editing.id}/${type}-${slot}-${Date.now()}.${ext}`
-    const bucket = type === 'image' ? 'product-images' : 'product-videos'
-
-    const { error: upErr } = await supabase.storage.from(bucket).upload(filename, file, { upsert: true })
-    if (upErr) { setMsg(' Upload failed: ' + upErr.message); setUploading(null); return }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filename)
-    const publicUrl = urlData.publicUrl
-
-    if (type === 'image') {
-      const newImages = [...(editing.images || [])]
-      newImages[slot] = publicUrl
-      // First image is always the main image_url
-      const newEditing = { ...editing, images: newImages, image_url: newImages[0] || editing.image_url }
-      setEditing(newEditing)
-      // Save immediately
-      await supabase.from('products').update({ images: newImages, image_url: newImages[0] || editing.image_url }).eq('id', editing.id)
-    } else {
-      const newVideos = [...(editing.videos || [])]
-      newVideos[slot] = publicUrl
-      setEditing({ ...editing, videos: newVideos })
-      await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
-    }
-
-    setMsg(' Uploaded!')
-    setUploading(null)
-    fetchProducts()
-    setTimeout(() => setMsg(''), 3000)
-  }
-
-  async function removeMedia(type: 'image' | 'video', slot: number) {
-    if (!editing) return
-    if (type === 'image') {
-      const newImages = [...(editing.images || [])]
-      newImages[slot] = ''
-      const firstImage = newImages.find(Boolean) || ''
-      setEditing({ ...editing, images: newImages, image_url: firstImage })
-      await supabase.from('products').update({ images: newImages, image_url: firstImage }).eq('id', editing.id)
-    } else {
-      const newVideos = [...(editing.videos || [])]
-      newVideos[slot] = ''
-      setEditing({ ...editing, videos: newVideos })
-      await supabase.from('products').update({ videos: newVideos }).eq('id', editing.id)
-    }
-    setMsg(' Removed')
-    fetchProducts()
-    setTimeout(() => setMsg(''), 2000)
-  }
-
-  async function toggleActive(id: string, current: boolean) {
-    await supabase.from('products').update({ is_active: !current }).eq('id', id)
-    fetchProducts()
-  }
-
-  async function addProduct() {
-    const { error } = await supabase.from('products').insert({
-      name: newForm.name,
-      price: parseFloat(newForm.price) || 0,
-      stock: parseInt(newForm.stock) || 100,
-      sku: newForm.sku,
-      category: newForm.category,
-      description: newForm.description,
-      is_active: true,
-      images: [],
-      videos: [],
-    })
-    if (error) { setMsg(' ' + error.message); return }
-    setAddingNew(false)
-    setNewForm({ name: '', price: '', stock: '100', sku: '', category: '', description: '' })
-    fetchProducts()
+  async function toggleActive(id: number, current: boolean) {
+    await supabase.from('products').update({ is_active: !current }).eq('id', id);
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p));
   }
 
   const filtered = products.filter(p => {
-    const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
-    const matchTab = tab === 'all' ? true : tab === 'low' ? (p.stock <= (p.reorder_level || 10) && p.stock > 0) : tab === 'out' ? p.stock === 0 : true
-    return matchSearch && matchTab
-  })
+    if (filter === 'active' && !p.is_active) return false;
+    if (filter === 'hidden' && p.is_active) return false;
+    if (search) return p.name.toLowerCase().includes(search.toLowerCase());
+    return true;
+  });
 
-  const lowCount = products.filter(p => p.stock <= (p.reorder_level || 10) && p.stock > 0 && p.is_active).length
-  const outCount = products.filter(p => p.stock === 0 && p.is_active).length
+  const th = { padding: '10px 12px', fontSize: 11, fontWeight: 700 as const, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#c8973a' };
+  const td = { padding: '10px 12px' };
+  const input = { padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14, width: '100%' };
+  const label = { fontSize: 11, fontWeight: 700 as const, textTransform: 'uppercase' as const, color: '#6b7280', display: 'block' as const, marginBottom: 4, letterSpacing: '.06em' };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9f6f2', fontFamily: 'Inter, sans-serif' }}>
-      {/* Header */}
-      <div style={{ background: '#1a1008', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 24 }}></span>
-          <div>
-            <div style={{ fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
-          </div>
+    <div style={{ padding: 24, maxWidth: 1300, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Products</h1>
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>{products.length} products</p>
         </div>
-        <nav style={{ display: 'flex', gap: 4 }}>
-          {[['Dashboard','/dashboard'],['Orders','/orders'],['Products','/products'],['Inventory','/inventory'],['Finance','/finance'],['Analytics','/analytics']].map(([label, href]) => (
-            <a key={href} href={href} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, color: href === '/products' ? '#1a1008' : 'rgba(255,255,255,0.7)', background: href === '/products' ? '#c8973a' : 'transparent', textDecoration: 'none' }}>{label}</a>
-          ))}
-        </nav>
       </div>
 
-      <div style={{ padding: '32px 24px', maxWidth: 1200, margin: '0 auto' }}>
-        {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#1a1008', margin: 0 }}>Products</h1>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
-              style={{ padding: '9px 14px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 13, width: 220, outline: 'none', background: 'white' }} />
-            <button onClick={() => setAddingNew(true)}
-              style={{ background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              + Add Product
-            </button>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {['all', 'active', 'hidden'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, background: filter === f ? '#1a1008' : '#f3f4f6', color: filter === f ? '#fff' : '#6b7280', border: 'none', borderRadius: 20, cursor: 'pointer' }}>
+            {f.charAt(0).toUpperCase() + f.slice(1)} ({f === 'all' ? products.length : f === 'active' ? products.filter(p => p.is_active).length : products.filter(p => !p.is_active).length})
+          </button>
+        ))}
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
+          style={{ marginLeft: 'auto', padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13, width: 220 }} />
+      </div>
+
+      {/* EDIT MODAL */}
+      {editing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '40px 20px' }}
+          onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
+          <div style={{ background: '#fff', borderRadius: 8, width: '100%', maxWidth: 750, padding: 28, height: 'fit-content' }}>
+            {/* Image Upload Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} onClick={() => imgRefs[i]?.current?.click()}
+                  style={{ aspectRatio: '1', border: '2px dashed #e5e7eb', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', background: '#faf8f5', position: 'relative' }}>
+                  {editing.images?.[i] ? (
+                    <img src={editing.images[i]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+                      <div style={{ fontSize: 24 }}>📷</div>
+                      <div style={{ fontSize: 10, marginTop: 4 }}>{i === 0 ? 'Main Image' : `Image ${i + 1}`}</div>
+                    </div>
+                  )}
+                  <input ref={imgRefs[i]} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadFile(e.target.files[0], 'image', i); }} />
+                </div>
+              ))}
+            </div>
+            {/* Video Upload */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {[0, 1].map(i => (
+                <div key={i} onClick={() => vidRefs[i]?.current?.click()}
+                  style={{ padding: '16px', border: '2px dashed #e5e7eb', borderRadius: 6, textAlign: 'center', cursor: 'pointer', background: '#faf8f5' }}>
+                  {editing.videos?.[i] ? (
+                    <video src={editing.videos[i]} style={{ width: '100%', maxHeight: 80, objectFit: 'cover', borderRadius: 4 }} />
+                  ) : (
+                    <div style={{ color: '#9ca3af', fontSize: 12 }}>Add Video {i + 1}<br /><span style={{ fontSize: 10 }}>MP4, MOV, up to 50MB</span></div>
+                  )}
+                  <input ref={vidRefs[i]} type="file" accept="video/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadFile(e.target.files[0], 'video', i); }} />
+                </div>
+              ))}
+            </div>
+
+            {uploading && <div style={{ textAlign: 'center', padding: 8, color: '#c8973a', fontWeight: 600, fontSize: 13 }}>⏳ Uploading...</div>}
+
+            <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>PRODUCT DETAILS</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div><div style={label}>Product Name</div><input value={editing.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} style={input} /></div>
+              <div><div style={label}>Selling Price (₹)</div><input type="number" value={editing.price || ''} onChange={e => setEditing({ ...editing, price: parseFloat(e.target.value) || 0 })} style={input} /></div>
+              <div><div style={{ ...label, color: '#ef4444' }}>MRP (₹) <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 400 }}>— shows as strikethrough</span></div><input type="number" value={editing.compare_price || ''} onChange={e => setEditing({ ...editing, compare_price: parseFloat(e.target.value) || 0 })} style={{ ...input, background: '#fff0f0', borderColor: '#fecaca' }} placeholder="Higher than sell price" /></div>
+            </div>
+
+            {editing.compare_price > editing.price && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                ✅ Website will show: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{editing.compare_price}</span> <strong>₹{editing.price}</strong> — {Math.round((1 - editing.price / editing.compare_price) * 100)}% OFF
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div><div style={label}>Base COGS (₹)</div><input type="number" value={editing.cogs || ''} onChange={e => setEditing({ ...editing, cogs: parseFloat(e.target.value) || 0 })} style={input} /></div>
+              <div><div style={label}>Stock</div><input type="number" value={editing.stock || ''} onChange={e => setEditing({ ...editing, stock: parseInt(e.target.value) || 0 })} style={input} /></div>
+              <div><div style={label}>Reorder Level</div><input type="number" value={editing.reorder_level || ''} onChange={e => setEditing({ ...editing, reorder_level: parseInt(e.target.value) || 0 })} style={input} /></div>
+              <div><div style={label}>Best Before (days)</div><input type="number" value={editing.best_before_days || ''} onChange={e => setEditing({ ...editing, best_before_days: parseInt(e.target.value) || 0 })} style={input} /></div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div onClick={() => setEditing({ ...editing, is_active: !editing.is_active })} style={{ width: 44, height: 24, borderRadius: 12, background: editing.is_active ? '#16a34a' : '#d1d5db', position: 'relative', cursor: 'pointer', transition: 'background .2s' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: editing.is_active ? 22 : 2, transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Product Active</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div onClick={() => setEditing({ ...editing, is_bestseller: !editing.is_bestseller })} style={{ width: 44, height: 24, borderRadius: 12, background: editing.is_bestseller ? '#c8973a' : '#d1d5db', position: 'relative', cursor: 'pointer', transition: 'background .2s' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: editing.is_bestseller ? 22 : 2, transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Bestseller</span>
+              </label>
+            </div>
+
+            {/* SIZE PRICING WITH MRP */}
+            <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>SIZE PRICING, MRP & STOCK</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20, background: '#faf8f5', borderRadius: 4 }}>
+              <thead>
+                <tr><th style={{ ...th, textAlign: 'left' }}>Size</th><th style={th}>MRP (₹)</th><th style={th}>Sell Price</th><th style={th}>COGS</th><th style={{ ...th, textAlign: 'center' }}>Margin</th><th style={th}>Stock</th></tr>
+              </thead>
+              <tbody>
+                {(editing.sizes || []).map((s: any, i: number) => {
+                  const margin = s.price && s.cogs ? Math.round((1 - s.cogs / s.price) * 100) : 0;
+                  const disc = s.compare_price && s.price && s.compare_price > s.price ? Math.round((1 - s.price / s.compare_price) * 100) : 0;
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ ...td, fontWeight: 600 }}>{s.label}</td>
+                      <td style={td}><input type="number" value={s.compare_price || ''} onChange={e => updateSize(i, 'compare_price', e.target.value)} placeholder="MRP" style={{ width: 75, padding: '6px 8px', border: '1px solid #fecaca', borderRadius: 4, fontSize: 13, background: '#fff0f0' }} /></td>
+                      <td style={td}><input type="number" value={s.price || ''} onChange={e => updateSize(i, 'price', e.target.value)} style={{ width: 75, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
+                      <td style={td}><input type="number" value={s.cogs || ''} onChange={e => updateSize(i, 'cogs', e.target.value)} placeholder="Cost" style={{ width: 70, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
+                      <td style={{ ...td, textAlign: 'center' }}>{margin > 0 ? <span style={{ color: '#16a34a', fontWeight: 600 }}>{margin}%</span> : '—'}</td>
+                      <td style={td}><input type="number" value={s.stock || ''} onChange={e => updateSize(i, 'stock', e.target.value)} style={{ width: 60, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setEditing(null)} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Cancel</button>
+              <button onClick={save} style={{ padding: '12px 28px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>Save Product</button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {[['all', `All (${products.length})`], ['low', ` Low (${lowCount})`], ['out', ` Out (${outCount})`]].map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)}
-              style={{ padding: '7px 16px', borderRadius: 20, border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                background: tab === key ? '#1a1008' : '#e5ddd0', color: tab === key ? 'white' : '#5a4a3a' }}>{label}</button>
-          ))}
-        </div>
-
-        {/* Products table */}
-        <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f9f6f2', borderBottom: '1px solid #e5ddd0' }}>
-                {['Product', 'Price', 'Stock', 'Status', 'Media', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#8a7a6a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#8a7a6a' }}>Loading...</td></tr>
-              ) : filtered.map(p => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #f0ebe3' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {p.image_url
-                        ? <img src={p.image_url} alt={p.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddd0' }} />
-                        : <div style={{ width: 40, height: 40, background: '#f0ebe3', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}></div>
-                      }
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#1a1008', fontSize: 14 }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: '#8a7a6a' }}>{p.category || ''}</div>
-                      </div>
-                    </div>
+      {/* Product table */}
+      {loading ? <p style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Loading products...</p> : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+              <th style={{ ...th, textAlign: 'left' }}>Product</th>
+              <th style={{ ...th, textAlign: 'right' }}>MRP</th>
+              <th style={{ ...th, textAlign: 'right' }}>Price</th>
+              <th style={{ ...th, textAlign: 'center' }}>Stock</th>
+              <th style={{ ...th, textAlign: 'center' }}>Status</th>
+              <th style={{ ...th, textAlign: 'center' }}>Media</th>
+              <th style={{ ...th, textAlign: 'center' }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(p => {
+              const mrp = p.compare_price || p.sizes?.[0]?.compare_price || 0;
+              const price = p.price || p.sizes?.[0]?.price || 0;
+              const imgCount = (p.images || []).filter(Boolean).length;
+              const vidCount = (p.videos || []).filter(Boolean).length;
+              return (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6', opacity: p.is_active ? 1 : 0.5 }}>
+                  <td style={{ ...td, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {p.image_url ? <img src={p.image_url} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} /> :
+                      <div style={{ width: 40, height: 40, background: '#f3f4f6', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🦴</div>}
+                    <div><div style={{ fontWeight: 700 }}>{p.name}</div><div style={{ fontSize: 11, color: '#9ca3af' }}>{p.category}</div></div>
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1a1008' }}>{p.price}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontWeight: 700, color: p.stock === 0 ? '#dc2626' : p.stock <= (p.reorder_level || 10) ? '#d97706' : '#16a34a', fontSize: 15 }}>{p.stock}</span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: p.is_active ? '#dcfce7' : '#fee2e2', color: p.is_active ? '#16a34a' : '#dc2626' }}>
+                  <td style={{ ...td, textAlign: 'right', textDecoration: mrp > price ? 'line-through' : 'none', color: '#9ca3af' }}>{mrp > 0 ? `₹${mrp}` : '—'}</td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>₹{price}</td>
+                  <td style={{ ...td, textAlign: 'center', fontWeight: 600, color: (p.stock || 0) < (p.reorder_level || 10) ? '#ef4444' : '#374151' }}>{p.stock || 100}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: p.is_active ? '#dcfce7' : '#fee2e2', color: p.is_active ? '#16a34a' : '#ef4444' }}>
                       {p.is_active ? 'Active' : 'Hidden'}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#8a7a6a' }}>
-                    {(p.images || []).filter(Boolean).length} img  {(p.videos || []).filter(Boolean).length} vid
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEdit(p)} style={{ padding: '5px 12px', background: '#f0ebe3', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#1a1008' }}>Edit</button>
-                      <button onClick={() => toggleActive(p.id, p.is_active)} style={{ padding: '5px 12px', background: p.is_active ? '#fee2e2' : '#dcfce7', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: p.is_active ? '#dc2626' : '#16a34a' }}>
+                  <td style={{ ...td, textAlign: 'center', fontSize: 11, color: '#6b7280' }}>{imgCount} img {vidCount} vid</td>
+                  <td style={{ ...td, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                      <button onClick={() => startEdit(p)} style={{ padding: '5px 14px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Edit</button>
+                      <button onClick={() => toggleActive(p.id, p.is_active)}
+                        style={{ padding: '5px 14px', border: '1px solid', borderColor: p.is_active ? '#fecaca' : '#bbf7d0', background: '#fff', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: p.is_active ? '#ef4444' : '#16a34a' }}>
                         {p.is_active ? 'Hide' : 'Show'}
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* EDIT MODAL */}
-      {editing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 16px', overflowY: 'auto' }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 700, padding: 32, position: 'relative' }}>
-            {/* Close */}
-            <button onClick={() => setEditing(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8a7a6a' }}></button>
-
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 24 }}>{editing.name}</h2>
-
-            {/*  IMAGES SECTION  */}
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Images (up to 5)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-                {Array.from({ length: MAX_IMAGES }).map((_, i) => {
-                  const url = editing.images?.[i]
-                  const isUploading = uploading === `image-${i}`
-                  return (
-                    <div key={i} style={{ position: 'relative' }}>
-                      <label style={{ display: 'block', cursor: 'pointer' }}>
-                        <div style={{ width: '100%', aspectRatio: '1', border: '2px dashed #e5ddd0', borderRadius: 8, overflow: 'hidden', background: url ? 'transparent' : '#f9f6f2', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                          {url
-                            ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : isUploading
-                              ? <div style={{ fontSize: 11, color: '#8a7a6a', textAlign: 'center' }}>Uploading...</div>
-                              : <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: 24 }}></div>
-                                  <div style={{ fontSize: 10, color: '#8a7a6a', marginTop: 4 }}>Add Photo {i + 1}</div>
-                                </div>
-                          }
-                        </div>
-                        <input type="file" accept="image/*" style={{ display: 'none' }}
-                          onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'image', i)} />
-                      </label>
-                      {url && (
-                        <button onClick={() => removeMedia('image', i)}
-                          style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}></button>
-                      )}
-                      {i === 0 && url && (
-                        <div style={{ position: 'absolute', bottom: 4, left: 4, background: '#c8973a', color: 'white', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3 }}>MAIN</div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 8 }}>First image is the main product image shown on website</div>
-            </div>
-
-            {/*  VIDEOS SECTION  */}
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Videos (up to 2)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {Array.from({ length: MAX_VIDEOS }).map((_, i) => {
-                  const url = editing.videos?.[i]
-                  const isUploading = uploading === `video-${i}`
-                  return (
-                    <div key={i} style={{ position: 'relative' }}>
-                      <label style={{ display: 'block', cursor: 'pointer' }}>
-                        <div style={{ border: '2px dashed #e5ddd0', borderRadius: 8, overflow: 'hidden', background: '#f9f6f2', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 100 }}>
-                          {url
-                            ? <video src={url} controls style={{ width: '100%', borderRadius: 4, maxHeight: 140 }} />
-                            : isUploading
-                              ? <div style={{ textAlign: 'center', color: '#8a7a6a', fontSize: 12 }}>Uploading...</div>
-                              : <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: 28 }}></div>
-                                  <div style={{ fontSize: 11, color: '#8a7a6a', marginTop: 6 }}>Add Video {i + 1}</div>
-                                  <div style={{ fontSize: 10, color: '#b0a090', marginTop: 2 }}>MP4, MOV, up to 50MB</div>
-                                </div>
-                          }
-                        </div>
-                        <input type="file" accept="video/*" style={{ display: 'none' }}
-                          onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0], 'video', i)} />
-                      </label>
-                      {url && (
-                        <button onClick={() => removeMedia('video', i)}
-                          style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', background: '#dc2626', color: 'white', border: 'none', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/*  PRODUCT DETAILS  */}
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 12 }}>Product Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-              {[
-                ['Product Name', 'name', 'text'],
-                ['Selling Price ()', 'price', 'number'],
-                ['Base COGS ()', 'cost_price', 'number'],
-                ['Stock', 'stock', 'number'],
-                ['Reorder Level', 'reorder_level', 'number'],
-                ['Best Before (days)', 'best_before_days', 'number'],
-              ].map(([label, field, type]) => (
-                <div key={field}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 5 }}>{label}</label>
-                  <input type={type} value={editing[field] ?? ''} onChange={e => setEditing({ ...editing, [field]: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              ))}
-            </div>
-
-            {/* Toggles */}
-            <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-              {[['Product Active', 'is_active'], ['Bestseller', 'is_bestseller']].map(([label, field]) => (
-                <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <div onClick={() => setEditing({ ...editing, [field]: !editing[field] })}
-                    style={{ width: 44, height: 24, borderRadius: 12, background: editing[field] ? '#16a34a' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', position: 'absolute', top: 3, left: editing[field] ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1008' }}>{label}</span>
-                </label>
-              ))}
-            </div>
-
-            {/* Size pricing */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a7a6a', marginBottom: 10 }}>Size Pricing, COGS & Stock</div>
-              <div style={{ border: '1px solid #e5ddd0', borderRadius: 8, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f9f6f2' }}>
-                      {['Size', 'Sell Price', 'COGS', 'Margin', 'Stock'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#8a7a6a', textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(editing.sizes || []).map((s: any, i: number) => {
-                      const margin = s.price && s.cost ? Math.round(((s.price - s.cost) / s.price) * 100) : null
-                      return (
-                        <tr key={i} style={{ borderTop: '1px solid #f0ebe3' }}>
-                          <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1a1008', fontSize: 13 }}>{s.label}</td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <input type="number" value={s.price || ''} onChange={e => {
-                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, price: parseFloat(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
-                            }} style={{ width: 80, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
-                          </td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <input type="number" placeholder="Cost" value={s.cost || ''} onChange={e => {
-                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, cost: parseFloat(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
-                            }} style={{ width: 80, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
-                          </td>
-                          <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 600, color: margin && margin > 50 ? '#16a34a' : margin && margin > 30 ? '#d97706' : '#dc2626' }}>
-                            {margin !== null ? `${margin}%` : ''}
-                          </td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <input type="number" value={s.stock || ''} onChange={e => {
-                              const newSizes = [...editing.sizes]; newSizes[i] = { ...s, stock: parseInt(e.target.value) || 0 }; setEditing({ ...editing, sizes: newSizes })
-                            }} style={{ width: 70, padding: '4px 8px', border: '1px solid #e5ddd0', borderRadius: 6, fontSize: 13, color: '#1a1008' }} />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Msg + Save */}
-            {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: msg.startsWith('') ? '#fee2e2' : '#dcfce7', color: msg.startsWith('') ? '#dc2626' : '#16a34a', fontSize: 13, fontWeight: 600, marginBottom: 16 }}>{msg}</div>}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setEditing(null)} style={{ padding: '10px 20px', background: '#f0ebe3', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#5a4a3a' }}>Cancel</button>
-              <button onClick={saveProduct} disabled={saving}
-                style={{ padding: '10px 24px', background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Saving...' : 'Save Product'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD PRODUCT MODAL */}
-      {addingNew && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 500, padding: 32 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1008', marginBottom: 20 }}>Add New Product</h2>
-            <div style={{ display: 'grid', gap: 12 }}>
-              {[['Product Name *', 'name', 'text'], ['Selling Price () *', 'price', 'number'], ['Initial Stock', 'stock', 'number'], ['SKU', 'sku', 'text'], ['Category', 'category', 'text']].map(([label, field, type]) => (
-                <div key={field}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 4 }}>{label}</label>
-                  <input type={type} value={(newForm as any)[field]} onChange={e => setNewForm({ ...newForm, [field]: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              ))}
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#5a4a3a', display: 'block', marginBottom: 4 }}>Description</label>
-                <textarea value={newForm.description} onChange={e => setNewForm({ ...newForm, description: e.target.value })} rows={3}
-                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5ddd0', borderRadius: 8, fontSize: 14, color: '#1a1008', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
-              </div>
-            </div>
-            {msg && <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontSize: 13 }}>{msg}</div>}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button onClick={() => setAddingNew(false)} style={{ padding: '10px 20px', background: '#f0ebe3', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#5a4a3a' }}>Cancel</button>
-              <button onClick={addProduct} style={{ padding: '10px 24px', background: '#c8973a', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Add Product</button>
-            </div>
-          </div>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
-  )
+  );
 }
