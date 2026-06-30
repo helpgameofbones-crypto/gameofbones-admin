@@ -1,365 +1,229 @@
-'use client'
+'use client';
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-
-interface NavItem {
-  icon: string
-  label: string
-  href: string
-  desc: string
-}
-
-interface NavGroup {
-  title: string
-  color: string
-  items: NavItem[]
-}
-
-const NAV_GROUPS: NavGroup[] = [
+const SECTIONS = [
   {
-    title: 'Overview',
-    color: '#c8973a',
+    title: 'OVERVIEW',
+    color: '#3b82f6',
     items: [
-      { icon: '📊', label: 'Dashboard', href: '/dashboard', desc: 'Today\'s sales, revenue, and pending orders at a glance' },
-    ],
+      { name: 'Dashboard', href: '/dashboard', icon: '📊', desc: "Today's sales, revenue, and pending orders" },
+    ]
   },
   {
-    title: 'Orders',
-    color: '#e67e22',
+    title: 'ORDERS',
+    color: '#f59e0b',
     items: [
-      { icon: '🛒', label: 'All Orders', href: '/orders', desc: 'View, search, and update order statuses' },
-      { icon: '✏️', label: 'Create Order', href: '/manual-order', desc: 'Manually place an order for a customer' },
-      { icon: '📝', label: 'Order Notes', href: '/order-notes', desc: 'Internal notes attached to orders' },
-      { icon: '📋', label: 'Order Timeline', href: '/order-timeline', desc: 'Visual status history of each order' },
-      { icon: '📞', label: 'COD Tracker', href: '/cod-tracker', desc: 'Track cash-on-delivery confirmations' },
-      { icon: '❌', label: 'Cancellations', href: '/cancellation-tracker', desc: 'Monitor cancelled orders and reasons' },
-      { icon: '⚠️', label: 'Duplicate Orders', href: '/duplicate-orders', desc: 'Flag potential duplicate submissions' },
-    ],
+      { name: 'All Orders', href: '/orders', icon: '📦', desc: 'View, filter, and manage all orders' },
+      { name: 'Order Notes', href: '/order-notes', icon: '📝', desc: 'Internal notes on orders' },
+      { name: 'COD Tracker', href: '/cod-tracker', icon: '💵', desc: 'Cash on delivery order management' },
+      { name: 'Cancellations', href: '/cancellation-tracker', icon: '❌', desc: 'Track cancelled and returned orders' },
+    ]
   },
   {
-    title: 'Shipping',
-    color: '#3498db',
+    title: 'SHIPPING',
+    color: '#8b5cf6',
     items: [
-      { icon: '🚚', label: 'Delhivery', href: '/delhivery', desc: 'Manage shipments, AWBs, and pickup requests' },
-      { icon: '📅', label: 'Delivery Estimator', href: '/delivery-estimator', desc: 'Estimated delivery dates by pincode zone' },
-      { icon: '🚨', label: 'RTO', href: '/rto', desc: 'Return-to-origin shipments and recovery' },
-      { icon: '📥', label: 'Returns', href: '/returns', desc: 'Customer return requests and refund status' },
-      { icon: '↩️', label: 'Refund Tracker', href: '/refund-tracker', desc: 'Track refund amounts and processing' },
-    ],
+      { name: 'Delhivery Sync', href: '/delhivery-sync', icon: '🔄', desc: 'Auto-sync order status from Delhivery' },
+      { name: 'Delivery Estimator', href: '/delivery-estimator', icon: '📅', desc: 'Estimated delivery dates from Delhivery' },
+      { name: 'Shipment Tracker', href: '/shipment-tracker', icon: '🚚', desc: 'Track all shipments in one place' },
+    ]
   },
   {
-    title: 'Products',
-    color: '#2ecc71',
+    title: 'PRODUCTS',
+    color: '#16a34a',
     items: [
-      { icon: '📦', label: 'Product Catalog', href: '/products', desc: 'All products with prices, stock, and images' },
-      { icon: '🏭', label: 'Product Manager', href: '/product-management', desc: 'Add, edit, or archive products and sizes' },
-      { icon: '📊', label: 'Performance', href: '/product-performance', desc: 'Sales, revenue, and ratings per product' },
-      { icon: '🔗', label: 'Affinity', href: '/product-affinity', desc: 'Which products are bought together' },
-      { icon: '📋', label: 'Inventory', href: '/inventory', desc: 'Current stock levels and reorder alerts' },
-      { icon: '⚙️', label: 'Production', href: '/production', desc: 'Batch records, yield tracking, and costs' },
-    ],
+      { name: 'Product Catalog', href: '/products', icon: '🦴', desc: 'All products with prices, stock, and images' },
+      { name: 'Product Manager', href: '/product-manager', icon: '✏️', desc: 'Edit prices, MRP, sizes, and stock' },
+      { name: 'Performance', href: '/product-performance', icon: '📈', desc: 'Sales, revenue, and ratings per product' },
+      { name: 'Inventory', href: '/inventory', icon: '📋', desc: 'Current stock levels and reorder alerts' },
+    ]
   },
   {
-    title: 'Customers',
-    color: '#9b59b6',
+    title: 'CUSTOMERS',
+    color: '#ec4899',
     items: [
-      { icon: '👥', label: 'All Customers', href: '/customers', desc: 'Customer list with order history and value' },
-      { icon: '🧠', label: 'Intelligence', href: '/customer-intelligence', desc: 'Segments, lifetime value, and churn risk' },
-      { icon: '🐶', label: 'Dog Birthdays', href: '/dog-birthday-info', desc: 'Upcoming birthdays for marketing outreach' },
-      { icon: '📧', label: 'Email Captures', href: '/email-captures', desc: 'Emails from spin wheel, newsletter, popups' },
-      { icon: '🛑', label: 'Abandoned Carts', href: '/abandoned-carts', desc: 'Carts that didn\'t convert — recovery targets' },
-      { icon: '⭐', label: 'NPS Surveys', href: '/nps', desc: 'Net Promoter Score feedback from customers' },
-    ],
+      { name: 'All Customers', href: '/customers', icon: '👥', desc: 'Name, orders, lifetime value, contact info' },
+      { name: 'Dog Birthday Club', href: '/dog-birthday-club', icon: '🎂', desc: 'Pet birthdays captured from website popup' },
+      { name: 'Reorder Alerts', href: '/reorder-alerts', icon: '🔔', desc: 'Customers likely running low on treats' },
+      { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: 'Recover carts that didn\'t convert' },
+    ]
   },
   {
-    title: 'Marketing',
-    color: '#e74c3c',
+    title: 'CONTENT',
+    color: '#06b6d4',
     items: [
-      { icon: '🏷️', label: 'Coupons', href: '/coupons', desc: 'Create and manage discount codes' },
-      { icon: '📢', label: 'Campaigns', href: '/campaigns', desc: 'Email and SMS campaign management' },
-      { icon: '🎨', label: 'Campaign Hub', href: '/campaigns-hub', desc: 'Multi-channel campaign planner' },
-      { icon: '🎁', label: 'Promotions', href: '/promotions', desc: 'Flash sales, bundles, and special offers' },
-      { icon: '🖼️', label: 'Banners', href: '/banners', desc: 'Homepage and category banner management' },
-      { icon: '📧', label: 'Marketing', href: '/marketing', desc: 'UTM links, ad spend, and attribution' },
-      { icon: '🎮', label: 'Gamification', href: '/gamification', desc: 'Spin wheel prizes, milestones, and streaks' },
-      { icon: '💎', label: 'Loyalty', href: '/loyalty', desc: 'Points earned per customer, manual adjustments' },
-      { icon: '🔄', label: 'Reorder Alerts', href: '/reorder-alert', desc: 'Remind customers when treats run low' },
-      { icon: '📰', label: 'Blog Articles', href: '/blogs', desc: 'Create, edit, and publish blog posts' },
-    ],
+      { name: 'Blogs', href: '/blogs', icon: '📝', desc: 'Create and manage blog articles' },
+      { name: 'Dog Gallery', href: '/dog-gallery', icon: '📷', desc: 'Customer dog photos & videos for homepage' },
+      { name: 'Strays We Feed', href: '/strays', icon: '🐕', desc: 'Manage stray dogs with multiple photos' },
+      { name: 'Site Content', href: '/site-content', icon: '🖼️', desc: 'Hero images, infographics, banners' },
+    ]
   },
   {
-    title: 'Analytics',
-    color: '#1abc9c',
+    title: 'MARKETING',
+    color: '#f97316',
     items: [
-      { icon: '📈', label: 'Overview', href: '/analytics', desc: 'Revenue trends, conversion rates, and traffic' },
-      { icon: '🎯', label: 'Advanced', href: '/analytics-advanced', desc: 'Deep-dive: funnel analysis, AOV trends' },
-      { icon: '🎓', label: 'Cohort Analysis', href: '/cohort-analysis', desc: 'Retention and repeat purchase by cohort' },
-      { icon: '🗺️', label: 'City Heatmap', href: '/city-heatmap', desc: 'Order volume by city and region' },
-      { icon: '⏰', label: 'Hour Analysis', href: '/hour-analysis', desc: 'Peak ordering times and day-of-week patterns' },
-    ],
+      { name: 'Coupons', href: '/coupons', icon: '🏷️', desc: 'Manage discount codes and promotions' },
+      { name: 'Referrals', href: '/referrals', icon: '🤝', desc: 'Track referral signups and rewards' },
+      { name: 'Email Captures', href: '/email-captures', icon: '📧', desc: 'Emails collected from spin wheel & popups' },
+    ]
   },
   {
-    title: 'Finance',
-    color: '#f39c12',
+    title: 'ANALYTICS',
+    color: '#6366f1',
     items: [
-      { icon: '💳', label: 'Finance', href: '/finance', desc: 'Revenue, margins, and P&L overview' },
-      { icon: '💵', label: 'Expenses', href: '/expenses', desc: 'Track business expenses by category' },
-      { icon: '💰', label: 'Razorpay', href: '/razorpay', desc: 'Payment settlements and transaction logs' },
-      { icon: '🧾', label: 'Invoices', href: '/invoices', desc: 'Generate and view individual invoices' },
-      { icon: '📄', label: 'Bulk Invoices', href: '/bulk-invoices', desc: 'Generate invoices for a date range' },
-      { icon: '📤', label: 'Bulk Export', href: '/bulk-export', desc: 'Export orders, customers, or products as CSV' },
-    ],
+      { name: 'Overview', href: '/analytics', icon: '📊', desc: 'Revenue trends, conversion rates, AOV' },
+      { name: 'City Heatmap', href: '/city-heatmap', icon: '🗺️', desc: 'Order volume by city and region' },
+    ]
   },
   {
-    title: 'Operations',
-    color: '#7f8c8d',
+    title: 'FINANCE',
+    color: '#84cc16',
     items: [
-      { icon: '⚙️', label: 'Operations', href: '/operations', desc: 'Daily ops checklist and workflow status' },
-      { icon: '✅', label: 'Tasks', href: '/tasks', desc: 'To-do list for the team' },
-      { icon: '👨‍💼', label: 'Team Access', href: '/team-access', desc: 'Manage team member roles and permissions' },
-      { icon: '🔔', label: 'Notifications', href: '/notifications', desc: 'System alerts and order notifications' },
-      { icon: '📊', label: 'Activity Log', href: '/activity', desc: 'Audit trail of all admin actions' },
-      { icon: '✏️', label: 'Audit Trail', href: '/audit-trail', desc: 'Detailed change history for compliance' },
-    ],
+      { name: 'Finance', href: '/finance', icon: '💰', desc: 'Revenue, margins, and P&L overview' },
+      { name: 'Expenses', href: '/expenses', icon: '💸', desc: 'Track business expenses by category' },
+      { name: 'Razorpay', href: '/razorpay', icon: '💳', desc: 'Payment settlements and transactions' },
+      { name: 'Invoices', href: '/invoices', icon: '🧾', desc: 'Generate and view individual invoices' },
+    ]
   },
-]
+  {
+    title: 'OPERATIONS',
+    color: '#78716c',
+    items: [
+      { name: 'Tasks', href: '/tasks', icon: '✅', desc: 'To-do list for the team' },
+      { name: 'Team Access', href: '/team-access', icon: '👤', desc: 'Manage team member roles and access' },
+      { name: 'Activity Log', href: '/activity-log', icon: '📋', desc: 'Log of all admin actions' },
+      { name: 'Audit Trail', href: '/audit-trail', icon: '🔍', desc: 'Detailed change history for orders' },
+    ]
+  },
+];
 
 export default function Sidebar() {
-  const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
+    Object.fromEntries(SECTIONS.map(s => [s.title, true]))
+  );
 
-  // Auto-open the section containing the current page
-  useEffect(() => {
-    const initial: Record<string, boolean> = {}
-    NAV_GROUPS.forEach((group) => {
-      const hasActive = group.items.some(
-        (item) => pathname === item.href || pathname.startsWith(item.href + '/')
-      )
-      initial[group.title] = hasActive || group.title === 'Overview'
-    })
-    setOpenSections(initial)
-  }, [pathname])
-
-  const toggleSection = (title: string) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }))
+  function toggleSection(title: string) {
+    setOpenSections(prev => ({ ...prev, [title]: !prev[title] }));
   }
 
-  if (pathname === '/login') return null
-
   return (
-    <aside
-      style={{
-        width: collapsed ? '68px' : '264px',
-        background: '#1a1008',
-        color: '#fff',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        transition: 'width 0.25s ease',
-        borderRight: '1px solid #2d2418',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        left: 0,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <aside style={{
+      width: collapsed ? 60 : 240,
+      minHeight: '100vh',
+      background: '#1a1008',
+      color: '#fff',
+      display: 'flex',
+      flexDirection: 'column',
+      transition: 'width .2s',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 100,
+    }}>
       {/* Header */}
-      <div
-        style={{
-          padding: collapsed ? '20px 12px' : '20px 18px',
-          borderBottom: '1px solid #2d2418',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          flexShrink: 0,
-        }}
-      >
+      <div style={{ padding: '16px 14px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <img src="https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg" 
+          style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} alt="Logo" />
         {!collapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '22px' }}>🐾</span>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#c8973a', letterSpacing: '.04em' }}>
-                Game of Bones
-              </div>
-              <div style={{ fontSize: '10px', color: '#6b5d4f', fontWeight: '500', letterSpacing: '.06em' }}>
-                ADMIN PANEL
-              </div>
-            </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Admin Panel</div>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            background: 'none',
-            border: '1px solid #2d2418',
-            color: '#6b5d4f',
-            cursor: 'pointer',
-            fontSize: '14px',
-            width: '30px',
-            height: '30px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-          }}
-        >
-          {collapsed ? '▸' : '◂'}
+        <button onClick={() => setCollapsed(!collapsed)} 
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', cursor: 'pointer', fontSize: 16, padding: 4 }}>
+          {collapsed ? '→' : '←'}
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: collapsed ? '8px 6px' : '8px 10px', overflowY: 'auto' }}>
-        {NAV_GROUPS.map((group) => {
-          const isOpen = openSections[group.title] ?? false
-          const hasActive = group.items.some(
-            (item) => pathname === item.href || pathname.startsWith(item.href + '/')
-          )
-
-          return (
-            <div key={group.title} style={{ marginBottom: '4px' }}>
-              {/* Section header */}
+      {/* Sections */}
+      <nav style={{ flex: 1, padding: '8px 0' }}>
+        {SECTIONS.map(section => (
+          <div key={section.title} style={{ marginBottom: 4 }}>
+            {/* Section header */}
+            <button onClick={() => toggleSection(section.title)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                padding: collapsed ? '8px 20px' : '8px 14px',
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: section.color, flexShrink: 0 }} />
               {!collapsed && (
-                <button
-                  onClick={() => toggleSection(group.title)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    padding: '10px 10px',
-                    margin: '4px 0 2px',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: hasActive ? group.color : '#6b5d4f',
-                    fontSize: '10px',
-                    fontWeight: '700',
-                    letterSpacing: '.12em',
-                    textTransform: 'uppercase' as const,
-                    textAlign: 'left' as const,
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: hasActive ? group.color : '#3d3028',
-                        flexShrink: 0,
-                      }}
-                    />
-                    {group.title}
+                <>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', flex: 1 }}>
+                    {section.title}
                   </span>
-                  <span
-                    style={{
-                      fontSize: '8px',
-                      transition: 'transform 0.2s',
-                      transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                    }}
-                  >
-                    ▸
-                  </span>
-                </button>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,.2)', transition: 'transform .2s', transform: openSections[section.title] ? 'rotate(0)' : 'rotate(-90deg)' }}>▼</span>
+                </>
               )}
+            </button>
 
-              {/* Section items */}
-              {(isOpen || collapsed) &&
-                group.items.map((item) => {
-                  const isActive =
-                    pathname === item.href || pathname.startsWith(item.href + '/')
+            {/* Section items */}
+            {openSections[section.title] && !collapsed && (
+              <div style={{ marginBottom: 8 }}>
+                {section.items.map(item => {
+                  const isActive = pathname === item.href;
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      title={collapsed ? `${item.label}: ${item.desc}` : item.desc}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '10px',
-                        padding: collapsed ? '10px 8px' : '8px 10px 8px 22px',
-                        marginBottom: '1px',
-                        borderRadius: '6px',
-                        textDecoration: 'none',
-                        color: isActive ? '#fff' : '#8a7d6f',
-                        background: isActive ? 'rgba(200, 151, 58, 0.12)' : 'transparent',
-                        borderLeft: isActive
-                          ? `2px solid ${group.color}`
-                          : '2px solid transparent',
-                        transition: 'all 0.15s ease',
+                    <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px 8px 28px',
+                        background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
+                        borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'background .15s',
                       }}
-                    >
-                      <span
-                        style={{
-                          fontSize: collapsed ? '18px' : '14px',
-                          minWidth: '20px',
-                          textAlign: 'center' as const,
-                          lineHeight: '20px',
-                          flexShrink: 0,
-                          marginTop: '1px',
-                        }}
-                      >
-                        {item.icon}
-                      </span>
-                      {!collapsed && (
-                        <div style={{ overflow: 'hidden', flex: 1 }}>
-                          <div
-                            style={{
-                              fontSize: '13px',
-                              fontWeight: isActive ? '600' : '500',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '20px',
-                              color: isActive ? '#fff' : '#b5a99a',
-                            }}
-                          >
-                            {item.label}
+                      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.04)'; }}
+                      onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                        <span style={{ fontSize: 14, flexShrink: 0, width: 20, textAlign: 'center' }}>{item.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#c8973a' : 'rgba(255,255,255,.8)', lineHeight: 1.3 }}>
+                            {item.name}
                           </div>
-                          <div
-                            style={{
-                              fontSize: '10px',
-                              color: '#5a5048',
-                              lineHeight: '14px',
-                              marginTop: '2px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {item.desc}
                           </div>
                         </div>
-                      )}
+                      </div>
                     </Link>
-                  )
+                  );
                 })}
-            </div>
-          )
-        })}
+              </div>
+            )}
+
+            {/* Collapsed mode: show icons only */}
+            {collapsed && openSections[section.title] && section.items.map(item => {
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={item.name}>
+                  <div style={{
+                    padding: '6px 0', textAlign: 'center', fontSize: 16,
+                    background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
+                    borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
+                  }}>
+                    {item.icon}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
       {!collapsed && (
-        <div
-          style={{
-            padding: '16px 18px',
-            borderTop: '1px solid #2d2418',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ fontSize: '10px', color: '#4a3f34', lineHeight: '1.5' }}>
-            Game of Bones Admin
-          </div>
-          <div style={{ fontSize: '9px', color: '#3a3028' }}>
-            helpgameofbones@gmail.com
-          </div>
+        <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 10, color: 'rgba(255,255,255,.2)' }}>
+          Game of Bones Admin
+          <br />gameofbones@gmail.com
         </div>
       )}
     </aside>
-  )
+  );
 }
