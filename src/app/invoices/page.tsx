@@ -1,250 +1,216 @@
-﻿'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+'use client';
+import { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
+
+const LOGO_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg';
+
+const COMPANY = {
+  name: 'Game of Bones',
+  addressLines: ['5 Shree Kedar Apartment, Rambaug lane no 5', 'Kalyan West', 'Maharashtra, India', 'Pincode: 421301'],
+  phone: '9082503295',
+  email: 'helpgameofbones@gmail.com',
+  website: 'gameofbones.in',
+};
+
+function parseItems(items: any) {
+  if (!items) return [];
+  if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return []; } }
+  if (!Array.isArray(items)) return [];
+  return items.map((it: any) => ({
+    name: it.name || it.product_name || 'Item',
+    sku: it.sku || it.product_id || '—',
+    qty: it.quantity || it.qty || 1,
+    price: it.price || it.pack_price || 0,
+    mrp: it.mrp || it.compare_price || 0,
+  }));
+}
+
+function formatAddress(addr: any) {
+  if (!addr) return null;
+  if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
+  if (typeof addr !== 'object') return null;
+  const parts = [addr.street, addr.city, addr.state, addr.pincode].filter(Boolean);
+  return parts.length ? parts : null;
+}
 
 export default function InvoicesPage() {
-  const [orders, setOrders] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [searchRef, setSearchRef] = useState('');
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => { fetchOrders() }, [])
-
-  async function fetchOrders() {
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-    setOrders(data || [])
-    setLoading(false)
+  async function findOrder() {
+    if (!searchRef.trim()) return;
+    setLoading(true);
+    setNotFound(false);
+    setOrder(null);
+    const { data } = await supabase.from('orders').select('*').eq('ref', searchRef.trim()).maybeSingle();
+    setLoading(false);
+    if (!data) { setNotFound(true); return; }
+    setOrder(data);
   }
 
-  function generateInvoice(order: any) {
-    const items = (order.items || []).map((item: any) => `
-      <tr style="border-bottom:1px solid #f3f4f6">
-        <td style="padding:10px 16px">${item.name} (${item.sizeLabel || ''})</td>
-        <td style="padding:10px 16px;text-align:center">${item.qty}</td>
-        <td style="padding:10px 16px;text-align:right">Rs ${item.price}</td>
-        <td style="padding:10px 16px;text-align:right;font-weight:bold">Rs ${item.price * item.qty}</td>
-      </tr>
-    `).join('')
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Invoice ${order.ref}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111827; }
-          @media print { body { margin: 0; } }
-        </style>
-      </head>
-      <body>
-        <div style="max-width:700px;margin:0 auto;padding:0">
-
-          <!-- Header -->
-          <div style="background:#1a1008;padding:28px 32px;display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="color:#c8973a;font-size:24px;font-weight:bold"> Game of Bones</div>
-              <div style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:4px">Real Food. Real Dogs. Real Results.</div>
-              <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:2px">gameofbones.in | +91 90825 03295</div>
-            </div>
-            <div style="text-align:right">
-              <div style="color:#c8973a;font-size:20px;font-weight:bold">INVOICE</div>
-              <div style="color:white;font-size:14px;margin-top:4px">${order.ref}</div>
-              <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:2px">${new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            </div>
-          </div>
-
-          <!-- Bill to / Payment -->
-          <div style="background:#f9f6f2;padding:24px 32px;display:flex;justify-content:space-between">
-            <div>
-              <div style="font-size:11px;font-weight:bold;letter-spacing:.1em;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Bill To</div>
-              <div style="font-size:16px;font-weight:bold;color:#111827">${order.customer_name}</div>
-              <div style="font-size:13px;color:#6b7280;margin-top:3px">${order.customer_phone}</div>
-              ${order.customer_email ? `<div style="font-size:13px;color:#6b7280">${order.customer_email}</div>` : ''}
-              <div style="font-size:13px;color:#6b7280;margin-top:6px;line-height:1.6">
-                ${order.shipping_address?.line1 || ''}<br>
-                ${order.shipping_address?.line2 ? order.shipping_address.line2 + '<br>' : ''}
-                ${order.shipping_address?.city || ''}, ${order.shipping_address?.state || ''} - ${order.shipping_address?.pincode || ''}
-              </div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:11px;font-weight:bold;letter-spacing:.1em;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Payment</div>
-              <div style="font-size:14px;color:#111827">${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Prepaid'}</div>
-              <div style="font-size:13px;margin-top:3px;font-weight:bold;color:${order.payment_status === 'paid' ? '#10b981' : '#f59e0b'}">${(order.payment_status || 'pending').toUpperCase()}</div>
-              ${order.delhivery_awb ? `<div style="font-size:12px;color:#6b7280;margin-top:4px">AWB: ${order.delhivery_awb}</div>` : ''}
-            </div>
-          </div>
-
-          <!-- Items table -->
-          <table style="width:100%;border-collapse:collapse;font-size:14px">
-            <thead>
-              <tr style="background:#1a1008">
-                <th style="padding:12px 16px;text-align:left;color:white;font-size:12px;letter-spacing:.05em">ITEM</th>
-                <th style="padding:12px 16px;text-align:center;color:white;font-size:12px;letter-spacing:.05em">QTY</th>
-                <th style="padding:12px 16px;text-align:right;color:white;font-size:12px;letter-spacing:.05em">PRICE</th>
-                <th style="padding:12px 16px;text-align:right;color:white;font-size:12px;letter-spacing:.05em">TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>${items}</tbody>
-          </table>
-
-          <!-- Totals -->
-          <div style="display:flex;justify-content:flex-end;padding:16px 32px;background:#f9f6f2">
-            <div style="min-width:260px">
-              <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px">
-                <span style="color:#6b7280">Subtotal</span>
-                <span>Rs ${order.subtotal}</span>
-              </div>
-              ${order.discount > 0 ? `
-              <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px">
-                <span style="color:#6b7280">Discount ${order.coupon_code ? '(' + order.coupon_code + ')' : ''}</span>
-                <span style="color:#10b981">-Rs ${order.discount}</span>
-              </div>` : ''}
-              <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px">
-                <span style="color:#6b7280">Shipping</span>
-                <span>${order.shipping === 0 ? 'FREE' : 'Rs ' + order.shipping}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#1a1008;margin-top:8px;border-radius:6px">
-                <span style="color:white;font-weight:bold;font-size:16px">TOTAL</span>
-                <span style="color:#c8973a;font-weight:bold;font-size:18px">Rs ${order.grand_total}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div style="background:#1a1008;padding:20px 32px;text-align:center;margin-top:8px">
-            <div style="color:#c8973a;font-weight:bold;margin-bottom:6px">Thank you for choosing Game of Bones! </div>
-            <div style="color:rgba(255,255,255,0.5);font-size:12px">helpgameofbones@gmail.com | +91 90825 03295 | gameofbones.in</div>
-          </div>
-
-        </div>
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `
-
-    const win = window.open('', '_blank')
-    if (win) {
-      win.document.write(html)
-      win.document.close()
-    }
+  function printInvoice() {
+    window.print();
   }
 
-  const filtered = orders.filter(o =>
-    o.ref?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customer_name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const items = order ? parseItems(order.items) : [];
+  const addrLines = order ? formatAddress(order.shipping_address) : null;
+  const subtotal = order ? (parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + i.price * i.qty, 0)) : 0;
+  const mrpTotal = items.reduce((s: number, i: any) => s + (i.mrp || i.price) * i.qty, 0);
+  const discount = order ? (parseFloat(order.discount) || Math.max(mrpTotal - subtotal, 0)) : 0;
+  const shipping = order ? (parseFloat(order.shipping) || 0) : 0;
+  const grandTotal = order ? (parseFloat(order.grand_total) || parseFloat(order.total_amount) || 0) : 0;
+  const orderDate = order ? new Date(order.created_at).toLocaleString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(',', '') : '';
 
-  const navLinks = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Orders',    href: '/orders' },
-    { label: 'Invoices',  href: '/invoices' },
-    { label: 'Customers', href: '/customers' },
-    { label: 'Analytics', href: '/analytics' },
-  ]
+  const customerBlock = order ? (
+    <>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{order.customer_name || '—'}</div>
+      {order.customer_email && !order.customer_email.includes('@icici') && <div>{order.customer_email}</div>}
+      {addrLines ? addrLines.map((l: string, i: number) => <div key={i}>{l}</div>) : null}
+      {order.customer_phone && /^\d{10,13}$/.test(order.customer_phone) && <div>+91 {order.customer_phone.slice(-10)}</div>}
+    </>
+  ) : null;
 
   return (
-    <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
-      <div className="text-white px-6 py-4 flex items-center justify-between"
-        style={{ background: '#1a1008' }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl"></span>
-          <div>
-            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
-          </div>
+    <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #invoice-print, #invoice-print * { visibility: visible; }
+          #invoice-print { position: absolute; top: 0; left: 0; width: 100%; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      <div className="no-print" style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Invoices</h1>
+        <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>Search an order by reference number to generate its invoice</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={searchRef} onChange={e => setSearchRef(e.target.value)} onKeyDown={e => e.key === 'Enter' && findOrder()}
+            placeholder="Enter order ref e.g. GOB1012 or GOB-XYRPFL"
+            style={{ flex: 1, maxWidth: 360, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14 }} />
+          <button onClick={findOrder} disabled={loading}
+            style={{ padding: '10px 24px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>
+            {loading ? 'Searching...' : 'Find Order'}
+          </button>
+          {order && (
+            <button onClick={printInvoice}
+              style={{ padding: '10px 24px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>
+              🖨️ Print / Save as PDF
+            </button>
+          )}
         </div>
-        <nav className="flex gap-1 flex-wrap">
-          {navLinks.map(item => (
-            <a key={item.href} href={item.href}
-              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
-              style={{ color: 'rgba(255,255,255,0.8)' }}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        {notFound && <div style={{ marginTop: 12, color: '#dc2626', fontSize: 13 }}>No order found with that reference.</div>}
       </div>
 
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Invoices</h1>
-            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
-              Generate and print PDF invoices for any order
-            </p>
-          </div>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search order or customer..."
-            className="border border-gray-200 rounded-lg px-4 py-2 text-sm w-64 focus:outline-none bg-white"
-            style={{ color: '#111827' }}
-          />
-        </div>
+      {order && (
+        <div id="invoice-print" style={{ background: '#fff', padding: 48, border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'Arial, sans-serif', color: '#1a1a1a' }}>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                {['Order Ref','Customer','Date','Total','Payment','Action'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
-                    style={{ color: '#1a1008' }}>
-                    {h}
-                  </th>
-                ))}
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+            <img src={LOGO_URL} alt="Game of Bones" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 6 }} />
+            <div style={{ textAlign: 'right', fontSize: 12, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{COMPANY.name}</div>
+              {COMPANY.addressLines.map((l, i) => <div key={i}>{l}</div>)}
+              <div>{COMPANY.phone}</div>
+              <div>{COMPANY.email}</div>
+              <div>{COMPANY.website}</div>
+            </div>
+          </div>
+
+          <h1 style={{ fontSize: 34, fontWeight: 700, marginBottom: 20, letterSpacing: '.02em' }}>INVOICE</h1>
+
+          {/* Order number / date boxes */}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+            <div style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '10px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 2 }}>Order Number</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>#{order.ref}</div>
+            </div>
+            <div style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '10px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 2 }}>Order Date</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{orderDate}</div>
+            </div>
+          </div>
+
+          {/* Shipping / Billing / Customer */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
+            {['Shipping Details', 'Billing Details', 'Customer Details'].map((title, i) => (
+              <div key={i}>
+                <div style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '6px 12px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 10, textAlign: 'center' }}>
+                  {title}
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.7, color: '#374151' }}>{customerBlock}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Items table */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #1a1a1a' }}>
+                <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>Item</th>
+                <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>SKU</th>
+                <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>Qty</th>
+                <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>Tax</th>
+                <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>Unit Price</th>
+                <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#374151' }}>Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No orders found</td></tr>
-              ) : filtered.map(order => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>
-                    {order.ref}
+            <tbody>
+              {items.map((it: any, i: number) => (
+                <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '10px 6px', fontSize: 13, fontWeight: 600 }}>{it.name}</td>
+                  <td style={{ padding: '10px 6px', fontSize: 12, color: '#6b7280' }}>{it.sku !== '—' ? String(it.sku).slice(0, 12) : '—'}</td>
+                  <td style={{ padding: '10px 6px', fontSize: 13, textAlign: 'center' }}>x{it.qty}</td>
+                  <td style={{ padding: '10px 6px', fontSize: 13, textAlign: 'center' }}>0%</td>
+                  <td style={{ padding: '10px 6px', fontSize: 13, textAlign: 'right' }}>
+                    {it.mrp && it.mrp > it.price ? (
+                      <>
+                        <div style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: 11 }}>₹{it.mrp.toFixed(2)}</div>
+                        <div>₹{it.price.toFixed(2)}</div>
+                      </>
+                    ) : <div>₹{it.price.toFixed(2)}</div>}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
-                  </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
-                    {new Date(order.created_at).toLocaleDateString('en-IN')}
-                  </td>
-                  <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
-                    Rs {order.grand_total?.toLocaleString('en-IN')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-1 rounded-full font-medium"
-                      style={{
-                        background: order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7',
-                        color: order.payment_method === 'cod' ? '#92400e' : '#166534'
-                      }}>
-                      {order.payment_method?.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => generateInvoice(order)}
-                      className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
-                      style={{ background: '#c8973a' }}>
-                       Print Invoice
-                    </button>
-                  </td>
+                  <td style={{ padding: '10px 6px', fontSize: 13, textAlign: 'right', fontWeight: 600 }}>₹{(it.price * it.qty).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Totals */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+            <table style={{ width: 280, borderCollapse: 'collapse' }}>
+              <tbody>
+                {discount > 0 && (
+                  <tr><td style={rowLabel}>Discount</td><td style={rowVal}>- ₹{discount.toFixed(2)}</td></tr>
+                )}
+                <tr><td style={rowLabel}>Sub Total</td><td style={rowVal}>₹{subtotal.toFixed(2)}</td></tr>
+                <tr><td style={rowLabel}>Shipping</td><td style={rowVal}>₹{shipping.toFixed(2)}</td></tr>
+                <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Total</td><td style={{ ...rowVal, fontWeight: 700 }}>₹{grandTotal.toFixed(2)}</td></tr>
+                <tr><td style={rowLabel}>Amount Paid</td><td style={rowVal}>₹{(order.payment_status === 'paid' || order.status === 'delivered' ? grandTotal : grandTotal).toFixed(2)}</td></tr>
+                <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Balance Due</td><td style={{ ...rowVal, fontWeight: 700 }}>₹0.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div style={{ textAlign: 'center', marginTop: 48, paddingTop: 24, borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Thank you for your continued partnership.</div>
+            <p style={{ fontSize: 11, color: '#6b7280', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+              We appreciate your business and the trust you've placed in us. We're committed to keeping your experience at the highest level, and we look forward to serving you again in the future.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
-  )
+  );
 }
+
+const rowLabel: React.CSSProperties = { padding: '6px 8px', fontSize: 13, color: '#374151' };
+const rowVal: React.CSSProperties = { padding: '6px 8px', fontSize: 13, textAlign: 'right', color: '#1a1a1a' };
