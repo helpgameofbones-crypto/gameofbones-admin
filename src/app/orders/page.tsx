@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -13,6 +13,8 @@ interface Order {
   payment_method: string; shipping_address: any; delhivery_awb: string;
   coupon_code: string; created_at: string; estimated_delivery: string;
 }
+
+const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 
 const STATUS_COLORS: Record<string, string> = {
   placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
@@ -36,6 +38,41 @@ function parseItems(items: any): string[] {
   return [String(items)];
 }
 
+// Simple custom dropdown — avoids any native <select> rendering quirks
+function StatusDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ padding: '6px 10px', borderRadius: 4, border: 'none', fontSize: 12, fontWeight: 600, background: '#fff', color: '#1a1008', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, minWidth: 130, justifyContent: 'space-between' }}>
+        {value.toUpperCase()} <span style={{ fontSize: 9 }}>▼</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '110%', left: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,.15)', zIndex: 50, minWidth: 150, overflow: 'hidden' }}>
+          {ALL_STATUSES.map(s => (
+            <div key={s} onClick={() => { onChange(s); setOpen(false); }}
+              style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#1a1008', background: s === value ? '#f3f4f6' : '#fff' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
+              onMouseLeave={e => (e.currentTarget.style.background = s === value ? '#f3f4f6' : '#fff')}>
+              {s.toUpperCase()}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +87,8 @@ export default function OrdersPage() {
 
   async function fetchOrders() {
     setLoading(true);
-    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) { console.error(error); setLoading(false); return; }
     if (data) setOrders(data);
     setLoading(false);
   }
@@ -78,7 +116,6 @@ export default function OrdersPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // ── Bulk selection helpers ──────────────────────
   function toggleOne(id: string) {
     setCheckedIds(prev => {
       const next = new Set(prev);
@@ -92,18 +129,13 @@ export default function OrdersPage() {
     const allChecked = visibleIds.every(id => checkedIds.has(id));
     setCheckedIds(prev => {
       const next = new Set(prev);
-      if (allChecked) {
-        visibleIds.forEach(id => next.delete(id));
-      } else {
-        visibleIds.forEach(id => next.add(id));
-      }
+      if (allChecked) visibleIds.forEach(id => next.delete(id));
+      else visibleIds.forEach(id => next.add(id));
       return next;
     });
   }
 
-  function clearSelection() {
-    setCheckedIds(new Set());
-  }
+  function clearSelection() { setCheckedIds(new Set()); }
 
   async function applyBulkStatus() {
     if (checkedIds.size === 0) return;
@@ -116,7 +148,7 @@ export default function OrdersPage() {
     clearSelection();
   }
 
-  async function bulkExportCsv() {
+  function bulkExportCsv() {
     const ids = Array.from(checkedIds);
     const rows = orders.filter(o => ids.includes(o.id));
     if (rows.length === 0) return;
@@ -150,7 +182,6 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      {/* Status filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {['all', 'placed', 'confirmed', 'dispatched', 'shipped', 'delivered', 'cancelled'].map(s => (
           <button key={s} onClick={() => setFilter(s)}
@@ -162,22 +193,15 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* Search */}
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone, AWB..."
         style={{ width: '100%', maxWidth: 400, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14, marginBottom: 16 }} />
 
-      {/* Bulk action bar - only shows when items are selected */}
       {checkedIds.size > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#1a1008', color: '#fff', padding: '12px 16px', borderRadius: 6, marginBottom: 16, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, fontSize: 13 }}>{checkedIds.size} selected</span>
           <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,.2)' }} />
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>Set status to:</span>
-          <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 4, border: 'none', fontSize: 12, fontWeight: 600 }}>
-            {['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'].map(s => (
-              <option key={s} value={s}>{s.toUpperCase()}</option>
-            ))}
-          </select>
+          <StatusDropdown value={bulkStatus} onChange={setBulkStatus} />
           <button onClick={applyBulkStatus} disabled={bulkBusy}
             style={{ padding: '6px 16px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: bulkBusy ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700 }}>
             {bulkBusy ? 'Applying...' : 'Apply'}
@@ -195,7 +219,6 @@ export default function OrdersPage() {
 
       {loading ? <p>Loading orders...</p> : (
         <div style={{ display: 'flex', gap: 24 }}>
-          {/* Orders list */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -216,8 +239,7 @@ export default function OrdersPage() {
                   const items = parseItems(o.items);
                   const isChecked = checkedIds.has(o.id);
                   return (
-                    <tr key={o.id}
-                      style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: isChecked ? '#fff9f0' : selected?.id === o.id ? '#fffbeb' : '' }}>
+                    <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: isChecked ? '#fff9f0' : selected?.id === o.id ? '#fffbeb' : '' }}>
                       <td style={{ padding: '12px 8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={isChecked} onChange={() => toggleOne(o.id)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
                       </td>
@@ -260,7 +282,6 @@ export default function OrdersPage() {
             </table>
           </div>
 
-          {/* Order detail panel */}
           {selected && (
             <div style={{ width: 380, flexShrink: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -272,7 +293,7 @@ export default function OrdersPage() {
                 <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', letterSpacing: '.08em' }}>Status</label>
                 <select value={selected.status} onChange={e => updateStatus(selected.id, e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13, marginTop: 4, cursor: 'pointer' }}>
-                  {['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'].map(s => (
+                  {ALL_STATUSES.map(s => (
                     <option key={s} value={s}>{s.toUpperCase()}</option>
                   ))}
                 </select>
