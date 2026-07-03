@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -7,11 +7,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
+// Only include sections that actually have a real spot on the storefront.
+// "Bestseller Section Image" was removed — the homepage never had a dedicated
+// image slot for it, so uploads there were invisible on the live site.
 const SECTIONS = [
-  { key: 'hero_image', label: 'Homepage Hero Image', desc: 'The main hero image next to "Real Food. Real Dogs."' },
-  { key: 'bestseller_image', label: 'Bestseller Section Image', desc: 'Image shown in the bestseller/featured section' },
-  { key: 'foods_to_avoid_infographic', label: 'Foods to Never Give Infographic', desc: 'Visual guide of toxic foods for the Feeders page' },
-  { key: 'feeding_guide_image', label: 'Feeding Guide Image', desc: 'Image for the feeding guide section' },
+  { key: 'hero_image', label: 'Homepage Hero Image', desc: 'The main hero image next to "Real Food. Real Dogs."', aspect: '380/440' },
+  { key: 'foods_to_avoid_infographic', label: 'Foods to Never Give Infographic', desc: 'Visual guide of toxic foods, shown on the Feeders page', aspect: '1/1' },
 ];
 
 export default function SiteContentPage() {
@@ -31,9 +32,15 @@ export default function SiteContentPage() {
     if (error) { alert('Upload failed: ' + error.message); setUploading(null); return; }
     const url = `https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/${name}`;
     const existing = getContent(section);
-    if (existing) { await supabase.from('site_content').update({ image_url: url }).eq('id', existing.id); }
-    else { await supabase.from('site_content').insert({ section, image_url: url, title: section, is_active: true }); }
-    setUploading(null); fetchContent();
+    if (existing) {
+      const { error: updateErr } = await supabase.from('site_content').update({ image_url: url, is_active: true }).eq('id', existing.id);
+      if (updateErr) { alert('Save failed: ' + updateErr.message); setUploading(null); return; }
+    } else {
+      const { error: insertErr } = await supabase.from('site_content').insert({ section, image_url: url, title: section, is_active: true });
+      if (insertErr) { alert('Save failed: ' + insertErr.message); setUploading(null); return; }
+    }
+    setUploading(null);
+    fetchContent();
   }
 
   async function removeImage(section: string) {
@@ -44,7 +51,7 @@ export default function SiteContentPage() {
   return (
     <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Site Content</h1>
-      <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>Manage images and content shown on the website</p>
+      <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>Manage images shown on the website</p>
 
       {loading ? <p>Loading...</p> : SECTIONS.map(sec => {
         const item = getContent(sec.key);
@@ -61,10 +68,12 @@ export default function SiteContentPage() {
             </div>
             {item?.image_url ? (
               <div style={{ position: 'relative' }}>
-                <img src={item.image_url} style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 6, border: '1px solid #e5e7eb', background: '#f9fafb' }} />
+                {/* object-fit: cover + explicit height so the preview always visibly fills its box,
+                    matching exactly how the image will appear live on the website. */}
+                <img src={item.image_url} style={{ width: '100%', height: 280, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb', display: 'block' }} />
                 <label style={{ position: 'absolute', bottom: 8, right: 8, background: '#1a1008', color: '#fff', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                  Replace
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadImage(sec.key, e.target.files[0]); }} />
+                  {uploading === sec.key ? 'Uploading...' : 'Replace'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading === sec.key} onChange={e => { if (e.target.files?.[0]) uploadImage(sec.key, e.target.files[0]); }} />
                 </label>
               </div>
             ) : (
@@ -72,7 +81,7 @@ export default function SiteContentPage() {
                 <div style={{ fontSize: 32 }}>📷</div>
                 <div style={{ fontWeight: 600, marginTop: 8, color: '#374151' }}>{uploading === sec.key ? 'Uploading...' : 'Click to upload image'}</div>
                 <div style={{ fontSize: 12, color: '#9ca3af' }}>PNG, JPG, WebP</div>
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadImage(sec.key, e.target.files[0]); }} />
+                <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading === sec.key} onChange={e => { if (e.target.files?.[0]) uploadImage(sec.key, e.target.files[0]); }} />
               </label>
             )}
           </div>
