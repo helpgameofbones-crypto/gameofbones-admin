@@ -7,6 +7,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
+// The table stores a single DATE column called "birthday" (e.g. 2000-06-15 if
+// the owner didn't give a real year). We only ever care about day+month for
+// reminders, so we extract those from the date string ourselves.
+function getDayMonth(birthday: string | null) {
+  if (!birthday) return { day: null, month: null, year: null };
+  const parts = birthday.split('-'); // YYYY-MM-DD
+  if (parts.length !== 3) return { day: null, month: null, year: null };
+  const year = parseInt(parts[0]);
+  return { day: parseInt(parts[2]), month: parseInt(parts[1]), year: year === 2000 ? null : year };
+}
+
 export default function DogBirthdayClubPage() {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +25,8 @@ export default function DogBirthdayClubPage() {
   useEffect(() => { fetchData(); }, []);
   async function fetchData() {
     setLoading(true);
-    const { data } = await supabase.from('dog_birthdays').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('dog_birthdays').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); setLoading(false); return; }
     setEntries(data || []);
     setLoading(false);
   }
@@ -22,15 +34,16 @@ export default function DogBirthdayClubPage() {
   const now = new Date();
   const thisMonth = now.getMonth() + 1;
   const nextMonth = (thisMonth % 12) + 1;
-  const upcoming = entries.filter(b => b.birthday_month === thisMonth || b.birthday_month === nextMonth);
-  const today = entries.filter(b => b.birthday_day === now.getDate() && b.birthday_month === thisMonth);
+
+  const enriched = entries.map(b => ({ ...b, ...getDayMonth(b.birthday) }));
+  const upcoming = enriched.filter(b => b.month === thisMonth || b.month === nextMonth);
+  const today = enriched.filter(b => b.day === now.getDate() && b.month === thisMonth);
 
   return (
     <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>🎂 Dog Birthday Club</h1>
       <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>{entries.length} pets registered · Data from website birthday popup</p>
 
-      {/* Today's birthdays */}
       {today.length > 0 && (
         <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: 20, marginBottom: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#92400e', marginBottom: 12 }}>🎉 Today's Birthdays!</div>
@@ -49,21 +62,19 @@ export default function DogBirthdayClubPage() {
         </div>
       )}
 
-      {/* Upcoming */}
       {upcoming.length > 0 && (
         <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: 16, marginBottom: 20 }}>
           <div style={{ fontWeight: 700, color: '#0284c7', marginBottom: 8 }}>📅 Upcoming ({upcoming.length} this month & next)</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {upcoming.map((b, i) => (
               <span key={i} style={{ background: '#fff', border: '1px solid #bae6fd', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>
-                {b.dog_name} — {b.birthday_day}/{b.birthday_month}
+                {b.dog_name} — {b.day}/{b.month}
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{entries.length}</div>
@@ -99,20 +110,20 @@ export default function DogBirthdayClubPage() {
             </tr>
           </thead>
           <tbody>
-            {entries.map((b, i) => (
+            {enriched.map((b, i) => (
               <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: 12, fontWeight: 700 }}>🐾 {b.dog_name || '—'}</td>
                 <td style={{ padding: 12 }}>{b.customer_name || '—'}</td>
                 <td style={{ padding: 12 }}>{b.customer_phone || '—'}</td>
                 <td style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>{b.customer_email || '—'}</td>
                 <td style={{ padding: 12, textAlign: 'center', fontWeight: 700, color: '#c8973a' }}>
-                  {b.birthday_day && b.birthday_month ? `${b.birthday_day}/${b.birthday_month}${b.birthday_year ? '/' + b.birthday_year : ''}` : '—'}
+                  {b.day && b.month ? `${b.day}/${b.month}${b.year ? '/' + b.year : ''}` : '—'}
                 </td>
                 <td style={{ padding: 12, fontSize: 12, color: '#9ca3af' }}>
                   {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </td>
                 <td style={{ padding: 12, textAlign: 'center' }}>
-                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Hi ${b.customer_name || ''}! 🐾 Just a reminder that ${b.dog_name}'s birthday is coming up on ${b.birthday_day}/${b.birthday_month}. We have a special birthday surprise at gameofbones.in!`)}`}
+                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Hi ${b.customer_name || ''}! 🐾 Just a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}. We have a special birthday surprise at gameofbones.in!`)}`}
                     target="_blank" rel="noopener" style={{ fontSize: 11, color: '#25d366', fontWeight: 700, textDecoration: 'none' }}>
                     💬 WhatsApp
                   </a>
