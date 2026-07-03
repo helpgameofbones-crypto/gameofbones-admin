@@ -38,7 +38,7 @@ export default function ProductsPage() {
       cogs: s.cogs || 0,
       stock: s.stock || 0,
     }));
-    setEditing({ ...p, images: [...images], videos: [...videos], sizes, compare_price: p.compare_price || (sizes[0]?.compare_price) || 0 });
+    setEditing({ ...p, images: [...images], videos: [...videos], sizes });
   }
 
   function updateSize(idx: number, field: string, value: string) {
@@ -73,20 +73,21 @@ export default function ProductsPage() {
     if (!editing) return;
     setSaving(true);
 
-    // sizes JSONB keeps "cogs" as the per-size key (that's fine, it's inside a JSON blob, not a real column)
     const sizes = (editing.sizes || []).map((s: any) => ({
       label: s.label, price: s.price || 0, compare_price: s.compare_price || 0,
       cogs: s.cogs || 0, stock: s.stock || 0
     }));
 
-    // IMPORTANT: top-level table columns must match the real schema.
-    // The products table column for cost is "cost_price", NOT "cogs".
+    // Top-level price/compare_price/cost_price now derive automatically from
+    // the first size row, since the standalone fields were removed from the UI.
+    const firstSize = sizes[0] || { price: 0, compare_price: 0, cogs: 0 };
+
     const payload: any = {
       name: editing.name,
-      price: editing.price || sizes[0]?.price || 0,
-      compare_price: editing.compare_price || sizes[0]?.compare_price || 0,
-      mrp: editing.compare_price || sizes[0]?.compare_price || 0, // keep mrp column in sync too
-      cost_price: editing.cogs || sizes[0]?.cogs || 0,
+      price: firstSize.price,
+      compare_price: firstSize.compare_price,
+      mrp: firstSize.compare_price,
+      cost_price: firstSize.cogs,
       stock: editing.stock || 0,
       reorder_level: editing.reorder_level || 10,
       best_before_days: editing.best_before_days || 365,
@@ -102,7 +103,6 @@ export default function ProductsPage() {
     setSaving(false);
 
     if (error) {
-      // Surface the real Postgres error instead of failing silently
       alert('❌ Save failed: ' + error.message + '\n\nNothing was changed. Please screenshot this and share it.');
       return;
     }
@@ -187,23 +187,17 @@ export default function ProductsPage() {
 
             <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>PRODUCT DETAILS</div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div><div style={label}>Product Name</div><input value={editing.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} style={input} /></div>
-              <div><div style={label}>Selling Price (₹)</div><input type="number" value={editing.price || ''} onChange={e => setEditing({ ...editing, price: parseFloat(e.target.value) || 0 })} style={input} /></div>
-              <div><div style={{ ...label, color: '#ef4444' }}>MRP (₹) <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 400 }}>— shows as strikethrough</span></div><input type="number" value={editing.compare_price || ''} onChange={e => setEditing({ ...editing, compare_price: parseFloat(e.target.value) || 0 })} style={{ ...input, background: '#fff0f0', borderColor: '#fecaca' }} placeholder="Higher than sell price" /></div>
+            {/* Selling Price and MRP fields removed here per request — set per-size below only */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={label}>Product Name</div>
+              <input value={editing.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} style={input} />
             </div>
 
-            {editing.compare_price > editing.price && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                ✅ Website will show: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{editing.compare_price}</span> <strong>₹{editing.price}</strong> — {Math.round((1 - editing.price / editing.compare_price) * 100)}% OFF
-              </div>
-            )}
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div><div style={label}>Base COGS (₹)</div><input type="number" value={editing.cogs || ''} onChange={e => setEditing({ ...editing, cogs: parseFloat(e.target.value) || 0 })} style={input} /></div>
               <div><div style={label}>Stock</div><input type="number" value={editing.stock || ''} onChange={e => setEditing({ ...editing, stock: parseInt(e.target.value) || 0 })} style={input} /></div>
               <div><div style={label}>Reorder Level</div><input type="number" value={editing.reorder_level || ''} onChange={e => setEditing({ ...editing, reorder_level: parseInt(e.target.value) || 0 })} style={input} /></div>
               <div><div style={label}>Best Before (days)</div><input type="number" value={editing.best_before_days || ''} onChange={e => setEditing({ ...editing, best_before_days: parseInt(e.target.value) || 0 })} style={input} /></div>
+              <div></div>
             </div>
 
             <div style={{ display: 'flex', gap: 24, marginBottom: 20 }}>
@@ -221,7 +215,8 @@ export default function ProductsPage() {
               </label>
             </div>
 
-            <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>SIZE PRICING, MRP & STOCK</div>
+            <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 4, letterSpacing: '.1em' }}>SIZE PRICING, MRP & STOCK</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Pack of 1's MRP and Sell Price are what the product's base price/MRP will be everywhere else in the system.</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20, background: '#faf8f5', borderRadius: 4 }}>
               <thead>
                 <tr><th style={{ ...th, textAlign: 'left' }}>Size</th><th style={th}>MRP (₹)</th><th style={th}>Sell Price</th><th style={th}>COGS</th><th style={{ ...th, textAlign: 'center' }}>Margin</th><th style={th}>Stock</th></tr>
@@ -242,6 +237,12 @@ export default function ProductsPage() {
                 })}
               </tbody>
             </table>
+
+            {editing.sizes?.[0]?.compare_price > editing.sizes?.[0]?.price && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, padding: '8px 12px', marginBottom: 20, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                ✅ Website will show: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{editing.sizes[0].compare_price}</span> <strong>₹{editing.sizes[0].price}</strong> — {Math.round((1 - editing.sizes[0].price / editing.sizes[0].compare_price) * 100)}% OFF
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={() => setEditing(null)} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
