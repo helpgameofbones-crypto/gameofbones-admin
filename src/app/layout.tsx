@@ -10,11 +10,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0 }}>
-        {/* Sidebar now wraps the page content directly — this is what fixes the
-            overlap/reflow bugs, since margin-left on <main> is calculated
-            inside the same component that controls collapsed/expanded width. */}
-        <Sidebar>{children}</Sidebar>
+      <body>
+        {/* Sidebar is self-contained — it renders itself AND injects the CSS
+            that pushes this page content over by the correct amount. It does
+            NOT take children as a prop. Just render it as a sibling like this. */}
+        <Sidebar />
+        <main>{children}</main>
       </body>
     </html>
   );
