@@ -138,9 +138,9 @@ export default function InvoicesPage() {
             </div>
           </div>
 
-          {/* Shipping / Billing / Customer */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
-            {['Shipping Details', 'Billing Details', 'Customer Details'].map((title, i) => (
+          {/* Shipping / Billing only (Customer Details removed) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+            {['Shipping Details', 'Billing Details'].map((title, i) => (
               <div key={i}>
                 <div style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '6px 12px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 10, textAlign: 'center' }}>
                   {title}
@@ -193,7 +193,7 @@ export default function InvoicesPage() {
                 <tr><td style={rowLabel}>Sub Total</td><td style={rowVal}>₹{subtotal.toFixed(2)}</td></tr>
                 <tr><td style={rowLabel}>Shipping</td><td style={rowVal}>₹{shipping.toFixed(2)}</td></tr>
                 <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Total</td><td style={{ ...rowVal, fontWeight: 700 }}>₹{grandTotal.toFixed(2)}</td></tr>
-                <tr><td style={rowLabel}>Amount Paid</td><td style={rowVal}>₹{(order.payment_status === 'paid' || order.status === 'delivered' ? grandTotal : grandTotal).toFixed(2)}</td></tr>
+                <tr><td style={rowLabel}>Amount Paid</td><td style={rowVal}>₹{grandTotal.toFixed(2)}</td></tr>
                 <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Balance Due</td><td style={{ ...rowVal, fontWeight: 700 }}>₹0.00</td></tr>
               </tbody>
             </table>
