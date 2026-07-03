@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -34,8 +34,7 @@ const SECTIONS = [
     title: 'PRODUCTS',
     color: '#16a34a',
     items: [
-      { name: 'Product Catalog', href: '/products', icon: '🦴', desc: 'All products with prices, stock, and images' },
-      { name: 'Product Manager', href: '/product-manager', icon: '✏️', desc: 'Edit prices, MRP, sizes, and stock' },
+      { name: 'Product Catalog', href: '/products', icon: '🦴', desc: 'All products with prices, MRP, stock, and images' },
       { name: 'Performance', href: '/product-performance', icon: '📈', desc: 'Sales, revenue, and ratings per product' },
       { name: 'Inventory', href: '/inventory', icon: '📋', desc: 'Current stock levels and reorder alerts' },
     ]
@@ -47,7 +46,7 @@ const SECTIONS = [
       { name: 'All Customers', href: '/customers', icon: '👥', desc: 'Name, orders, lifetime value, contact info' },
       { name: 'Dog Birthday Club', href: '/dog-birthday-club', icon: '🎂', desc: 'Pet birthdays captured from website popup' },
       { name: 'Reorder Alerts', href: '/reorder-alerts', icon: '🔔', desc: 'Customers likely running low on treats' },
-      { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: 'Recover carts that didn\'t convert' },
+      { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: "Recover carts that didn't convert" },
     ]
   },
   {
@@ -99,131 +98,166 @@ const SECTIONS = [
   },
 ];
 
-export default function Sidebar() {
+const EXPANDED_WIDTH = 240;
+const COLLAPSED_WIDTH = 60;
+
+export default function Sidebar({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     Object.fromEntries(SECTIONS.map(s => [s.title, true]))
   );
+  const asideRef = useRef<HTMLElement>(null);
+
+  // Auto-collapse the sidebar when clicking anywhere outside it (only while expanded)
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (collapsed) return; // already collapsed, nothing to do
+      if (asideRef.current && !asideRef.current.contains(e.target as Node)) {
+        setCollapsed(true);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [collapsed]);
+
+  // Auto-collapse on route change (navigating to a page should tidy up the sidebar on smaller screens)
+  useEffect(() => {
+    // Intentionally left as manual-only collapse; uncomment to auto-collapse on navigation:
+    // setCollapsed(true);
+  }, [pathname]);
 
   function toggleSection(title: string) {
     setOpenSections(prev => ({ ...prev, [title]: !prev[title] }));
   }
 
+  const sidebarWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+
   return (
-    <aside style={{
-      width: collapsed ? 60 : 240,
-      minHeight: '100vh',
-      background: '#1a1008',
-      color: '#fff',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'width .2s',
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      zIndex: 100,
-    }}>
-      {/* Header */}
-      <div style={{ padding: '16px 14px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <img src="https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg" 
-          style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} alt="Logo" />
-        {!collapsed && (
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Admin Panel</div>
-          </div>
-        )}
-        <button onClick={() => setCollapsed(!collapsed)} 
-          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', cursor: 'pointer', fontSize: 16, padding: 4 }}>
-          {collapsed ? '→' : '←'}
-        </button>
-      </div>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f9f6f2' }}>
+      <aside
+        ref={asideRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: sidebarWidth,
+          minHeight: '100vh',
+          background: '#1a1008',
+          color: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'width .2s ease',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 100,
+          flexShrink: 0,
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: '16px 14px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg"
+            style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} alt="Logo" />
+          {!collapsed && (
+            <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#c8973a' }}>Game of Bones</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Admin Panel</div>
+            </div>
+          )}
+          <button onClick={() => setCollapsed(!collapsed)}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', cursor: 'pointer', fontSize: 16, padding: 4, flexShrink: 0 }}>
+            {collapsed ? '→' : '←'}
+          </button>
+        </div>
 
-      {/* Sections */}
-      <nav style={{ flex: 1, padding: '8px 0' }}>
-        {SECTIONS.map(section => (
-          <div key={section.title} style={{ marginBottom: 4 }}>
-            {/* Section header */}
-            <button onClick={() => toggleSection(section.title)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                padding: collapsed ? '8px 20px' : '8px 14px',
-                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-              }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: section.color, flexShrink: 0 }} />
-              {!collapsed && (
-                <>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', flex: 1 }}>
-                    {section.title}
-                  </span>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,.2)', transition: 'transform .2s', transform: openSections[section.title] ? 'rotate(0)' : 'rotate(-90deg)' }}>▼</span>
-                </>
-              )}
-            </button>
+        {/* Sections */}
+        <nav style={{ flex: 1, padding: '8px 0' }}>
+          {SECTIONS.map(section => (
+            <div key={section.title} style={{ marginBottom: 4 }}>
+              <button onClick={() => toggleSection(section.title)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                  padding: collapsed ? '8px 20px' : '8px 14px',
+                  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: section.color, flexShrink: 0 }} />
+                {!collapsed && (
+                  <>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', flex: 1, whiteSpace: 'nowrap' }}>
+                      {section.title}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,.2)', transition: 'transform .2s', transform: openSections[section.title] ? 'rotate(0)' : 'rotate(-90deg)' }}>▼</span>
+                  </>
+                )}
+              </button>
 
-            {/* Section items */}
-            {openSections[section.title] && !collapsed && (
-              <div style={{ marginBottom: 8 }}>
-                {section.items.map(item => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 14px 8px 28px',
-                        background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
-                        borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
-                        cursor: 'pointer',
-                        transition: 'background .15s',
-                      }}
-                      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.04)'; }}
-                      onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                        <span style={{ fontSize: 14, flexShrink: 0, width: 20, textAlign: 'center' }}>{item.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#c8973a' : 'rgba(255,255,255,.8)', lineHeight: 1.3 }}>
-                            {item.name}
-                          </div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {item.desc}
-                          </div>
+              {openSections[section.title] && !collapsed && section.items.map(item => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 14px 8px 28px',
+                      background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
+                      borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'background .15s',
+                    }}
+                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.04)'; }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                      <span style={{ fontSize: 14, flexShrink: 0, width: 20, textAlign: 'center' }}>{item.icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#c8973a' : 'rgba(255,255,255,.8)', lineHeight: 1.3 }}>
+                          {item.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.desc}
                         </div>
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+                    </div>
+                  </Link>
+                );
+              })}
 
-            {/* Collapsed mode: show icons only */}
-            {collapsed && openSections[section.title] && section.items.map(item => {
-              const isActive = pathname === item.href;
-              return (
-                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={item.name}>
-                  <div style={{
-                    padding: '6px 0', textAlign: 'center', fontSize: 16,
-                    background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
-                    borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
-                  }}>
-                    {item.icon}
-                  </div>
-                </Link>
-              );
-            })}
+              {collapsed && openSections[section.title] && section.items.map(item => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={item.name}>
+                    <div style={{
+                      padding: '6px 0', textAlign: 'center', fontSize: 16,
+                      background: isActive ? 'rgba(200,151,58,.15)' : 'transparent',
+                      borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent',
+                    }}>
+                      {item.icon}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {!collapsed && (
+          <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 10, color: 'rgba(255,255,255,.2)' }}>
+            Game of Bones Admin
+            <br />gameofbones@gmail.com
           </div>
-        ))}
-      </nav>
+        )}
+      </aside>
 
-      {/* Footer */}
-      {!collapsed && (
-        <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 10, color: 'rgba(255,255,255,.2)' }}>
-          Game of Bones Admin
-          <br />gameofbones@gmail.com
-        </div>
-      )}
-    </aside>
+      {/* Main content area — margin-left now correctly tracks sidebar width so nothing overlaps */}
+      <main style={{
+        flex: 1,
+        minHeight: '100vh',
+        marginLeft: sidebarWidth,
+        transition: 'margin-left .2s ease',
+        overflowX: 'hidden',
+        minWidth: 0,
+      }}>
+        {children}
+      </main>
+    </div>
   );
 }
