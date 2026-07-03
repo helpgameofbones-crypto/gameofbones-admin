@@ -1,168 +1,140 @@
-﻿'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+'use client';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
+);
 
-export default function ActivityPage() {
-  const [logs, setLogs]       = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter]   = useState('all')
+interface ActivityItem {
+  id: string;
+  source: string;
+  action: string;
+  detail: string;
+  timestamp: string;
+}
 
-  useEffect(() => { fetchLogs() }, [filter])
+export default function ActivityLogPage() {
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
-  async function fetchLogs() {
-    setLoading(true)
-    let q = supabase
-      .from('activity_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
+  useEffect(() => { fetchActivity(); }, []);
 
-    if (filter !== 'all') q = q.eq('entity_type', filter)
+  async function fetchActivity() {
+    setLoading(true);
+    const items: ActivityItem[] = [];
 
-    const { data } = await q
-    setLogs(data || [])
-    setLoading(false)
+    // Order status changes (from audit_log)
+    const { data: auditData } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(50);
+    (auditData || []).forEach((a: any) => {
+      items.push({
+        id: 'audit-' + a.id,
+        source: 'Orders',
+        action: `Status changed: ${a.old_data?.status || '?'} → ${a.new_data?.status || '?'}`,
+        detail: `Order #${a.record_id}`,
+        timestamp: a.created_at,
+      });
+    });
+
+    // Recent orders placed
+    const { data: orderData } = await supabase.from('orders').select('ref, customer_name, grand_total, total_amount, created_at').order('created_at', { ascending: false }).limit(30);
+    (orderData || []).forEach((o: any) => {
+      items.push({
+        id: 'order-' + o.ref,
+        source: 'Orders',
+        action: 'New order placed',
+        detail: `#${o.ref} — ${o.customer_name || 'Customer'} — ₹${o.grand_total || o.total_amount || 0}`,
+        timestamp: o.created_at,
+      });
+    });
+
+    // Recent blog changes
+    const { data: blogData } = await supabase.from('blogs').select('title, created_at').order('created_at', { ascending: false }).limit(15);
+    (blogData || []).forEach((b: any) => {
+      items.push({
+        id: 'blog-' + b.title,
+        source: 'Content',
+        action: 'Blog article created/updated',
+        detail: b.title,
+        timestamp: b.created_at,
+      });
+    });
+
+    // Recent reorder alerts generated
+    const { data: alertData } = await supabase.from('reorder_alerts').select('customer_name, alert_type, created_at').order('created_at', { ascending: false }).limit(15);
+    (alertData || []).forEach((a: any, i: number) => {
+      items.push({
+        id: 'alert-' + i + '-' + a.created_at,
+        source: 'Marketing',
+        action: `${a.alert_type === 'winback' ? 'Win-back' : 'Reorder'} alert generated`,
+        detail: a.customer_name || 'Customer',
+        timestamp: a.created_at,
+      });
+    });
+
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setActivities(items.slice(0, 100));
+    setLoading(false);
   }
 
-  function getIcon(entityType: string) {
-    const icons: Record<string, string> = {
-      order:    '',
-      product:  '',
-      customer: '',
-      coupon:   '',
-      banner:   '',
-      system:   '',
-    }
-    return icons[entityType] || ''
-  }
+  const filtered = filter === 'all' ? activities : activities.filter(a => a.source === filter);
+  const sources = ['all', ...Array.from(new Set(activities.map(a => a.source)))];
 
-  function getColor(action: string) {
-    if (action.includes('created') || action.includes('added'))  return { bg: '#dcfce7', color: '#166534' }
-    if (action.includes('updated') || action.includes('changed')) return { bg: '#dbeafe', color: '#1e40af' }
-    if (action.includes('deleted') || action.includes('removed')) return { bg: '#fef2f2', color: '#ef4444' }
-    if (action.includes('dispatched') || action.includes('delivered')) return { bg: '#f0fdf4', color: '#15803d' }
-    return { bg: '#f3f4f6', color: '#1a1008' }
-  }
-
-  function timeAgo(dateStr: string) {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const mins  = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days  = Math.floor(diff / 86400000)
-    if (mins < 1)   return 'Just now'
-    if (mins < 60)  return `${mins}m ago`
-    if (hours < 24) return `${hours}h ago`
-    return `${days}d ago`
-  }
-
-  const navLinks = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Orders',    href: '/orders' },
-    { label: 'Products',  href: '/products' },
-    { label: 'Customers', href: '/customers' },
-    { label: 'Activity',  href: '/activity' },
-    { label: 'Analytics', href: '/analytics' },
-  ]
+  const sourceColors: Record<string, string> = {
+    Orders: '#f59e0b', Content: '#06b6d4', Marketing: '#f97316', Products: '#16a34a',
+  };
 
   return (
-    <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
-      <div className="text-white px-6 py-4 flex items-center justify-between"
-        style={{ background: '#1a1008' }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl"></span>
-          <div>
-            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
-          </div>
+    <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Activity Log</h1>
+          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>Recent activity across orders, content, and marketing</p>
         </div>
-        <nav className="flex gap-1 flex-wrap">
-          {navLinks.map(item => (
-            <a key={item.href} href={item.href}
-              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
-              style={{ color: 'rgba(255,255,255,0.8)' }}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        <button onClick={fetchActivity} style={{ padding: '8px 16px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>↻ Refresh</button>
       </div>
 
-      <div className="p-6 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Activity Log</h1>
-            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
-              Every action taken in your admin panel
-            </p>
-          </div>
-        </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {sources.map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            style={{ padding: '6px 14px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+              background: filter === s ? '#1a1008' : '#f3f4f6', color: filter === s ? '#fff' : '#6b7280',
+              border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            {s}
+          </button>
+        ))}
+      </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {['all','order','product','customer','coupon','banner','system'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors"
-              style={{
-                background: filter === f ? '#1a1008' : 'white',
-                color: filter === f ? 'white' : '#6b7280',
-                border: '1px solid #e5e7eb'
-              }}>
-              {getIcon(f)} {f}
-            </button>
-          ))}
+      {loading ? <p>Loading activity...</p> : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>No activity yet</div>
         </div>
-
-        {loading ? (
-          <div className="bg-white rounded-xl p-8 text-center" style={{ color: '#2a1f1a' }}>
-            Loading...
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 text-center">
-            <div style={{ fontSize: 48, marginBottom: 12 }}></div>
-            <div className="font-medium mb-2" style={{ color: '#1a1008' }}>No activity yet</div>
-            <div className="text-sm" style={{ color: '#2a1f1a' }}>
-              Actions like updating orders, editing products, and creating coupons will appear here
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {logs.map(log => {
-              const style = getColor(log.action)
-              return (
-                <div key={log.id}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-start gap-4">
-                  <div className="text-2xl flex-shrink-0">{getIcon(log.entity_type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: style.bg, color: style.color }}>
-                        {log.action}
-                      </span>
-                      {log.entity_name && (
-                        <span className="font-medium text-sm" style={{ color: '#111827' }}>
-                          {log.entity_name}
-                        </span>
-                      )}
-                    </div>
-                    {log.details && (
-                      <div className="text-xs mt-1" style={{ color: '#1a1008' }}>
-                        {log.details}
-                      </div>
-                    )}
+      ) : (
+        <div style={{ position: 'relative', paddingLeft: 24 }}>
+          <div style={{ position: 'absolute', left: 5, top: 0, bottom: 0, width: 2, background: '#e5e7eb' }} />
+          {filtered.map(a => {
+            const color = sourceColors[a.source] || '#6b7280';
+            return (
+              <div key={a.id} style={{ position: 'relative', marginBottom: 16, paddingLeft: 16 }}>
+                <div style={{ position: 'absolute', left: -24, top: 4, width: 12, height: 12, borderRadius: '50%', background: color, border: '2px solid #fff', boxShadow: '0 0 0 1px ' + color }} />
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                    <span style={{ background: color + '18', color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase' }}>{a.source}</span>
+                    <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                      {new Date(a.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} {new Date(a.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                  <div className="text-xs flex-shrink-0" style={{ color: '#2a1f1a' }}>
-                    {timeAgo(log.created_at)}
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{a.action}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{a.detail}</div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )
+  );
 }
