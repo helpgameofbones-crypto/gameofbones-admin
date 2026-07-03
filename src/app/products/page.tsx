@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const imgRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const vidRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
@@ -22,7 +23,8 @@ export default function ProductsPage() {
 
   async function fetchProducts() {
     setLoading(true);
-    const { data } = await supabase.from('products').select('*').order('name');
+    const { data, error } = await supabase.from('products').select('*').order('name');
+    if (error) { alert('Failed to load products: ' + error.message); setLoading(false); return; }
     setProducts(data || []);
     setLoading(false);
   }
@@ -69,15 +71,22 @@ export default function ProductsPage() {
 
   async function save() {
     if (!editing) return;
+    setSaving(true);
+
+    // sizes JSONB keeps "cogs" as the per-size key (that's fine, it's inside a JSON blob, not a real column)
     const sizes = (editing.sizes || []).map((s: any) => ({
       label: s.label, price: s.price || 0, compare_price: s.compare_price || 0,
       cogs: s.cogs || 0, stock: s.stock || 0
     }));
+
+    // IMPORTANT: top-level table columns must match the real schema.
+    // The products table column for cost is "cost_price", NOT "cogs".
     const payload: any = {
       name: editing.name,
       price: editing.price || sizes[0]?.price || 0,
       compare_price: editing.compare_price || sizes[0]?.compare_price || 0,
-      cogs: editing.cogs || 0,
+      mrp: editing.compare_price || sizes[0]?.compare_price || 0, // keep mrp column in sync too
+      cost_price: editing.cogs || sizes[0]?.cogs || 0,
       stock: editing.stock || 0,
       reorder_level: editing.reorder_level || 10,
       best_before_days: editing.best_before_days || 365,
@@ -88,13 +97,23 @@ export default function ProductsPage() {
       videos: editing.videos || [],
       image_url: editing.image_url || editing.images?.[0] || null,
     };
-    await supabase.from('products').update(payload).eq('id', editing.id);
+
+    const { error } = await supabase.from('products').update(payload).eq('id', editing.id);
+    setSaving(false);
+
+    if (error) {
+      // Surface the real Postgres error instead of failing silently
+      alert('❌ Save failed: ' + error.message + '\n\nNothing was changed. Please screenshot this and share it.');
+      return;
+    }
+
     setEditing(null);
     fetchProducts();
   }
 
-  async function toggleActive(id: number, current: boolean) {
-    await supabase.from('products').update({ is_active: !current }).eq('id', id);
+  async function toggleActive(id: string, current: boolean) {
+    const { error } = await supabase.from('products').update({ is_active: !current }).eq('id', id);
+    if (error) { alert('Failed to update: ' + error.message); return; }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p));
   }
 
@@ -119,7 +138,6 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {['all', 'active', 'hidden'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
@@ -131,12 +149,10 @@ export default function ProductsPage() {
           style={{ marginLeft: 'auto', padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13, width: 220 }} />
       </div>
 
-      {/* EDIT MODAL */}
       {editing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '40px 20px' }}
           onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
           <div style={{ background: '#fff', borderRadius: 8, width: '100%', maxWidth: 750, padding: 28, height: 'fit-content' }}>
-            {/* Image Upload Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
               {[0, 1, 2, 3].map(i => (
                 <div key={i} onClick={() => imgRefs[i]?.current?.click()}
@@ -153,7 +169,6 @@ export default function ProductsPage() {
                 </div>
               ))}
             </div>
-            {/* Video Upload */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
               {[0, 1].map(i => (
                 <div key={i} onClick={() => vidRefs[i]?.current?.click()}
@@ -206,7 +221,6 @@ export default function ProductsPage() {
               </label>
             </div>
 
-            {/* SIZE PRICING WITH MRP */}
             <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>SIZE PRICING, MRP & STOCK</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20, background: '#faf8f5', borderRadius: 4 }}>
               <thead>
@@ -215,7 +229,6 @@ export default function ProductsPage() {
               <tbody>
                 {(editing.sizes || []).map((s: any, i: number) => {
                   const margin = s.price && s.cogs ? Math.round((1 - s.cogs / s.price) * 100) : 0;
-                  const disc = s.compare_price && s.price && s.compare_price > s.price ? Math.round((1 - s.price / s.compare_price) * 100) : 0;
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ ...td, fontWeight: 600 }}>{s.label}</td>
@@ -231,14 +244,15 @@ export default function ProductsPage() {
             </table>
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setEditing(null)} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Cancel</button>
-              <button onClick={save} style={{ padding: '12px 28px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>Save Product</button>
+              <button onClick={() => setEditing(null)} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={save} disabled={saving} style={{ padding: '12px 28px', background: saving ? '#9ca3af' : '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+                {saving ? 'Saving...' : 'Save Product'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Product table */}
       {loading ? <p style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Loading products...</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
