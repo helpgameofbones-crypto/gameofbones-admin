@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -16,6 +16,12 @@ const COMPANY = {
   email: 'helpgameofbones@gmail.com',
   website: 'gameofbones.in',
 };
+
+interface OrderRow {
+  id: string; ref: string; customer_name: string; customer_phone: string; customer_email: string;
+  grand_total: number; total_amount: number; created_at: string; status: string;
+  items: any; shipping_address: any; subtotal: any; discount: any; shipping: any;
+}
 
 function parseItems(items: any) {
   if (!items) return [];
@@ -39,21 +45,34 @@ function formatAddress(addr: any) {
 }
 
 export default function InvoicesPage() {
-  const [searchRef, setSearchRef] = useState('');
-  const [order, setOrder] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [allOrders, setAllOrders] = useState<OrderRow[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [search, setSearch] = useState('');
+  const [order, setOrder] = useState<OrderRow | null>(null);
 
-  async function findOrder() {
-    if (!searchRef.trim()) return;
-    setLoading(true);
-    setNotFound(false);
-    setOrder(null);
-    const { data } = await supabase.from('orders').select('*').eq('ref', searchRef.trim()).maybeSingle();
-    setLoading(false);
-    if (!data) { setNotFound(true); return; }
-    setOrder(data);
+  useEffect(() => { fetchAllOrders(); }, []);
+
+  async function fetchAllOrders() {
+    setLoadingList(true);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, ref, customer_name, customer_phone, customer_email, grand_total, total_amount, created_at, status, items, shipping_address, subtotal, discount, shipping')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    setLoadingList(false);
+    if (error) { console.error(error); return; }
+    setAllOrders(data || []);
+    // Auto-select the most recent order so the page never looks empty
+    if (data && data.length > 0) setOrder(data[0]);
   }
+
+  const filteredOrders = allOrders.filter(o => {
+    if (!search.trim()) return true;
+    const s = search.toLowerCase();
+    return (o.ref || '').toLowerCase().includes(s) ||
+      (o.customer_name || '').toLowerCase().includes(s) ||
+      (o.customer_phone || '').includes(s);
+  });
 
   function printInvoice() {
     window.print();
@@ -61,11 +80,11 @@ export default function InvoicesPage() {
 
   const items = order ? parseItems(order.items) : [];
   const addrLines = order ? formatAddress(order.shipping_address) : null;
-  const subtotal = order ? (parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + i.price * i.qty, 0)) : 0;
+  const subtotal = order ? (parseFloat(order.subtotal as any) || items.reduce((s: number, i: any) => s + i.price * i.qty, 0)) : 0;
   const mrpTotal = items.reduce((s: number, i: any) => s + (i.mrp || i.price) * i.qty, 0);
-  const discount = order ? (parseFloat(order.discount) || Math.max(mrpTotal - subtotal, 0)) : 0;
-  const shipping = order ? (parseFloat(order.shipping) || 0) : 0;
-  const grandTotal = order ? (parseFloat(order.grand_total) || parseFloat(order.total_amount) || 0) : 0;
+  const discount = order ? (parseFloat(order.discount as any) || Math.max(mrpTotal - subtotal, 0)) : 0;
+  const shipping = order ? (parseFloat(order.shipping as any) || 0) : 0;
+  const grandTotal = order ? (parseFloat(order.grand_total as any) || parseFloat(order.total_amount as any) || 0) : 0;
   const orderDate = order ? new Date(order.created_at).toLocaleString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(',', '') : '';
 
   const customerBlock = order ? (
@@ -78,7 +97,7 @@ export default function InvoicesPage() {
   ) : null;
 
   return (
-    <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -88,29 +107,66 @@ export default function InvoicesPage() {
         }
       `}</style>
 
-      <div className="no-print" style={{ marginBottom: 24 }}>
+      <div className="no-print" style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Invoices</h1>
-        <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>Search an order by reference number to generate its invoice</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input value={searchRef} onChange={e => setSearchRef(e.target.value)} onKeyDown={e => e.key === 'Enter' && findOrder()}
-            placeholder="Enter order ref e.g. GOB1012 or GOB-XYRPFL"
-            style={{ flex: 1, maxWidth: 360, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14 }} />
-          <button onClick={findOrder} disabled={loading}
-            style={{ padding: '10px 24px', background: '#1a1008', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>
-            {loading ? 'Searching...' : 'Find Order'}
-          </button>
-          {order && (
+        <p style={{ color: '#6b7280', fontSize: 14 }}>{allOrders.length} orders — search or scroll to find one, click to generate its invoice</p>
+      </div>
+
+      <div className="no-print" style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+        {/* LEFT: scrollable, searchable order list */}
+        <div style={{ width: 340, flexShrink: 0 }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search ref, name, or phone..."
+            style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }}
+          />
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, maxHeight: 640, overflowY: 'auto', background: '#fff' }}>
+            {loadingList ? (
+              <div style={{ padding: 20, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>Loading orders...</div>
+            ) : filteredOrders.length === 0 ? (
+              <div style={{ padding: 20, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>No orders match your search.</div>
+            ) : (
+              filteredOrders.map(o => {
+                const isSelected = order?.id === o.id;
+                const amount = o.grand_total || o.total_amount || 0;
+                return (
+                  <div key={o.id} onClick={() => setOrder(o)}
+                    style={{
+                      padding: '12px 14px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6',
+                      background: isSelected ? '#fff9f0' : '#fff',
+                      borderLeft: isSelected ? '3px solid #c8973a' : '3px solid transparent',
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#fff'; }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#1a1008' }}>{o.ref}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>₹{amount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{o.customer_name || '—'}</div>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                      {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT: print button, shown once an order is selected */}
+        {order && (
+          <div style={{ paddingTop: 4 }}>
             <button onClick={printInvoice}
               style={{ padding: '10px 24px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>
               🖨️ Print / Save as PDF
             </button>
-          )}
-        </div>
-        {notFound && <div style={{ marginTop: 12, color: '#dc2626', fontSize: 13 }}>No order found with that reference.</div>}
+          </div>
+        )}
       </div>
 
       {order && (
-        <div id="invoice-print" style={{ background: '#fff', padding: 48, border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'Arial, sans-serif', color: '#1a1a1a' }}>
+        <div id="invoice-print" style={{ background: '#fff', padding: 48, border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'Arial, sans-serif', color: '#1a1a1a', maxWidth: 900 }}>
 
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
