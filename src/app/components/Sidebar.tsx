@@ -26,7 +26,7 @@ const SECTIONS = [
   { title: 'CUSTOMERS', color: '#ec4899', items: [
     { name: 'All Customers', href: '/customers', icon: '👥', desc: 'Name, orders, lifetime value, contact info' },
     { name: 'Dog Birthday Club', href: '/dog-birthday-club', icon: '🎂', desc: 'Pet birthdays captured from website popup' },
-    { name: 'Reorder Alerts', href: '/reorder-alerts', icon: '🔔', desc: 'Customers likely running low on treats' },
+    { name: 'Reorder Alerts', href: '/reorder-alert', icon: '🔔', desc: 'Customers likely running low on treats' },
     { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: "Recover carts that didn't convert" },
   ]},
   { title: 'CONTENT', color: '#06b6d4', items: [
@@ -53,7 +53,7 @@ const SECTIONS = [
   { title: 'OPERATIONS', color: '#78716c', items: [
     { name: 'Tasks', href: '/tasks', icon: '✅', desc: 'To-do list for the team' },
     { name: 'Team Access', href: '/team-access', icon: '👤', desc: 'Manage team member roles and access' },
-    { name: 'Activity Log', href: '/activity-log', icon: '📋', desc: 'Log of all admin actions' },
+    { name: 'Activity Log', href: '/activity', icon: '📋', desc: 'Log of all admin actions' },
     { name: 'Audit Trail', href: '/audit-trail', icon: '🔍', desc: 'Detailed change history for orders' },
   ]},
 ];
