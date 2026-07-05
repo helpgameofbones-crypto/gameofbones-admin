@@ -7,26 +7,52 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
-interface Order {
-  id: string; ref: string; status: string; customer_name: string; customer_phone: string;
-  customer_email: string; items: any; grand_total: number; total_amount: number;
-  payment_method: string; shipping_address: any; delhivery_awb: string;
-  coupon_code: string; created_at: string; estimated_delivery: string; transaction_id: string;
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
+function decryptData(encrypted) {
+  if (!encrypted) return '';
+  try {
+    const binary = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+    }
+    return result;
+  } catch {
+    return encrypted;
+  }
+}
+function decryptPhone(raw) {
+  if (!raw) return '';
+  if (/^\+?\d{10,13}$/.test(raw)) return raw;
+  const dec = decryptData(raw);
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
+}
+function decryptEmail(raw) {
+  if (!raw) return '';
+  if (raw.includes('@')) return raw;
+  const dec = decryptData(raw);
+  return dec.includes('@') ? dec : raw;
+}
+function decryptAddressField(raw) {
+  if (!raw) return '';
+  const dec = decryptData(raw);
+  const printable = dec.replace(/[\x20-\x7E]/g, '').length;
+  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec;
 }
 
 const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS = {
   placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
   shipped: '#8b5cf6', out_for_delivery: '#06b6d4', delivered: '#16a34a',
   cancelled: '#ef4444', returned: '#dc2626'
 };
 
-function parseItems(items: any): string[] {
+function parseItems(items) {
   if (!items) return [];
   if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return [items]; } }
   if (Array.isArray(items)) {
-    return items.map((it: any) => {
+    return items.map((it) => {
       if (typeof it === 'string') return it;
       if (it.name) return `${it.name}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`;
       if (it.product_name) return `${it.product_name}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
@@ -38,14 +64,26 @@ function parseItems(items: any): string[] {
   return [String(items)];
 }
 
-// Simple custom dropdown — avoids any native <select> rendering quirks
-function StatusDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function decryptOrder(o) {
+  const dPhone = decryptPhone(o.customer_phone);
+  const dEmail = decryptEmail(o.customer_email);
+  let addr = o.shipping_address;
+  if (addr) {
+    if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { /* leave as-is */ } }
+    if (addr && typeof addr === 'object' && addr.street) {
+      addr = { ...addr, street: decryptAddressField(addr.street) };
+    }
+  }
+  return { ...o, customer_phone: dPhone, customer_email: dEmail, shipping_address: addr };
+}
+
+function StatusDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef(null);
 
   useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
@@ -74,12 +112,12 @@ function StatusDropdown({ value, onChange }: { value: string; onChange: (v: stri
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Order | null>(null);
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState(null);
+  const [checkedIds, setCheckedIds] = useState(new Set());
   const [bulkStatus, setBulkStatus] = useState('confirmed');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -90,17 +128,17 @@ export default function OrdersPage() {
     setLoading(true);
     const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
     if (error) { console.error(error); setLoading(false); return; }
-    if (data) setOrders(data);
+    if (data) setOrders(data.map(decryptOrder));
     setLoading(false);
   }
 
-  async function updateStatus(id: string, newStatus: string) {
+  async function updateStatus(id, newStatus) {
     await supabase.from('orders').update({ status: newStatus }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    if (selected?.id === id) setSelected({ ...selected, status: newStatus });
+    if (selected && selected.id === id) setSelected({ ...selected, status: newStatus });
   }
 
-  async function deleteOrder(id: string, ref: string) {
+  async function deleteOrder(id, ref) {
     if (!window.confirm(`Delete order ${ref}? This permanently removes it and cannot be undone.`)) return;
     setDeleteBusy(true);
     const { error } = await supabase.from('orders').delete().eq('id', id);
@@ -108,7 +146,7 @@ export default function OrdersPage() {
     if (error) { alert('Delete failed: ' + error.message); return; }
     setOrders(prev => prev.filter(o => o.id !== id));
     setCheckedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
-    if (selected?.id === id) setSelected(null);
+    if (selected && selected.id === id) setSelected(null);
   }
 
   async function bulkDelete() {
@@ -140,9 +178,9 @@ export default function OrdersPage() {
   const statusCounts = orders.reduce((acc, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {});
 
-  function toggleOne(id: string) {
+  function toggleOne(id) {
     setCheckedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -270,7 +308,7 @@ export default function OrdersPage() {
                   const items = parseItems(o.items);
                   const isChecked = checkedIds.has(o.id);
                   return (
-                    <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: isChecked ? '#fff9f0' : selected?.id === o.id ? '#fffbeb' : '' }}>
+                    <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: isChecked ? '#fff9f0' : (selected && selected.id === o.id) ? '#fffbeb' : '' }}>
                       <td style={{ padding: '12px 8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={isChecked} onChange={() => toggleOne(o.id)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
                       </td>
@@ -357,13 +395,27 @@ export default function OrdersPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                 <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Total</div>
-                  <div style={{ fontSize: 20, fontWeight: 700 }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Subtotal</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>₹{(selected.subtotal || 0).toLocaleString('en-IN')}</div>
                 </div>
                 <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Payment</div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{(selected.payment_method || 'online').toUpperCase()}</div>
                 </div>
+              </div>
+
+              {(selected.discount || 0) > 0 && (
+                <div style={{ background: '#fef3c7', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#92400e' }}>Discount Applied</div>
+                  <div style={{ fontWeight: 700, color: '#92400e' }}>-₹{selected.discount.toLocaleString('en-IN')}</div>
+                  {selected.coupon_code && <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>Coupon: {selected.coupon_code}</div>}
+                  {selected.notes && <div style={{ fontSize: 11, color: '#92400e', marginTop: 4 }}>{selected.notes}</div>}
+                </div>
+              )}
+
+              <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Grand Total (Actually Charged)</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
               </div>
 
               {selected.transaction_id && (
@@ -382,16 +434,12 @@ export default function OrdersPage() {
                 </div>
               )}
 
-              {selected.coupon_code && (
-                <div style={{ fontSize: 12, color: '#c8973a', marginBottom: 12 }}>🏷️ Coupon: {selected.coupon_code}</div>
-              )}
-
               {selected.shipping_address && (
                 <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
                   <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
                     {typeof selected.shipping_address === 'string' ? selected.shipping_address :
-                      Object.values(selected.shipping_address).filter(Boolean).join(', ')}
+                      [selected.shipping_address.street, selected.shipping_address.city, selected.shipping_address.state, selected.shipping_address.pincode].filter(Boolean).join(', ')}
                   </div>
                 </div>
               )}
