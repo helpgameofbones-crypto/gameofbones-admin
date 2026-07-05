@@ -167,15 +167,27 @@ export default function CouponsPage() {
         </div>
       )}
 
+      {/* Header row so the grid below is self-explanatory */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', padding: '0 16px', marginBottom: '8px' }}>
+        {['CODE', 'DISCOUNT', 'MIN ORDER', 'PER CUSTOMER', 'TOTAL USED / CAP', 'EXPIRES', 'STATUS', ''].map(h => (
+          <p key={h} style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '700', letterSpacing: '.06em', margin: 0 }}>{h}</p>
+        ))}
+      </div>
+
       <div style={{ display: 'grid', gap: '12px' }}>
         {coupons.map((coupon) => (
-          <div key={coupon.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px', alignItems: 'center' }}>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>CODE</p><p style={{ color: '#1a1008', fontWeight: '600' }}>{coupon.code}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{discountLabel(coupon)}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>MIN ORDER</p><p style={{ color: '#1a1008' }}>{coupon.min_order ? `₹${coupon.min_order}` : '—'}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>USED / LIMIT</p><p style={{ color: '#1a1008' }}>{coupon.uses_count ?? 0} / {coupon.usagelimit || '∞'}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>EXPIRES</p><p style={{ color: '#1a1008' }}>{coupon.valid_until ? new Date(coupon.valid_until).toLocaleDateString() : 'No expiry'}</p></div>
-            <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>STATUS</p><p style={{ color: coupon.is_active ? '#2a7c6f' : '#c0392b' }}>{coupon.is_active ? 'Active' : 'Inactive'}</p></div>
+          <div key={coupon.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', alignItems: 'center' }}>
+            <div><p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{coupon.code}</p></div>
+            <div><p style={{ color: '#c8973a', fontWeight: '600', margin: 0 }}>{discountLabel(coupon)}</p></div>
+            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.min_order ? `₹${coupon.min_order}` : '—'}</p></div>
+            <div>
+              <p style={{ color: coupon.usagepercustomer ? '#1a1008' : '#9ca3af', fontWeight: coupon.usagepercustomer ? 600 : 400, margin: 0 }}>
+                {coupon.usagepercustomer ? `${coupon.usagepercustomer}× per customer` : 'Unlimited per customer'}
+              </p>
+            </div>
+            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.uses_count ?? 0} / {coupon.usagelimit || '∞ (no overall cap)'}</p></div>
+            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.valid_until ? new Date(coupon.valid_until).toLocaleDateString() : 'No expiry'}</p></div>
+            <div><p style={{ color: coupon.is_active ? '#2a7c6f' : '#c0392b', margin: 0 }}>{coupon.is_active ? 'Active' : 'Inactive'}</p></div>
             <div><button onClick={() => handleToggleCoupon(coupon.id, !coupon.is_active)} style={{ padding: '6px 12px', background: coupon.is_active ? '#c0392b' : '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', width: '100%' }}>{coupon.is_active ? 'Deactivate' : 'Activate'}</button></div>
           </div>
         ))}
