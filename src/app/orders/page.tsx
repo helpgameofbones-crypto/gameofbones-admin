@@ -11,7 +11,7 @@ interface Order {
   id: string; ref: string; status: string; customer_name: string; customer_phone: string;
   customer_email: string; items: any; grand_total: number; total_amount: number;
   payment_method: string; shipping_address: any; delhivery_awb: string;
-  coupon_code: string; created_at: string; estimated_delivery: string;
+  coupon_code: string; created_at: string; estimated_delivery: string; transaction_id: string;
 }
 
 const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
@@ -82,6 +82,7 @@ export default function OrdersPage() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState('confirmed');
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -99,6 +100,30 @@ export default function OrdersPage() {
     if (selected?.id === id) setSelected({ ...selected, status: newStatus });
   }
 
+  async function deleteOrder(id: string, ref: string) {
+    if (!window.confirm(`Delete order ${ref}? This permanently removes it and cannot be undone.`)) return;
+    setDeleteBusy(true);
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    setDeleteBusy(false);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    setOrders(prev => prev.filter(o => o.id !== id));
+    setCheckedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    if (selected?.id === id) setSelected(null);
+  }
+
+  async function bulkDelete() {
+    if (checkedIds.size === 0) return;
+    if (!window.confirm(`Delete ${checkedIds.size} order(s)? This permanently removes them and cannot be undone.`)) return;
+    setBulkBusy(true);
+    const ids = Array.from(checkedIds);
+    const { error } = await supabase.from('orders').delete().in('id', ids);
+    setBulkBusy(false);
+    if (error) { alert('Bulk delete failed: ' + error.message); return; }
+    setOrders(prev => prev.filter(o => !ids.includes(o.id)));
+    if (selected && ids.includes(selected.id)) setSelected(null);
+    clearSelection();
+  }
+
   const filtered = orders.filter(o => {
     if (filter !== 'all' && o.status !== filter) return false;
     if (search) {
@@ -106,7 +131,8 @@ export default function OrdersPage() {
       return (o.ref || '').toLowerCase().includes(s) ||
         (o.customer_name || '').toLowerCase().includes(s) ||
         (o.customer_phone || '').includes(s) ||
-        (o.delhivery_awb || '').includes(s);
+        (o.delhivery_awb || '').includes(s) ||
+        (o.transaction_id || '').toLowerCase().includes(s);
     }
     return true;
   });
@@ -193,7 +219,7 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone, AWB..."
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by ref, name, phone, AWB, transaction ID..."
         style={{ width: '100%', maxWidth: 400, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 14, marginBottom: 16 }} />
 
       {checkedIds.size > 0 && (
@@ -209,6 +235,10 @@ export default function OrdersPage() {
           <button onClick={bulkExportCsv}
             style={{ padding: '6px 16px', background: 'rgba(255,255,255,.1)', color: '#fff', border: '1px solid rgba(255,255,255,.3)', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             📥 Export CSV
+          </button>
+          <button onClick={bulkDelete} disabled={bulkBusy}
+            style={{ padding: '6px 16px', background: '#7f1d1d', color: '#fff', border: '1px solid #ef4444', borderRadius: 4, cursor: bulkBusy ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700 }}>
+            🗑 Delete Selected
           </button>
           <button onClick={clearSelection}
             style={{ marginLeft: 'auto', padding: '6px 16px', background: 'none', color: 'rgba(255,255,255,.7)', border: 'none', cursor: 'pointer', fontSize: 12 }}>
@@ -232,6 +262,7 @@ export default function OrdersPage() {
                   <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>Amount</th>
                   <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -274,6 +305,14 @@ export default function OrdersPage() {
                       </td>
                       <td style={{ padding: '12px', fontSize: 12, color: '#6b7280' }} onClick={() => setSelected(o)}>
                         {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => deleteOrder(o.id, o.ref)} title="Delete order"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#ef4444', opacity: 0.6 }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}>
+                          🗑
+                        </button>
                       </td>
                     </tr>
                   );
@@ -327,6 +366,13 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              {selected.transaction_id && (
+                <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bbf7d0' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#16a34a' }}>Razorpay Transaction ID</div>
+                  <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>{selected.transaction_id}</div>
+                </div>
+              )}
+
               {selected.delhivery_awb && (
                 <div style={{ background: '#f0f9ff', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bae6fd' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#0284c7' }}>Delhivery AWB</div>
@@ -341,7 +387,7 @@ export default function OrdersPage() {
               )}
 
               {selected.shipping_address && (
-                <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6 }}>
+                <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
                   <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
                     {typeof selected.shipping_address === 'string' ? selected.shipping_address :
@@ -349,6 +395,11 @@ export default function OrdersPage() {
                   </div>
                 </div>
               )}
+
+              <button onClick={() => deleteOrder(selected.id, selected.ref)} disabled={deleteBusy}
+                style={{ width: '100%', padding: '10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: deleteBusy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                {deleteBusy ? 'Deleting...' : '🗑 Delete This Order'}
+              </button>
             </div>
           )}
         </div>
