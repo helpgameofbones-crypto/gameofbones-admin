@@ -17,17 +17,45 @@ const COMPANY = {
   website: 'gameofbones.in',
 };
 
-interface OrderRow {
-  id: string; ref: string; customer_name: string; customer_phone: string; customer_email: string;
-  grand_total: number; total_amount: number; created_at: string; status: string;
-  items: any; shipping_address: any; subtotal: any; discount: any; shipping: any;
+// ── Decryption (same XOR cipher the storefront uses) ────────────────────
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
+function decryptData(encrypted) {
+  if (!encrypted) return '';
+  try {
+    const binary = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+    }
+    return result;
+  } catch {
+    return encrypted;
+  }
+}
+function decryptPhone(raw) {
+  if (!raw) return '';
+  if (/^\+?\d{10,13}$/.test(raw)) return raw;
+  const dec = decryptData(raw);
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
+}
+function decryptEmail(raw) {
+  if (!raw) return '';
+  if (raw.includes('@')) return raw;
+  const dec = decryptData(raw);
+  return dec.includes('@') ? dec : raw;
+}
+function decryptAddressField(raw) {
+  if (!raw) return '';
+  const dec = decryptData(raw);
+  const printable = dec.replace(/[\x20-\x7E]/g, '').length;
+  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec;
 }
 
-function parseItems(items: any) {
+function parseItems(items) {
   if (!items) return [];
   if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return []; } }
   if (!Array.isArray(items)) return [];
-  return items.map((it: any) => ({
+  return items.map((it) => ({
     name: it.name || it.product_name || 'Item',
     sku: it.sku || it.product_id || '—',
     qty: it.quantity || it.qty || 1,
@@ -36,19 +64,20 @@ function parseItems(items: any) {
   }));
 }
 
-function formatAddress(addr: any) {
+function formatAddress(addr) {
   if (!addr) return null;
   if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
   if (typeof addr !== 'object') return null;
-  const parts = [addr.street, addr.city, addr.state, addr.pincode].filter(Boolean);
+  const street = decryptAddressField(addr.street || '');
+  const parts = [street, addr.city, addr.state, addr.pincode].filter(Boolean);
   return parts.length ? parts : null;
 }
 
 export default function InvoicesPage() {
-  const [allOrders, setAllOrders] = useState<OrderRow[]>([]);
+  const [allOrders, setAllOrders] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
-  const [order, setOrder] = useState<OrderRow | null>(null);
+  const [order, setOrder] = useState(null);
 
   useEffect(() => { fetchAllOrders(); }, []);
 
@@ -56,14 +85,18 @@ export default function InvoicesPage() {
     setLoadingList(true);
     const { data, error } = await supabase
       .from('orders')
-      .select('id, ref, customer_name, customer_phone, customer_email, grand_total, total_amount, created_at, status, items, shipping_address, subtotal, discount, shipping')
+      .select('id, ref, customer_name, customer_phone, customer_email, grand_total, total_amount, created_at, status, items, shipping_address, subtotal, discount, shipping, coupon_code, notes, transaction_id, payment_method')
       .order('created_at', { ascending: false })
       .limit(500);
     setLoadingList(false);
     if (error) { console.error(error); return; }
-    setAllOrders(data || []);
-    // Auto-select the most recent order so the page never looks empty
-    if (data && data.length > 0) setOrder(data[0]);
+    const decrypted = (data || []).map(o => ({
+      ...o,
+      customer_phone: decryptPhone(o.customer_phone),
+      customer_email: decryptEmail(o.customer_email),
+    }));
+    setAllOrders(decrypted);
+    if (decrypted.length > 0) setOrder(decrypted[0]);
   }
 
   const filteredOrders = allOrders.filter(o => {
@@ -80,19 +113,18 @@ export default function InvoicesPage() {
 
   const items = order ? parseItems(order.items) : [];
   const addrLines = order ? formatAddress(order.shipping_address) : null;
-  const subtotal = order ? (parseFloat(order.subtotal as any) || items.reduce((s: number, i: any) => s + i.price * i.qty, 0)) : 0;
-  const mrpTotal = items.reduce((s: number, i: any) => s + (i.mrp || i.price) * i.qty, 0);
-  const discount = order ? (parseFloat(order.discount as any) || Math.max(mrpTotal - subtotal, 0)) : 0;
-  const shipping = order ? (parseFloat(order.shipping as any) || 0) : 0;
-  const grandTotal = order ? (parseFloat(order.grand_total as any) || parseFloat(order.total_amount as any) || 0) : 0;
+  const subtotal = order ? (parseFloat(order.subtotal) || items.reduce((s, i) => s + i.price * i.qty, 0)) : 0;
+  const discount = order ? (parseFloat(order.discount) || 0) : 0;
+  const shipping = order ? (parseFloat(order.shipping) || 0) : 0;
+  const grandTotal = order ? (parseFloat(order.grand_total) || parseFloat(order.total_amount) || 0) : 0;
   const orderDate = order ? new Date(order.created_at).toLocaleString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(',', '') : '';
 
   const customerBlock = order ? (
     <>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{order.customer_name || '—'}</div>
-      {order.customer_email && !order.customer_email.includes('@icici') && <div>{order.customer_email}</div>}
-      {addrLines ? addrLines.map((l: string, i: number) => <div key={i}>{l}</div>) : null}
-      {order.customer_phone && /^\d{10,13}$/.test(order.customer_phone) && <div>+91 {order.customer_phone.slice(-10)}</div>}
+      {order.customer_email && <div>{order.customer_email}</div>}
+      {addrLines ? addrLines.map((l, i) => <div key={i}>{l}</div>) : null}
+      {order.customer_phone && <div>+91 {order.customer_phone.slice(-10)}</div>}
     </>
   ) : null;
 
@@ -113,7 +145,6 @@ export default function InvoicesPage() {
       </div>
 
       <div className="no-print" style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-        {/* LEFT: scrollable, searchable order list */}
         <div style={{ width: 340, flexShrink: 0 }}>
           <input
             value={search}
@@ -128,7 +159,7 @@ export default function InvoicesPage() {
               <div style={{ padding: 20, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>No orders match your search.</div>
             ) : (
               filteredOrders.map(o => {
-                const isSelected = order?.id === o.id;
+                const isSelected = order && order.id === o.id;
                 const amount = o.grand_total || o.total_amount || 0;
                 return (
                   <div key={o.id} onClick={() => setOrder(o)}
@@ -146,6 +177,7 @@ export default function InvoicesPage() {
                     <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{o.customer_name || '—'}</div>
                     <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
                       {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {o.discount > 0 && <span style={{ color: '#c8973a', fontWeight: 700 }}> · -₹{o.discount} off</span>}
                     </div>
                   </div>
                 );
@@ -154,7 +186,6 @@ export default function InvoicesPage() {
           </div>
         </div>
 
-        {/* RIGHT: print button, shown once an order is selected */}
         {order && (
           <div style={{ paddingTop: 4 }}>
             <button onClick={printInvoice}
@@ -168,7 +199,6 @@ export default function InvoicesPage() {
       {order && (
         <div id="invoice-print" style={{ background: '#fff', padding: 48, border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'Arial, sans-serif', color: '#1a1a1a', maxWidth: 900 }}>
 
-          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
             <img src={LOGO_URL} alt="Game of Bones" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 6 }} />
             <div style={{ textAlign: 'right', fontSize: 12, lineHeight: 1.6 }}>
@@ -182,7 +212,6 @@ export default function InvoicesPage() {
 
           <h1 style={{ fontSize: 34, fontWeight: 700, marginBottom: 20, letterSpacing: '.02em' }}>INVOICE</h1>
 
-          {/* Order number / date boxes */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
             <div style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '10px 14px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 2 }}>Order Number</div>
@@ -192,9 +221,12 @@ export default function InvoicesPage() {
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 2 }}>Order Date</div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{orderDate}</div>
             </div>
+            <div style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '10px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 2 }}>Payment Method</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{(order.payment_method || 'razorpay').toUpperCase()}</div>
+            </div>
           </div>
 
-          {/* Shipping / Billing only (Customer Details removed) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
             {['Shipping Details', 'Billing Details'].map((title, i) => (
               <div key={i}>
@@ -206,7 +238,6 @@ export default function InvoicesPage() {
             ))}
           </div>
 
-          {/* Items table */}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #1a1a1a' }}>
@@ -219,7 +250,7 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((it: any, i: number) => (
+              {items.map((it, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '10px 6px', fontSize: 13, fontWeight: 600 }}>{it.name}</td>
                   <td style={{ padding: '10px 6px', fontSize: 12, color: '#6b7280' }}>{it.sku !== '—' ? String(it.sku).slice(0, 12) : '—'}</td>
@@ -239,15 +270,20 @@ export default function InvoicesPage() {
             </tbody>
           </table>
 
-          {/* Totals */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-            <table style={{ width: 280, borderCollapse: 'collapse' }}>
+            <table style={{ width: 320, borderCollapse: 'collapse' }}>
               <tbody>
-                {discount > 0 && (
-                  <tr><td style={rowLabel}>Discount</td><td style={rowVal}>- ₹{discount.toFixed(2)}</td></tr>
-                )}
                 <tr><td style={rowLabel}>Sub Total</td><td style={rowVal}>₹{subtotal.toFixed(2)}</td></tr>
-                <tr><td style={rowLabel}>Shipping</td><td style={rowVal}>₹{shipping.toFixed(2)}</td></tr>
+                {discount > 0 && (
+                  <tr>
+                    <td style={rowLabel}>
+                      Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}
+                      {order.notes && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{order.notes}</div>}
+                    </td>
+                    <td style={{ ...rowVal, color: '#16a34a' }}>- ₹{discount.toFixed(2)}</td>
+                  </tr>
+                )}
+                <tr><td style={rowLabel}>Shipping</td><td style={rowVal}>{shipping > 0 ? '₹' + shipping.toFixed(2) : 'FREE'}</td></tr>
                 <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Total</td><td style={{ ...rowVal, fontWeight: 700 }}>₹{grandTotal.toFixed(2)}</td></tr>
                 <tr><td style={rowLabel}>Amount Paid</td><td style={rowVal}>₹{grandTotal.toFixed(2)}</td></tr>
                 <tr style={{ borderTop: '1px solid #d1d5db' }}><td style={{ ...rowLabel, fontWeight: 700 }}>Balance Due</td><td style={{ ...rowVal, fontWeight: 700 }}>₹0.00</td></tr>
@@ -255,7 +291,10 @@ export default function InvoicesPage() {
             </table>
           </div>
 
-          {/* Footer */}
+          {order.transaction_id && (
+            <div style={{ marginTop: 16, fontSize: 11, color: '#9ca3af' }}>Transaction ID: {order.transaction_id}</div>
+          )}
+
           <div style={{ textAlign: 'center', marginTop: 48, paddingTop: 24, borderTop: '1px solid #e5e7eb' }}>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Thank you for your continued partnership.</div>
             <p style={{ fontSize: 11, color: '#6b7280', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
@@ -268,5 +307,5 @@ export default function InvoicesPage() {
   );
 }
 
-const rowLabel: React.CSSProperties = { padding: '6px 8px', fontSize: 13, color: '#374151' };
-const rowVal: React.CSSProperties = { padding: '6px 8px', fontSize: 13, textAlign: 'right', color: '#1a1a1a' };
+const rowLabel = { padding: '6px 8px', fontSize: 13, color: '#374151' };
+const rowVal = { padding: '6px 8px', fontSize: 13, textAlign: 'right', color: '#1a1a1a' };
