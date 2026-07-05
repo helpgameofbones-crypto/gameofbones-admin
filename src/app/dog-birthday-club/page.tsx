@@ -10,7 +10,7 @@ const supabase = createClient(
 // The table stores a single DATE column called "birthday" (e.g. 2000-06-15 if
 // the owner didn't give a real year). We only ever care about day+month for
 // reminders, so we extract those from the date string ourselves.
-function getDayMonth(birthday: string | null) {
+function getDayMonth(birthday) {
   if (!birthday) return { day: null, month: null, year: null };
   const parts = birthday.split('-'); // YYYY-MM-DD
   if (parts.length !== 3) return { day: null, month: null, year: null };
@@ -18,8 +18,12 @@ function getDayMonth(birthday: string | null) {
   return { day: parseInt(parts[2]), month: parseInt(parts[1]), year: year === 2000 ? null : year };
 }
 
+function birthdayEmailBody(dogName, ownerName) {
+  return `Hi ${ownerName || 'there'},\n\nHappy Birthday to ${dogName}! 🎂🐾\n\nAs a special treat from Game of Bones, we'd love to send a birthday surprise. Check out our latest treats at gameofbones.in — free shipping on all orders!\n\nWishing ${dogName} many more years of happy tail wags.\n\n— Team Game of Bones`;
+}
+
 export default function DogBirthdayClubPage() {
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, []);
@@ -40,7 +44,7 @@ export default function DogBirthdayClubPage() {
   const today = enriched.filter(b => b.day === now.getDate() && b.month === thisMonth);
 
   return (
-    <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>🎂 Dog Birthday Club</h1>
       <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>{entries.length} pets registered · Data from website birthday popup</p>
 
@@ -53,10 +57,20 @@ export default function DogBirthdayClubPage() {
                 <strong>{b.dog_name}</strong> — Owner: {b.customer_name || '—'}
                 <div style={{ fontSize: 12, color: '#92400e' }}>📱 {b.customer_phone} · 📧 {b.customer_email || '—'}</div>
               </div>
-              <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Happy Birthday to ${b.dog_name}! 🎂🐾 As a special treat from Game of Bones, we'd love to send a birthday surprise. Check out gameofbones.in for our latest treats!`)}`}
-                target="_blank" rel="noopener" style={{ padding: '6px 14px', background: '#25d366', color: '#fff', borderRadius: 4, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                💬 Wish on WhatsApp
-              </a>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {b.customer_phone && (
+                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Happy Birthday to ${b.dog_name}! 🎂🐾 As a special treat from Game of Bones, we'd love to send a birthday surprise. Check out gameofbones.in for our latest treats!`)}`}
+                    target="_blank" rel="noopener" style={{ padding: '6px 14px', background: '#25d366', color: '#fff', borderRadius: 4, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    💬 WhatsApp
+                  </a>
+                )}
+                {b.customer_email && (
+                  <a href={`mailto:${b.customer_email}?subject=${encodeURIComponent('Happy Birthday ' + b.dog_name + '! 🎂')}&body=${encodeURIComponent(birthdayEmailBody(b.dog_name, b.customer_name))}`}
+                    style={{ padding: '6px 14px', background: '#1a1008', color: '#fff', borderRadius: 4, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    ✉️ Email
+                  </a>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -123,10 +137,20 @@ export default function DogBirthdayClubPage() {
                   {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </td>
                 <td style={{ padding: 12, textAlign: 'center' }}>
-                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Hi ${b.customer_name || ''}! 🐾 Just a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}. We have a special birthday surprise at gameofbones.in!`)}`}
-                    target="_blank" rel="noopener" style={{ fontSize: 11, color: '#25d366', fontWeight: 700, textDecoration: 'none' }}>
-                    💬 WhatsApp
-                  </a>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    {b.customer_phone ? (
+                      <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Hi ${b.customer_name || ''}! 🐾 Just a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}. We have a special birthday surprise at gameofbones.in!`)}`}
+                        target="_blank" rel="noopener" style={{ fontSize: 11, color: '#25d366', fontWeight: 700, textDecoration: 'none' }}>
+                        💬 WhatsApp
+                      </a>
+                    ) : <span style={{ fontSize: 11, color: '#d1d5db' }}>No phone</span>}
+                    {b.customer_email ? (
+                      <a href={`mailto:${b.customer_email}?subject=${encodeURIComponent(b.dog_name + "'s Birthday is Coming Up! 🎂")}&body=${encodeURIComponent(`Hi ${b.customer_name || 'there'},\n\nJust a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}!\n\nWe have a special birthday surprise waiting at gameofbones.in — free shipping on all orders.\n\n— Team Game of Bones`)}`}
+                        style={{ fontSize: 11, color: '#1a1008', fontWeight: 700, textDecoration: 'none' }}>
+                        ✉️ Email
+                      </a>
+                    ) : <span style={{ fontSize: 11, color: '#d1d5db' }}>No email</span>}
+                  </div>
                 </td>
               </tr>
             ))}
