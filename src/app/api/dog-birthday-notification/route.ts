@@ -1,5 +1,5 @@
-﻿import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 import { NextRequest, NextResponse } from 'next/server';
 
 const supabase = createClient(
@@ -7,7 +7,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -34,8 +40,8 @@ export async function GET(req: NextRequest) {
       // Generate unique discount code: BDAY + UUID first 12 chars
       const uniqueCode = `BDAY${birthday.id.slice(0, 12).toUpperCase()}`;
       
-      await resend.emails.send({
-        from: 'Game of Bones <hello@gameofbones.in>',
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
         to: birthday.email,
         subject: `🎂 ${birthday.dog_name}'s Birthday is Coming! Here's 20% Off`,
         html: `
