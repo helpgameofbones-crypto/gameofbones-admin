@@ -64,6 +64,19 @@ function parseItems(items) {
   return [String(items)];
 }
 
+// Split the free-text `notes` field (e.g. "Coupon ABC applied | Online payment
+// discount: -₹30") into individual, readable discount line items so the
+// order/invoice total isn't just a single opaque number.
+function parseDiscountLines(notes, couponCode) {
+  const lines = [];
+  if (notes) {
+    notes.split('|').map(s => s.trim()).filter(Boolean).forEach(l => lines.push(l));
+  } else if (couponCode) {
+    lines.push(`Coupon ${couponCode} applied`);
+  }
+  return lines;
+}
+
 // FIX: some orders (older/seed data) store the street under `address` or
 // `line1` instead of `street`. Normalize onto `.street` regardless of which
 // key was used, and only run the XOR/base64 decrypt on whichever value we
@@ -128,6 +141,8 @@ export default function OrdersPage() {
   const [bulkStatus, setBulkStatus] = useState('confirmed');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -143,6 +158,23 @@ export default function OrdersPage() {
     await supabase.from('orders').update({ status: newStatus }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
     if (selected && selected.id === id) setSelected({ ...selected, status: newStatus });
+  }
+
+  // NEW: add a note directly from the order detail panel, so nobody has to
+  // jump over to the separate Order Notes page just to log something.
+  async function addNote(orderId) {
+    if (!newNote.trim()) return;
+    setAddingNote(true);
+    const order = orders.find(o => o.id === orderId);
+    const existing = order?.order_notes || [];
+    const note = { text: newNote.trim(), timestamp: new Date().toISOString(), author: 'Admin' };
+    const updated = [...existing, note];
+    const { error } = await supabase.from('orders').update({ order_notes: updated }).eq('id', orderId);
+    setAddingNote(false);
+    if (error) { alert('Could not save note: ' + error.message); return; }
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_notes: updated } : o));
+    setSelected(prev => (prev && prev.id === orderId) ? { ...prev, order_notes: updated } : prev);
+    setNewNote('');
   }
 
   async function deleteOrder(id, ref) {
@@ -400,29 +432,75 @@ export default function OrdersPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Subtotal</div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>₹{(selected.subtotal || 0).toLocaleString('en-IN')}</div>
+              {/* NEW: Order Notes, added inline so there's no need to jump to a
+                  separate page just to record something about this order. */}
+              <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>
+                  Order Notes {(selected.order_notes || []).length > 0 ? `(${selected.order_notes.length})` : ''}
                 </div>
-                <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Payment</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{(selected.payment_method || 'online').toUpperCase()}</div>
+                {(selected.order_notes || []).length === 0 ? (
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>No notes yet.</div>
+                ) : (
+                  <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {[...selected.order_notes].reverse().map((note, i) => (
+                      <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '8px 10px' }}>
+                        <div style={{ fontSize: 12, color: '#1a1008' }}>{note.text}</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{note.author || 'Admin'}</span>
+                          <span>{new Date(note.timestamp).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addNote(selected.id)}
+                    placeholder="Add a note..."
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 12 }}
+                  />
+                  <button onClick={() => addNote(selected.id)} disabled={addingNote || !newNote.trim()}
+                    style={{ padding: '8px 14px', background: '#c8973a', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: addingNote ? 'wait' : 'pointer', opacity: (!newNote.trim() || addingNote) ? 0.5 : 1 }}>
+                    {addingNote ? '...' : 'Add'}
+                  </button>
                 </div>
               </div>
 
-              {(selected.discount || 0) > 0 && (
-                <div style={{ background: '#fef3c7', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #fde68a' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#92400e' }}>Discount Applied</div>
-                  <div style={{ fontWeight: 700, color: '#92400e' }}>-₹{selected.discount.toLocaleString('en-IN')}</div>
-                  {selected.coupon_code && <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>Coupon: {selected.coupon_code}</div>}
-                  {selected.notes && <div style={{ fontSize: 11, color: '#92400e', marginTop: 4 }}>{selected.notes}</div>}
+              {/* Order Summary — always shows the full breakdown (order value,
+                  every discount line, shipping) instead of just a single total,
+                  so it's clear exactly how ₹{subtotal} became ₹{grandTotal}. */}
+              <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 10 }}>Order Summary</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: '#374151' }}>Order Value (Subtotal)</span>
+                  <span style={{ fontWeight: 600 }}>₹{(selected.subtotal || 0).toLocaleString('en-IN')}</span>
                 </div>
-              )}
-
-              <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6, marginBottom: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>Grand Total (Actually Charged)</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</div>
+                {(selected.discount || 0) > 0 && (
+                  <>
+                    {parseDiscountLines(selected.notes, selected.coupon_code).map((line, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: '#92400e' }}>
+                        <span>{line}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, fontWeight: 700, color: '#92400e' }}>
+                      <span>Total Discount</span>
+                      <span>-₹{selected.discount.toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                )}
+                {(selected.shipping || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                    <span style={{ color: '#374151' }}>Shipping</span>
+                    <span style={{ fontWeight: 600 }}>₹{selected.shipping.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1008' }}>Total Charged</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Payment: {(selected.payment_method || 'online').toUpperCase()}</div>
               </div>
 
               {selected.transaction_id && (
