@@ -11,8 +11,15 @@ const supabase = createClient(
 // customers MUST decrypt first — grouping on the raw encrypted string (or
 // stripping digits from it) silently breaks customer matching entirely,
 // which is why this page used to show gibberish and miscounted customers.
+//
+// FIX: these three functions were missing parameter type annotations
+// (`encrypted`, `raw`), which Next's strict TypeScript build rejects with
+// "implicitly has an 'any' type". That one error has been failing EVERY
+// deployment since this file was last touched — Vercel was silently
+// re-serving an old build the whole time, which is why none of the other
+// fixes (address, discount, notes, etc.) ever appeared live.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted) {
+function decryptData(encrypted: string): string {
   if (!encrypted) return '';
   try {
     const binary = atob(encrypted);
@@ -25,23 +32,35 @@ function decryptData(encrypted) {
     return encrypted;
   }
 }
-function decryptPhone(raw) {
+function decryptPhone(raw: string): string {
   if (!raw) return '';
   if (/^\+?\d{10,13}$/.test(raw)) return raw;
   const dec = decryptData(raw);
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
 }
-function decryptEmail(raw) {
+function decryptEmail(raw: string): string {
   if (!raw) return '';
   if (raw.includes('@')) return raw;
   const dec = decryptData(raw);
   return dec.includes('@') ? dec : raw;
 }
 
+type Customer = {
+  phone: string;
+  name: string;
+  email: string;
+  totalOrders: number;
+  totalValue: number;
+  lastOrderDate: string;
+  orders: any[];
+  couponsUsed: string[];
+  avgOrderValue: number;
+};
+
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<Customer | null>(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('totalValue');
 
@@ -53,8 +72,8 @@ export default function CustomersPage() {
       .from('orders').select('*').order('created_at', { ascending: false });
     if (!orders) { setLoading(false); return; }
 
-    const map = new Map();
-    orders.forEach((o) => {
+    const map = new Map<string, Customer>();
+    orders.forEach((o: any) => {
       const decryptedPhone = decryptPhone(o.customer_phone || '');
       const phone = decryptedPhone.replace(/\D/g, '').slice(-10);
       if (!phone) return;
@@ -66,7 +85,7 @@ export default function CustomersPage() {
           orders: [], couponsUsed: [], avgOrderValue: 0
         });
       }
-      const c = map.get(phone);
+      const c = map.get(phone)!;
       c.totalOrders++;
       c.totalValue += o.grand_total || o.total_amount || 0;
       if (!c.name && o.customer_name) c.name = o.customer_name;
