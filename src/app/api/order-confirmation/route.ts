@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Create Gmail transporter with app password
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,8 +67,8 @@ ${order.payment_method === 'cod' ? '<div style="background:#fef9ec;border:1px so
 </div>
 </div></body></html>`
 
-    await resend.emails.send({
-      from: 'Game of Bones <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
       to: toEmail,
       subject: `Order Confirmed: ${order.ref}`,
       html,
