@@ -7,17 +7,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
-// The table stores a single DATE column called "birthday" (e.g. 2000-06-15 if
-// the owner didn't give a real year). We only ever care about day+month for
-// reminders, so we extract those from the date string ourselves.
-//
-// FIX: both functions below were missing parameter type annotations, which
-// is the same "implicitly has an 'any' type" error that was breaking the
-// customers/orders/invoices pages — this file is next in line since the
-// build type-checks every file in the project, not just the ones touched.
 function getDayMonth(birthday: string): { day: number | null; month: number | null; year: number | null } {
   if (!birthday) return { day: null, month: null, year: null };
-  const parts = birthday.split('-'); // YYYY-MM-DD
+  const parts = birthday.split('-');
   if (parts.length !== 3) return { day: null, month: null, year: null };
   const year = parseInt(parts[0]);
   return { day: parseInt(parts[2]), month: parseInt(parts[1]), year: year === 2000 ? null : year };
@@ -30,14 +22,37 @@ function birthdayEmailBody(dogName: string, ownerName: string): string {
 export default function DogBirthdayClubPage() {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [emailSending, setEmailSending] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => { fetchData(); }, []);
+  
   async function fetchData() {
     setLoading(true);
     const { data, error } = await supabase.from('dog_birthdays').select('*').order('created_at', { ascending: false });
     if (error) { console.error(error); setLoading(false); return; }
     setEntries(data || []);
     setLoading(false);
+  }
+
+  async function sendBirthdayEmail(dogId: string, email: string, dogName: string) {
+    setEmailSending({ ...emailSending, [dogId]: true });
+    try {
+      const res = await fetch('/api/send-birthday-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dogId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Birthday email sent to ${email}!`);
+      } else {
+        alert(`❌ Failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setEmailSending({ ...emailSending, [dogId]: false });
+    }
   }
 
   const now = new Date();
@@ -70,10 +85,22 @@ export default function DogBirthdayClubPage() {
                   </a>
                 )}
                 {b.customer_email && (
-                  <a href={`mailto:${b.customer_email}?subject=${encodeURIComponent('Happy Birthday ' + b.dog_name + '! 🎂')}&body=${encodeURIComponent(birthdayEmailBody(b.dog_name, b.customer_name))}`}
-                    style={{ padding: '6px 14px', background: '#1a1008', color: '#fff', borderRadius: 4, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                    ✉️ Email
-                  </a>
+                  <button
+                    onClick={() => sendBirthdayEmail(b.id, b.customer_email, b.dog_name)}
+                    disabled={emailSending[b.id]}
+                    style={{
+                      padding: '6px 14px',
+                      background: '#1a1008',
+                      color: '#fff',
+                      borderRadius: 4,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: emailSending[b.id] ? 'wait' : 'pointer',
+                      opacity: emailSending[b.id] ? 0.6 : 1
+                    }}>
+                    {emailSending[b.id] ? '⏳ Sending...' : '✉️ Email'}
+                  </button>
                 )}
               </div>
             </div>
@@ -150,10 +177,22 @@ export default function DogBirthdayClubPage() {
                       </a>
                     ) : <span style={{ fontSize: 11, color: '#d1d5db' }}>No phone</span>}
                     {b.customer_email ? (
-                      <a href={`mailto:${b.customer_email}?subject=${encodeURIComponent(b.dog_name + "'s Birthday is Coming Up! 🎂")}&body=${encodeURIComponent(`Hi ${b.customer_name || 'there'},\n\nJust a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}!\n\nWe have a special birthday surprise waiting at gameofbones.in — free shipping on all orders.\n\n— Team Game of Bones`)}`}
-                        style={{ fontSize: 11, color: '#1a1008', fontWeight: 700, textDecoration: 'none' }}>
-                        ✉️ Email
-                      </a>
+                      <button
+                        onClick={() => sendBirthdayEmail(b.id, b.customer_email, b.dog_name)}
+                        disabled={emailSending[b.id]}
+                        style={{
+                          fontSize: 11,
+                          color: '#fff',
+                          fontWeight: 700,
+                          background: '#1a1008',
+                          border: 'none',
+                          padding: '2px 6px',
+                          borderRadius: 3,
+                          cursor: emailSending[b.id] ? 'wait' : 'pointer',
+                          opacity: emailSending[b.id] ? 0.6 : 1
+                        }}>
+                        {emailSending[b.id] ? '⏳' : '✉️'}
+                      </button>
                     ) : <span style={{ fontSize: 11, color: '#d1d5db' }}>No email</span>}
                   </div>
                 </td>
