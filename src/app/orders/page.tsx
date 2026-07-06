@@ -64,14 +64,21 @@ function parseItems(items) {
   return [String(items)];
 }
 
+// FIX: some orders (older/seed data) store the street under `address` or
+// `line1` instead of `street`. Normalize onto `.street` regardless of which
+// key was used, and only run the XOR/base64 decrypt on whichever value we
+// find — this is what was showing as a blank or garbled address before.
 function decryptOrder(o) {
   const dPhone = decryptPhone(o.customer_phone);
   const dEmail = decryptEmail(o.customer_email);
   let addr = o.shipping_address;
   if (addr) {
     if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { /* leave as-is */ } }
-    if (addr && typeof addr === 'object' && addr.street) {
-      addr = { ...addr, street: decryptAddressField(addr.street) };
+    if (addr && typeof addr === 'object') {
+      const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1;
+      if (streetRaw) {
+        addr = { ...addr, street: decryptAddressField(streetRaw) };
+      }
     }
   }
   return { ...o, customer_phone: dPhone, customer_email: dEmail, shipping_address: addr };
