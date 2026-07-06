@@ -10,7 +10,12 @@ const supabase = createClient(
 // The table stores a single DATE column called "birthday" (e.g. 2000-06-15 if
 // the owner didn't give a real year). We only ever care about day+month for
 // reminders, so we extract those from the date string ourselves.
-function getDayMonth(birthday) {
+//
+// FIX: both functions below were missing parameter type annotations, which
+// is the same "implicitly has an 'any' type" error that was breaking the
+// customers/orders/invoices pages — this file is next in line since the
+// build type-checks every file in the project, not just the ones touched.
+function getDayMonth(birthday: string): { day: number | null; month: number | null; year: number | null } {
   if (!birthday) return { day: null, month: null, year: null };
   const parts = birthday.split('-'); // YYYY-MM-DD
   if (parts.length !== 3) return { day: null, month: null, year: null };
@@ -18,12 +23,12 @@ function getDayMonth(birthday) {
   return { day: parseInt(parts[2]), month: parseInt(parts[1]), year: year === 2000 ? null : year };
 }
 
-function birthdayEmailBody(dogName, ownerName) {
+function birthdayEmailBody(dogName: string, ownerName: string): string {
   return `Hi ${ownerName || 'there'},\n\nHappy Birthday to ${dogName}! 🎂🐾\n\nAs a special treat from Game of Bones, we'd love to send a birthday surprise. Check out our latest treats at gameofbones.in — free shipping on all orders!\n\nWishing ${dogName} many more years of happy tail wags.\n\n— Team Game of Bones`;
 }
 
 export default function DogBirthdayClubPage() {
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchData(); }, []);
@@ -39,9 +44,9 @@ export default function DogBirthdayClubPage() {
   const thisMonth = now.getMonth() + 1;
   const nextMonth = (thisMonth % 12) + 1;
 
-  const enriched = entries.map(b => ({ ...b, ...getDayMonth(b.birthday) }));
-  const upcoming = enriched.filter(b => b.month === thisMonth || b.month === nextMonth);
-  const today = enriched.filter(b => b.day === now.getDate() && b.month === thisMonth);
+  const enriched = entries.map((b: any) => ({ ...b, ...getDayMonth(b.birthday) }));
+  const upcoming = enriched.filter((b: any) => b.month === thisMonth || b.month === nextMonth);
+  const today = enriched.filter((b: any) => b.day === now.getDate() && b.month === thisMonth);
 
   return (
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
@@ -51,7 +56,7 @@ export default function DogBirthdayClubPage() {
       {today.length > 0 && (
         <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: 20, marginBottom: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#92400e', marginBottom: 12 }}>🎉 Today's Birthdays!</div>
-          {today.map((b, i) => (
+          {today.map((b: any, i: number) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < today.length - 1 ? '1px solid #fde68a' : 'none' }}>
               <div>
                 <strong>{b.dog_name}</strong> — Owner: {b.customer_name || '—'}
@@ -80,7 +85,7 @@ export default function DogBirthdayClubPage() {
         <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: 16, marginBottom: 20 }}>
           <div style={{ fontWeight: 700, color: '#0284c7', marginBottom: 8 }}>📅 Upcoming ({upcoming.length} this month & next)</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {upcoming.map((b, i) => (
+            {upcoming.map((b: any, i: number) => (
               <span key={i} style={{ background: '#fff', border: '1px solid #bae6fd', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>
                 {b.dog_name} — {b.day}/{b.month}
               </span>
@@ -99,7 +104,7 @@ export default function DogBirthdayClubPage() {
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Upcoming</div>
         </div>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{entries.filter(b => b.customer_email).length}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{entries.filter((b: any) => b.customer_email).length}</div>
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>With Email</div>
         </div>
       </div>
@@ -124,7 +129,7 @@ export default function DogBirthdayClubPage() {
             </tr>
           </thead>
           <tbody>
-            {enriched.map((b, i) => (
+            {enriched.map((b: any, i: number) => (
               <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: 12, fontWeight: 700 }}>🐾 {b.dog_name || '—'}</td>
                 <td style={{ padding: 12 }}>{b.customer_name || '—'}</td>
