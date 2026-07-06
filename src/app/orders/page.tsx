@@ -7,8 +7,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
+// FIX: every function here now has explicit ": string" parameter types.
+// Next's strict TypeScript build fails the WHOLE deployment (for every page,
+// not just this one) if any function parameter has no inferrable type —
+// that's the exact error that's been silently breaking every deploy.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted) {
+function decryptData(encrypted: string): string {
   if (!encrypted) return '';
   try {
     const binary = atob(encrypted);
@@ -21,19 +25,19 @@ function decryptData(encrypted) {
     return encrypted;
   }
 }
-function decryptPhone(raw) {
+function decryptPhone(raw: string): string {
   if (!raw) return '';
   if (/^\+?\d{10,13}$/.test(raw)) return raw;
   const dec = decryptData(raw);
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
 }
-function decryptEmail(raw) {
+function decryptEmail(raw: string): string {
   if (!raw) return '';
   if (raw.includes('@')) return raw;
   const dec = decryptData(raw);
   return dec.includes('@') ? dec : raw;
 }
-function decryptAddressField(raw) {
+function decryptAddressField(raw: string): string {
   if (!raw) return '';
   const dec = decryptData(raw);
   const printable = dec.replace(/[\x20-\x7E]/g, '').length;
@@ -42,17 +46,17 @@ function decryptAddressField(raw) {
 
 const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, string> = {
   placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
   shipped: '#8b5cf6', out_for_delivery: '#06b6d4', delivered: '#16a34a',
   cancelled: '#ef4444', returned: '#dc2626'
 };
 
-function parseItems(items) {
+function parseItems(items: any): string[] {
   if (!items) return [];
   if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return [items]; } }
   if (Array.isArray(items)) {
-    return items.map((it) => {
+    return items.map((it: any) => {
       if (typeof it === 'string') return it;
       if (it.name) return `${it.name}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`;
       if (it.product_name) return `${it.product_name}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
@@ -67,8 +71,8 @@ function parseItems(items) {
 // Split the free-text `notes` field (e.g. "Coupon ABC applied | Online payment
 // discount: -₹30") into individual, readable discount line items so the
 // order/invoice total isn't just a single opaque number.
-function parseDiscountLines(notes, couponCode) {
-  const lines = [];
+function parseDiscountLines(notes: string | null | undefined, couponCode: string | null | undefined): string[] {
+  const lines: string[] = [];
   if (notes) {
     notes.split('|').map(s => s.trim()).filter(Boolean).forEach(l => lines.push(l));
   } else if (couponCode) {
@@ -81,7 +85,7 @@ function parseDiscountLines(notes, couponCode) {
 // `line1` instead of `street`. Normalize onto `.street` regardless of which
 // key was used, and only run the XOR/base64 decrypt on whichever value we
 // find — this is what was showing as a blank or garbled address before.
-function decryptOrder(o) {
+function decryptOrder(o: any) {
   const dPhone = decryptPhone(o.customer_phone);
   const dEmail = decryptEmail(o.customer_email);
   let addr = o.shipping_address;
@@ -97,13 +101,13 @@ function decryptOrder(o) {
   return { ...o, customer_phone: dPhone, customer_email: dEmail, shipping_address: addr };
 }
 
-function StatusDropdown({ value, onChange }) {
+function StatusDropdown({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function onDocClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
@@ -132,12 +136,12 @@ function StatusDropdown({ value, onChange }) {
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null);
-  const [checkedIds, setCheckedIds] = useState(new Set());
+  const [selected, setSelected] = useState<any>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState('confirmed');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -154,7 +158,7 @@ export default function OrdersPage() {
     setLoading(false);
   }
 
-  async function updateStatus(id, newStatus) {
+  async function updateStatus(id: string, newStatus: string) {
     await supabase.from('orders').update({ status: newStatus }).eq('id', id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
     if (selected && selected.id === id) setSelected({ ...selected, status: newStatus });
@@ -162,7 +166,7 @@ export default function OrdersPage() {
 
   // NEW: add a note directly from the order detail panel, so nobody has to
   // jump over to the separate Order Notes page just to log something.
-  async function addNote(orderId) {
+  async function addNote(orderId: string) {
     if (!newNote.trim()) return;
     setAddingNote(true);
     const order = orders.find(o => o.id === orderId);
@@ -173,11 +177,11 @@ export default function OrdersPage() {
     setAddingNote(false);
     if (error) { alert('Could not save note: ' + error.message); return; }
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_notes: updated } : o));
-    setSelected(prev => (prev && prev.id === orderId) ? { ...prev, order_notes: updated } : prev);
+    setSelected((prev: any) => (prev && prev.id === orderId) ? { ...prev, order_notes: updated } : prev);
     setNewNote('');
   }
 
-  async function deleteOrder(id, ref) {
+  async function deleteOrder(id: string, ref: string) {
     if (!window.confirm(`Delete order ${ref}? This permanently removes it and cannot be undone.`)) return;
     setDeleteBusy(true);
     const { error } = await supabase.from('orders').delete().eq('id', id);
@@ -214,12 +218,12 @@ export default function OrdersPage() {
     return true;
   });
 
-  const statusCounts = orders.reduce((acc, o) => {
+  const statusCounts: Record<string, number> = orders.reduce((acc: Record<string, number>, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
   }, {});
 
-  function toggleOne(id) {
+  function toggleOne(id: string) {
     setCheckedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -432,7 +436,7 @@ export default function OrdersPage() {
                 ))}
               </div>
 
-              {/* NEW: Order Notes, added inline so there's no need to jump to a
+              {/* Order Notes, added inline so there's no need to jump to a
                   separate page just to record something about this order. */}
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>
@@ -442,7 +446,7 @@ export default function OrdersPage() {
                   <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>No notes yet.</div>
                 ) : (
                   <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {[...selected.order_notes].reverse().map((note, i) => (
+                    {[...selected.order_notes].reverse().map((note: any, i: number) => (
                       <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '8px 10px' }}>
                         <div style={{ fontSize: 12, color: '#1a1008' }}>{note.text}</div>
                         <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
@@ -470,7 +474,7 @@ export default function OrdersPage() {
 
               {/* Order Summary — always shows the full breakdown (order value,
                   every discount line, shipping) instead of just a single total,
-                  so it's clear exactly how ₹{subtotal} became ₹{grandTotal}. */}
+                  so it's clear exactly how the subtotal became the final total. */}
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 10 }}>Order Summary</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
