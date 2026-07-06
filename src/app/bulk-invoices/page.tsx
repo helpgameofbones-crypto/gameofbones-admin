@@ -8,6 +8,45 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// FIX: this page previously had no decryption at all, so any order with
+// encrypted PII (the ones that actually came through the live checkout)
+// showed raw base64/XOR ciphertext for phone/email, and the address's
+// street line was blank because it read `addr.line1`, a key that doesn't
+// exist in the saved shape (`street`, not `line1`). This mirrors the same
+// decrypt helpers already used in orders/page.tsx and invoices/page.tsx.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string) {
+  if (!encrypted) return ''
+  try {
+    const binary = atob(encrypted)
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string) {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+function decryptEmail(raw: string) {
+  if (!raw) return ''
+  if (raw.includes('@')) return raw
+  const dec = decryptData(raw)
+  return dec.includes('@') ? dec : raw
+}
+function decryptAddressField(raw: string) {
+  if (!raw) return ''
+  const dec = decryptData(raw)
+  const junk = dec.replace(/[\x20-\x7E]/g, '').length
+  return junk / Math.max(dec.length, 1) > 0.3 ? raw : dec
+}
+
 export default function BulkInvoicesPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,20 +62,31 @@ export default function BulkInvoicesPage() {
     setLoading(true)
     let query = supabase
       .from('orders')
-      .select('id, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, payment_method, status, created_at')
+      .select('id, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, discount, coupon_code, subtotal, notes, payment_method, status, created_at')
       .gte('created_at', dateFrom + 'T00:00:00')
       .lte('created_at', dateTo + 'T23:59:59')
       .order('created_at', { ascending: false })
 
     if (statusFilter !== 'all') query = query.eq('status', statusFilter)
     const { data } = await query
-    setOrders(data || [])
+    // Decrypt phone/email up front so both the list view and the generated
+    // invoice HTML show the real values instead of ciphertext.
+    const decrypted = (data || []).map((o: any) => ({
+      ...o,
+      customer_phone: decryptPhone(o.customer_phone),
+      customer_email: decryptEmail(o.customer_email),
+    }))
+    setOrders(decrypted)
     setLoading(false)
   }
 
   function generateInvoiceHTML(order: any) {
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
-    const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
+    let addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
+    const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || ''
+    const street = decryptAddressField(streetRaw)
+    const subtotal = parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || i.qty || 1), 0)
+    const discount = parseFloat(order.discount) || 0
     const total = order.grand_total || order.total_amount || 0
     const invoiceNum = 'GOB-' + (order.ref || order.order_number || order.id.slice(0, 8).toUpperCase())
     const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -59,6 +109,7 @@ export default function BulkInvoicesPage() {
   th { background: #1a1008; color: white; padding: 10px 12px; text-align: left; font-size: 12px; }
   td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
   .total-row { font-weight: bold; font-size: 15px; background: #fef9f0; }
+  .discount-row { color: #16a34a; font-size: 13px; }
   .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999; }
   .badge { display: inline-block; background: ${order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7'}; color: ${order.payment_method === 'cod' ? '#92400e' : '#166534'}; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
 </style>
@@ -88,7 +139,7 @@ export default function BulkInvoicesPage() {
   <div class="section" style="flex:1">
     <div class="section-title">Ship To</div>
     <div class="address">
-      ${addr.line1 || ''}<br>
+      ${street}<br>
       ${addr.city || ''}, ${addr.state || ''}<br>
       PIN: ${addr.pincode || ''}
     </div>
@@ -117,6 +168,15 @@ export default function BulkInvoicesPage() {
       <td style="text-align:right">${(item.price || 0).toLocaleString('en-IN')}</td>
       <td style="text-align:right">${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</td>
     </tr>`).join('')}
+    <tr>
+      <td colspan="3" style="text-align:right">Subtotal</td>
+      <td style="text-align:right">${subtotal.toLocaleString('en-IN')}</td>
+    </tr>
+    ${discount > 0 ? `
+    <tr class="discount-row">
+      <td colspan="3" style="text-align:right">Discount${order.coupon_code ? ' (' + order.coupon_code + ')' : ''}${order.notes ? ' — ' + order.notes : ''}</td>
+      <td style="text-align:right">- ${discount.toLocaleString('en-IN')}</td>
+    </tr>` : ''}
     <tr class="total-row">
       <td colspan="3" style="text-align:right">Total Amount</td>
       <td style="text-align:right; color:#c8973a">${total.toLocaleString('en-IN')}</td>
