@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -19,7 +19,7 @@ const COMPANY = {
 
 // ── Decryption (same XOR cipher the storefront uses) ────────────────────
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted) {
+function decryptData(encrypted: string): string {
   if (!encrypted) return '';
   try {
     const binary = atob(encrypted);
@@ -32,30 +32,30 @@ function decryptData(encrypted) {
     return encrypted;
   }
 }
-function decryptPhone(raw) {
+function decryptPhone(raw: string): string {
   if (!raw) return '';
   if (/^\+?\d{10,13}$/.test(raw)) return raw;
   const dec = decryptData(raw);
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
 }
-function decryptEmail(raw) {
+function decryptEmail(raw: string): string {
   if (!raw) return '';
   if (raw.includes('@')) return raw;
   const dec = decryptData(raw);
   return dec.includes('@') ? dec : raw;
 }
-function decryptAddressField(raw) {
+function decryptAddressField(raw: string): string {
   if (!raw) return '';
   const dec = decryptData(raw);
   const printable = dec.replace(/[\x20-\x7E]/g, '').length;
   return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec;
 }
 
-function parseItems(items) {
+function parseItems(items: any): { name: string; sku: string; qty: number; price: number; mrp: number }[] {
   if (!items) return [];
   if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return []; } }
   if (!Array.isArray(items)) return [];
-  return items.map((it) => ({
+  return items.map((it: any) => ({
     name: it.name || it.product_name || 'Item',
     sku: it.sku || it.product_id || '—',
     qty: it.quantity || it.qty || 1,
@@ -68,7 +68,7 @@ function parseItems(items) {
 // `line1` instead of `street` — check all the shapes we've actually seen in
 // the database before falling back to blank, and only decrypt whichever
 // value we find.
-function formatAddress(addr) {
+function formatAddress(addr: any): string[] | null {
   if (!addr) return null;
   if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
   if (typeof addr !== 'object') return null;
@@ -79,10 +79,10 @@ function formatAddress(addr) {
 }
 
 export default function InvoicesPage() {
-  const [allOrders, setAllOrders] = useState([]);
+  const [allOrders, setAllOrders] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
-  const [order, setOrder] = useState(null);
+  const [order, setOrder] = useState<any>(null);
 
   useEffect(() => { fetchAllOrders(); }, []);
 
@@ -95,7 +95,7 @@ export default function InvoicesPage() {
       .limit(500);
     setLoadingList(false);
     if (error) { console.error(error); return; }
-    const decrypted = (data || []).map(o => ({
+    const decrypted = (data || []).map((o: any) => ({
       ...o,
       customer_phone: decryptPhone(o.customer_phone),
       customer_email: decryptEmail(o.customer_email),
@@ -312,5 +312,5 @@ export default function InvoicesPage() {
   );
 }
 
-const rowLabel = { padding: '6px 8px', fontSize: 13, color: '#374151' };
-const rowVal = { padding: '6px 8px', fontSize: 13, textAlign: 'right', color: '#1a1a1a' };
+const rowLabel: CSSProperties = { padding: '6px 8px', fontSize: 13, color: '#374151' };
+const rowVal: CSSProperties = { padding: '6px 8px', fontSize: 13, textAlign: 'right', color: '#1a1a1a' };
