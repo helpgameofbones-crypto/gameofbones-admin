@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -6,6 +6,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+const RETURN_WINDOW_HOURS = 48
 
 export default function ReturnsPage() {
   const [returns, setReturns]   = useState<any[]>([])
@@ -24,7 +26,10 @@ export default function ReturnsPage() {
     setLoading(true)
     const [r, o] = await Promise.all([
       supabase.from('returns').select('*').order('created_at', { ascending: false }),
-      supabase.from('orders').select('id, ref, customer_name, customer_phone, items, grand_total').order('created_at', { ascending: false }).limit(200)
+      // NOTE: delivered_at + status are needed here so that logging a return
+      // from the admin panel can be flagged as an "exception" when it's
+      // created outside the normal 48-hour self-serve window.
+      supabase.from('orders').select('id, ref, customer_name, customer_phone, items, grand_total, delivered_at, status').order('created_at', { ascending: false }).limit(200)
     ])
     setReturns(r.data || [])
     setOrders(o.data || [])
@@ -35,18 +40,32 @@ export default function ReturnsPage() {
     if (!newReturn.order_ref || !newReturn.reason) return
     setSaving(true)
     const order = orders.find(o => o.ref.toLowerCase() === newReturn.order_ref.toLowerCase())
+
+    // Flag as an exception if the matched order was delivered more than
+    // 48 hours ago (or has no delivery timestamp at all) — the customer
+    // could not have used the self-serve flow for this, so staff are
+    // deliberately overriding the window.
+    let isException = false
+    if (!order || order.status !== 'delivered' || !order.delivered_at) {
+      isException = true
+    } else {
+      const hoursSince = (Date.now() - new Date(order.delivered_at).getTime()) / 36e5
+      isException = hoursSince > RETURN_WINDOW_HOURS
+    }
+
     await supabase.from('returns').insert({
       order_id: order?.id, order_ref: newReturn.order_ref.toUpperCase(),
       customer_name: order?.customer_name || '', customer_phone: order?.customer_phone || '',
       reason: newReturn.reason, refund_amount: parseFloat(newReturn.refund_amount) || 0,
       notes: newReturn.notes, items: order?.items || [], status: 'requested',
+      source: 'admin', is_exception: isException,
     })
     setSaving(false)
     setShowAdd(false)
     setNewReturn({ order_ref: '', reason: '', refund_amount: '', notes: '' })
-    setMsg('Return logged!')
+    setMsg(isException ? 'Return logged as an exception (outside the 48-hour window)!' : 'Return logged!')
     fetchData()
-    setTimeout(() => setMsg(''), 3000)
+    setTimeout(() => setMsg(''), 4000)
   }
 
   async function updateReturnStatus(id: string, status: string) {
@@ -91,13 +110,13 @@ export default function ReturnsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Returns</h1>
-            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>Manage return requests and refunds</p>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>Manage return requests and refunds &mdash; customer self-serve requests (48-hour window) plus manual exceptions</p>
           </div>
           <div className="flex gap-3">
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
               className="border border-gray-200 rounded-lg px-4 py-2 text-sm w-48 focus:outline-none bg-white" style={{ color: '#111827' }} />
             <button onClick={() => setShowAdd(true)} className="text-white text-sm px-4 py-2 rounded-lg font-medium" style={{ background: '#c8973a' }}>
-              + Log Return
+              + Log Return (Exception)
             </button>
           </div>
         </div>
@@ -123,16 +142,16 @@ export default function ReturnsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Order','Customer','Reason','Refund','Status','Date','Actions'].map(h => (
+                {['Order','Customer','Reason','Source','Refund','Status','Date','Actions'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase" style={{ color: '#1a1008' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No returns yet</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No returns yet</td></tr>
               ) : filtered.map(ret => {
                 const sc = statusColors[ret.status] || statusColors.requested
                 return (
@@ -143,6 +162,16 @@ export default function ReturnsPage() {
                       <div className="text-xs" style={{ color: '#2a1f1a' }}>{ret.customer_phone}</div>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>{ret.reason}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ background: ret.source === 'customer' ? '#dbeafe' : '#f3f4f6', color: ret.source === 'customer' ? '#1e40af' : '#374151' }}>
+                        {ret.source === 'customer' ? 'Customer' : 'Admin'}
+                      </span>
+                      {ret.is_exception && (
+                        <span className="ml-1 text-xs px-2 py-1 rounded-full font-medium" style={{ background: '#fef3c7', color: '#92400e' }}>
+                          Exception
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-bold" style={{ color: '#ef4444' }}>{ret.refund_amount > 0 ? 'Rs ' + ret.refund_amount : '-'}</td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-1 rounded-full font-medium capitalize" style={{ background: sc.bg, color: sc.color }}>{ret.status}</span>
@@ -178,6 +207,9 @@ export default function ReturnsPage() {
               <button onClick={() => setShowAdd(false)} className="text-2xl font-light" style={{ color: '#2a1f1a' }}>x</button>
             </div>
             <div className="p-6 space-y-3">
+              <div className="text-xs px-3 py-2 rounded-lg" style={{ background: '#fef3c7', color: '#92400e' }}>
+                Customers can self-serve a return within 48 hours of delivery on the website. Use this form for exceptions (outside that window, damaged/wrong item, etc.) &mdash; it will be flagged automatically as an exception if the order is past the window.
+              </div>
               {[{ label: 'Order Ref *', key: 'order_ref', placeholder: 'GOB-ABC123' }, { label: 'Refund Amount', key: 'refund_amount', placeholder: '0' }, { label: 'Notes', key: 'notes', placeholder: 'Notes...' }].map(f => (
                 <div key={f.key}>
                   <label className="block text-xs font-semibold mb-1" style={{ color: '#1a1008' }}>{f.label}</label>
@@ -220,6 +252,7 @@ export default function ReturnsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Reason</div><div className="text-sm" style={{ color: '#1a1008' }}>{selected.reason}</div></div>
                 <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Refund</div><div className="text-sm font-bold" style={{ color: '#ef4444' }}>{selected.refund_amount > 0 ? 'Rs ' + selected.refund_amount : 'Not set'}</div></div>
+                <div><div className="text-xs font-semibold uppercase mb-1" style={{ color: '#1a1008' }}>Source</div><div className="text-sm" style={{ color: '#1a1008' }}>{selected.source === 'customer' ? 'Customer (self-serve)' : 'Admin'}{selected.is_exception ? ' — Exception' : ''}</div></div>
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase mb-2" style={{ color: '#1a1008' }}>Update Status</div>
