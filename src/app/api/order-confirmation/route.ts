@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
-// Create Gmail transporter with app password
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -34,8 +33,15 @@ export async function POST(req: NextRequest) {
       `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${item.name}${item.size ? ' - ' + item.size : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(item.price * item.qty).toLocaleString('en-IN')}</td></tr>`
     ).join('')
 
-    const address = order.shipping_address || {}
-    const addressStr = [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean).join(', ')
+    // Format address from order
+    const addressStr = order.shipping_address ? 
+      [
+        order.shipping_address.line1,
+        order.shipping_address.line2,
+        order.shipping_address.city,
+        order.shipping_address.state,
+        order.shipping_address.pincode
+      ].filter(Boolean).join(', ') : ''
 
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
 <div style="max-width:600px;margin:0 auto;padding:32px 16px">
@@ -59,8 +65,12 @@ ${order.shipping > 0 ? '<p style="font-size:13px;color:#8a7a6a;margin:4px 0">Shi
 ${order.discount > 0 ? '<p style="font-size:13px;color:#16a34a;margin:4px 0">Discount: -Rs.' + order.discount + '</p>' : ''}
 <p style="font-size:16px;font-weight:700;color:#1a1008;margin:8px 0">Total: Rs.${order.grand_total?.toLocaleString('en-IN')}</p>
 </div>
-${addressStr ? '<p style="font-size:13px;color:#8a7a6a;margin-top:16px"><strong>Delivering to:</strong> ' + addressStr + '</p>' : ''}
+${addressStr ? '<p style="font-size:13px;color:#8a7a6a;margin-top:16px"><strong>Delivering to:</strong><br>' + order.customer_name + ', ' + addressStr + '</p>' : ''}
 ${order.payment_method === 'cod' ? '<div style="background:#fef9ec;border:1px solid #c8973a;padding:12px 16px;margin-top:16px;font-size:13px;color:#1a1008"><strong>COD:</strong> Please keep Rs.' + order.grand_total?.toLocaleString('en-IN') + ' ready at delivery.</div>' : ''}
+<div style="background:#fef9ec;border:1px solid #c8973a;padding:12px 16px;margin-top:16px;font-size:13px;color:#1a1008;border-radius:4px">
+<strong>What\'s next?</strong><br>
+We'll dispatch your order within 24 hours and send you a tracking number via email. Keep an eye on your inbox! 📬
+</div>
 </div>
 <div style="background:#1a1008;padding:20px 32px;text-align:center;border-radius:0 0 8px 8px;margin-top:2px">
 <p style="font-size:13px;color:rgba(255,255,255,0.6);margin:0">Questions? WhatsApp: <a href="https://wa.me/919082503295" style="color:#c8973a">+91 90825 03295</a></p>
