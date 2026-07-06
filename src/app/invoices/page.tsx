@@ -64,11 +64,16 @@ function parseItems(items) {
   }));
 }
 
+// FIX: some orders (older/seed data) store the street under `address` or
+// `line1` instead of `street` — check all the shapes we've actually seen in
+// the database before falling back to blank, and only decrypt whichever
+// value we find.
 function formatAddress(addr) {
   if (!addr) return null;
   if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
   if (typeof addr !== 'object') return null;
-  const street = decryptAddressField(addr.street || '');
+  const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || '';
+  const street = decryptAddressField(streetRaw);
   const parts = [street, addr.city, addr.state, addr.pincode].filter(Boolean);
   return parts.length ? parts : null;
 }
