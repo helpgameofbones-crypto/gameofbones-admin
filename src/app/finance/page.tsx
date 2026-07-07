@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -84,13 +84,17 @@ export default function FinancePage() {
   const grossMargin     = netRevenue ? Math.round((grossProfit / netRevenue) * 100) : 0
 
   // Product performance
+  // Order items are saved with `product_name`/`quantity`/`pack_price` keys, not `name`/`qty`/`price`.
   const productStats: Record<string, { revenue: number; units: number; refunds: number }> = {}
   orders.forEach(o => {
     ;(o.items || []).forEach((item: any) => {
-      const key = item.name
+      const key = item.name ?? item.product_name
+      if (!key) return
+      const qty = item.qty ?? item.quantity ?? 1
+      const price = item.price ?? item.pack_price ?? 0
       if (!productStats[key]) productStats[key] = { revenue: 0, units: 0, refunds: 0 }
-      productStats[key].revenue += item.price * item.qty
-      productStats[key].units   += item.qty
+      productStats[key].revenue += price * qty
+      productStats[key].units   += qty
       if (o.is_refunded) productStats[key].refunds++
     })
   })
