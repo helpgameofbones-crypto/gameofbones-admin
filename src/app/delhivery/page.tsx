@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -6,6 +6,35 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+// Same XOR/base64 scheme as the website's encryptData() — customer_phone is
+// stored encrypted, so it must be decrypted before it's shown on screen.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = atob(encrypted)
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+
+// Order items are saved with a `quantity` key, not `qty` — reading `.qty`
+// silently returns undefined and turns every weight sum into NaN.
+function itemQty(i: any): number {
+  return i?.quantity ?? i?.qty ?? 1
+}
 
 export default function DelhiveryPage() {
   const [orders, setOrders]         = useState<any[]>([])
@@ -266,7 +295,7 @@ export default function DelhiveryPage() {
                   No orders found
                 </td></tr>
               ) : orders.map(order => {
-                const weight = (order.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * i.qty), 0)
+                const weight = (order.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0)
                 return (
                   <tr key={order.id} className="hover:bg-gray-50"
                     style={{ background: selectedIds.has(order.id) ? '#f0f9ff' : 'white' }}>
@@ -287,7 +316,7 @@ export default function DelhiveryPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{decryptPhone(order.customer_phone)}</div>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                       {order.shipping_address?.city}, {order.shipping_address?.state}<br />
