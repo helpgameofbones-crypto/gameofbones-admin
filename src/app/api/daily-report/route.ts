@@ -33,11 +33,15 @@ export async function GET(req: NextRequest) {
   const prepaidOrders = orderList.filter(o => o.payment_method !== 'cod').length
 
   // Top products
+  // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty` —
+  // reading the wrong keys silently produced "undefined" product names and NaN counts.
   const productCounts: Record<string, number> = {}
   orderList.forEach(o => {
     (o.items || []).forEach((item: any) => {
-      const key = item.name + (item.sizeLabel ? ` (${item.sizeLabel})` : '')
-      productCounts[key] = (productCounts[key] || 0) + item.qty
+      const itemName = item.name ?? item.product_name ?? 'Unknown'
+      const itemQty  = item.qty ?? item.quantity ?? 1
+      const key = itemName + (item.sizeLabel || item.pack_label ? ` (${item.sizeLabel || item.pack_label})` : '')
+      productCounts[key] = (productCounts[key] || 0) + itemQty
     })
   })
   const topProducts = Object.entries(productCounts)
