@@ -37,6 +37,7 @@ export default function ProductsPage() {
       compare_price: s.compare_price || 0,
       cogs: s.cogs || 0,
       stock: s.stock || 0,
+      weight_grams: s.weight_grams || 0,
     }));
     setEditing({ ...p, images: [...images], videos: [...videos], sizes });
   }
@@ -75,12 +76,12 @@ export default function ProductsPage() {
 
     const sizes = (editing.sizes || []).map((s: any) => ({
       label: s.label, price: s.price || 0, compare_price: s.compare_price || 0,
-      cogs: s.cogs || 0, stock: s.stock || 0
+      cogs: s.cogs || 0, stock: s.stock || 0, weight_grams: s.weight_grams || 0
     }));
 
     // Top-level price/compare_price/cost_price now derive automatically from
     // the first size row, since the standalone fields were removed from the UI.
-    const firstSize = sizes[0] || { price: 0, compare_price: 0, cogs: 0 };
+    const firstSize = sizes[0] || { price: 0, compare_price: 0, cogs: 0, weight_grams: 0 };
 
     const payload: any = {
       name: editing.name,
@@ -88,6 +89,11 @@ export default function ProductsPage() {
       compare_price: firstSize.compare_price,
       mrp: firstSize.compare_price,
       cost_price: firstSize.cogs,
+      // Used by Delhivery shipment creation (src/app/api/delhivery/route.ts)
+      // to calculate package weight. Falls back to 100g per item there if
+      // this is left at 0/blank, but real weights avoid weight-mismatch
+      // surcharges from Delhivery.
+      weight_grams: firstSize.weight_grams || 0,
       stock: editing.stock || 0,
       reorder_level: editing.reorder_level || 10,
       best_before_days: editing.best_before_days || 365,
@@ -216,10 +222,10 @@ export default function ProductsPage() {
             </div>
 
             <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 4, letterSpacing: '.1em' }}>SIZE PRICING, MRP & STOCK</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Pack of 1's MRP and Sell Price are what the product's base price/MRP will be everywhere else in the system.</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Pack of 1's MRP and Sell Price are what the product's base price/MRP will be everywhere else in the system. Weight (g) is the actual packed weight of that size — Delhivery uses this to calculate shipping, so fill it in accurately (defaults to 100g per item if left blank).</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20, background: '#faf8f5', borderRadius: 4 }}>
               <thead>
-                <tr><th style={{ ...th, textAlign: 'left' }}>Size</th><th style={th}>MRP (₹)</th><th style={th}>Sell Price</th><th style={th}>COGS</th><th style={{ ...th, textAlign: 'center' }}>Margin</th><th style={th}>Stock</th></tr>
+                <tr><th style={{ ...th, textAlign: 'left' }}>Size</th><th style={th}>MRP (₹)</th><th style={th}>Sell Price</th><th style={th}>COGS</th><th style={{ ...th, textAlign: 'center' }}>Margin</th><th style={th}>Stock</th><th style={th}>Weight (g)</th></tr>
               </thead>
               <tbody>
                 {(editing.sizes || []).map((s: any, i: number) => {
@@ -232,6 +238,7 @@ export default function ProductsPage() {
                       <td style={td}><input type="number" value={s.cogs || ''} onChange={e => updateSize(i, 'cogs', e.target.value)} placeholder="Cost" style={{ width: 70, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
                       <td style={{ ...td, textAlign: 'center' }}>{margin > 0 ? <span style={{ color: '#16a34a', fontWeight: 600 }}>{margin}%</span> : '—'}</td>
                       <td style={td}><input type="number" value={s.stock || ''} onChange={e => updateSize(i, 'stock', e.target.value)} style={{ width: 60, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
+                      <td style={td}><input type="number" value={s.weight_grams || ''} onChange={e => updateSize(i, 'weight_grams', e.target.value)} placeholder="e.g. 60" style={{ width: 75, padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 13 }} /></td>
                     </tr>
                   );
                 })}
