@@ -14,6 +14,7 @@ const SECTIONS = [
     { name: 'Cancellations', href: '/cancellation-tracker', icon: '❌', desc: 'Track cancelled and returned orders' },
   ]},
   { title: 'SHIPPING', color: '#8b5cf6', items: [
+    { name: 'Delhivery', href: '/delhivery', icon: '📮', desc: 'Generate AWBs and create shipments for confirmed orders' },
     { name: 'Delhivery Sync', href: '/delhivery-sync', icon: '🔄', desc: 'Auto-sync order status from Delhivery' },
     { name: 'Delivery Estimator', href: '/delivery-estimator', icon: '📅', desc: 'Estimated delivery dates from Delhivery' },
     { name: 'Shipment Tracker', href: '/shipment-tracker', icon: '🚚', desc: 'Track all shipments in one place' },
