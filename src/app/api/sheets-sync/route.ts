@@ -6,6 +6,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Same XOR/base64 scheme as the website's encryptData() — customer_phone is stored encrypted.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = Buffer.from(encrypted, 'base64').toString('binary')
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+// Order items are saved with a `quantity` key and `product_name`, not `qty`/`name`.
+function itemQty(i: any): number {
+  return i?.quantity ?? i?.qty ?? 1
+}
+function itemName(i: any): string {
+  return i?.name ?? i?.product_name ?? ''
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -34,10 +63,10 @@ export async function GET(req: NextRequest) {
       o.ref,
       new Date(o.created_at).toLocaleDateString('en-IN'),
       o.customer_name,
-      o.customer_phone,
+      decryptPhone(o.customer_phone),
       o.shipping_address?.city || '',
       o.shipping_address?.state || '',
-      (o.items || []).map((i: any) => `${i.qty}x ${i.name}`).join(' | '),
+      (o.items || []).map((i: any) => `${itemQty(i)}x ${itemName(i)}`).join(' | '),
       o.subtotal || 0,
       o.discount || 0,
       o.shipping || 0,
