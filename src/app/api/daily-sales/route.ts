@@ -8,6 +8,28 @@ const supabase = createClient(
 )
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Same XOR/base64 scheme as the website's encryptData() — customer_phone is stored encrypted.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = Buffer.from(encrypted, 'base64').toString('binary')
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+
 export async function GET(req: NextRequest) {
   // Verify cron secret
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -35,12 +57,14 @@ export async function GET(req: NextRequest) {
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
 
   // Product breakdown
+  // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty`.
   const productCount: Record<string, number> = {}
   orders?.forEach(o => {
     const items = Array.isArray(o.items) ? o.items : []
     items.forEach((item: any) => {
-      const name = item.name || 'Unknown'
-      productCount[name] = (productCount[name] || 0) + (item.qty || 1)
+      const name = item.name ?? item.product_name ?? 'Unknown'
+      const qty = item.qty ?? item.quantity ?? 1
+      productCount[name] = (productCount[name] || 0) + qty
     })
   })
   const topProducts = Object.entries(productCount)
@@ -124,7 +148,7 @@ export async function GET(req: NextRequest) {
             <span style="font-weight:700;color:#c8973a">${o.ref}</span>
             <span style="font-weight:700;color:#1a1008">Rs.${o.grand_total?.toLocaleString('en-IN')}</span>
           </div>
-          <div style="color:#8a7a6a;margin-top:2px">${o.customer_name} · ${o.customer_phone} · ${o.payment_method?.toUpperCase()}</div>
+          <div style="color:#8a7a6a;margin-top:2px">${o.customer_name} · ${decryptPhone(o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
         </div>`).join('') || ''}
     </div>` : ''}
   </div>
