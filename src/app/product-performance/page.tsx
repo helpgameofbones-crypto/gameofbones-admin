@@ -33,7 +33,8 @@ export default function ProductPerformancePage() {
       if (!Array.isArray(items)) return;
 
       items.forEach((item: any) => {
-        const name = typeof item === 'string' ? item : (item.name || item.product || '');
+        // Order items are saved with `product_name`/`quantity`/`pack_price` keys, not `name`/`qty`/`price`.
+        const name = typeof item === 'string' ? item : (item.name || item.product_name || item.product || '');
         if (!name) return;
         if (!map.has(name)) {
           const dbP = dbProducts?.find((p: any) => p.name.toLowerCase() === name.toLowerCase());
@@ -41,7 +42,9 @@ export default function ProductPerformancePage() {
         }
         const p = map.get(name)!;
         p.totalOrders++;
-        const price = typeof item === 'object' ? (item.price || 0) * (item.qty || 1) : 0;
+        const qty = typeof item === 'object' ? (item.qty ?? item.quantity ?? 1) : 1;
+        const unitPrice = typeof item === 'object' ? (item.price ?? item.pack_price ?? 0) : 0;
+        const price = unitPrice * qty;
         p.totalRevenue += price;
         if (!p.lastOrdered || o.created_at > p.lastOrdered) p.lastOrdered = o.created_at;
       });
