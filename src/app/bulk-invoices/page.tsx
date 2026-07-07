@@ -164,9 +164,9 @@ export default function BulkInvoicesPage() {
     ${items.map((item: any) => `
     <tr>
       <td>${item.name || item.product_name || 'Product'}</td>
-      <td style="text-align:center">${item.quantity || 1}</td>
-      <td style="text-align:right">${(item.price || 0).toLocaleString('en-IN')}</td>
-      <td style="text-align:right">${((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}</td>
+      <td style="text-align:center">${item.quantity ?? item.qty ?? 1}</td>
+      <td style="text-align:right">${(item.price ?? item.pack_price ?? 0).toLocaleString('en-IN')}</td>
+      <td style="text-align:right">${((item.price ?? item.pack_price ?? 0) * (item.quantity ?? item.qty ?? 1)).toLocaleString('en-IN')}</td>
     </tr>`).join('')}
     <tr>
       <td colspan="3" style="text-align:right">Subtotal</td>
