@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -29,10 +29,13 @@ export default function InventoryPage() {
       .gte('created_at', thirtyDaysAgo.toISOString())
       .eq('status', 'delivered')
 
+    // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty`.
     const salesMap: Record<string, number> = {}
     ;(orders || []).forEach(o => {
       ;(o.items || []).forEach((item: any) => {
-        salesMap[item.name] = (salesMap[item.name] || 0) + item.qty
+        const key = item.name ?? item.product_name
+        if (!key) return
+        salesMap[key] = (salesMap[key] || 0) + (item.qty ?? item.quantity ?? 1)
       })
     })
 
