@@ -21,6 +21,14 @@ export default function AnalyticsPage() {
     conversions: 0
   })
   const [trafficSources, setTrafficSources] = useState<any[]>([])
+  const [topPages, setTopPages] = useState<any[]>([])
+  const [landingPages, setLandingPages] = useState<any[]>([])
+  const [geoCities, setGeoCities] = useState<any[]>([])
+  const [engagement, setEngagement] = useState({
+    avgEngagementSeconds: 0,
+    newUsers: 0,
+    returningUsers: 0
+  })
 
   useEffect(() => { fetchData() }, [range])
 
@@ -37,7 +45,7 @@ export default function AnalyticsPage() {
         console.error('Failed to fetch GA data:', error)
       }
     }
-    
+
     async function fetchTraffic() {
       try {
         const res = await fetch('/api/analytics/traffic-sources')
@@ -50,8 +58,42 @@ export default function AnalyticsPage() {
       }
     }
 
+    async function fetchPages() {
+      try {
+        const res = await fetch('/api/analytics/pages')
+        const data = await res.json()
+        if (Array.isArray(data.topPages)) setTopPages(data.topPages)
+        if (Array.isArray(data.landingPages)) setLandingPages(data.landingPages)
+      } catch (error) {
+        console.error('Failed to fetch pages:', error)
+      }
+    }
+
+    async function fetchGeo() {
+      try {
+        const res = await fetch('/api/analytics/geography')
+        const data = await res.json()
+        if (Array.isArray(data)) setGeoCities(data)
+      } catch (error) {
+        console.error('Failed to fetch geography:', error)
+      }
+    }
+
+    async function fetchEngagement() {
+      try {
+        const res = await fetch('/api/analytics/engagement')
+        const data = await res.json()
+        if (data) setEngagement(data)
+      } catch (error) {
+        console.error('Failed to fetch engagement:', error)
+      }
+    }
+
     fetchGA()
     fetchTraffic()
+    fetchPages()
+    fetchGeo()
+    fetchEngagement()
   }, [])
 
   async function fetchData() {
@@ -287,6 +329,42 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
+            {/* GA engagement KPI cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+              {[
+                {
+                  label: 'New Visitors (30d)',
+                  value: engagement.newUsers,
+                  icon: '🆕',
+                  color: '#6366f1',
+                },
+                {
+                  label: 'Returning Visitors (30d)',
+                  value: engagement.returningUsers,
+                  icon: '🔁',
+                  color: '#ec4899',
+                },
+                {
+                  label: 'Avg. Engagement Time',
+                  value:
+                    Math.floor(engagement.avgEngagementSeconds / 60) +
+                    'm ' +
+                    (engagement.avgEngagementSeconds % 60) +
+                    's',
+                  icon: '⏱️',
+                  color: '#14b8a6',
+                },
+              ].map(card => (
+                <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <div className="text-2xl mb-2">{card.icon}</div>
+                  <div className="text-2xl font-bold" style={{ color: card.color }}>
+                    {loading ? '...' : card.value}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
+                </div>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-6 mb-6">
               {/* COD vs Prepaid */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -346,6 +424,47 @@ export default function AnalyticsPage() {
                   </div>
                 ))
               )}
+            </div>
+
+            {/* Top Pages & Landing Pages */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Top Pages (Last 30 Days)</h3>
+                {topPages.length === 0 ? (
+                  <div style={{ color: '#2a1f1a', fontSize: 14 }}>Loading...</div>
+                ) : (
+                  topPages.map((p, i) => (
+                    <div key={p.path + i} className="flex items-center gap-3 mb-3">
+                      <div className="w-6 text-xs font-bold text-center" style={{ color: '#c8973a' }}>
+                        {i + 1}
+                      </div>
+                      <div className="text-sm flex-1 truncate" style={{ color: '#1a1008' }} title={p.path}>
+                        {p.title || p.path}
+                      </div>
+                      <div className="font-bold text-sm" style={{ color: '#111827' }}>{p.views}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Top Landing Pages (Last 30 Days)</h3>
+                {landingPages.length === 0 ? (
+                  <div style={{ color: '#2a1f1a', fontSize: 14 }}>Loading...</div>
+                ) : (
+                  landingPages.map((p, i) => (
+                    <div key={p.path + i} className="flex items-center gap-3 mb-3">
+                      <div className="w-6 text-xs font-bold text-center" style={{ color: '#c8973a' }}>
+                        {i + 1}
+                      </div>
+                      <div className="text-sm flex-1 truncate" style={{ color: '#1a1008' }} title={p.path}>
+                        {p.path}
+                      </div>
+                      <div className="font-bold text-sm" style={{ color: '#111827' }}>{p.sessions}</div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* Coupon usage */}
@@ -477,6 +596,36 @@ export default function AnalyticsPage() {
                   </table>
                 )}
               </div>
+            </div>
+
+            {/* GA website visitors by city */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="font-bold mb-4" style={{ color: '#111827' }}>
+                Website Visitors by City (Last 30 Days, from Google Analytics)
+              </h3>
+              {geoCities.length === 0 ? (
+                <div style={{ color: '#2a1f1a', fontSize: 14 }}>Loading...</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      {['City', 'Country', 'Visitors'].map(h => (
+                        <th key={h} className="text-left py-2 text-xs font-semibold uppercase"
+                          style={{ color: '#1a1008' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {geoCities.map((row, i) => (
+                      <tr key={row.city + i} style={{ borderBottom: '1px solid #f9fafb' }}>
+                        <td className="py-2" style={{ color: '#1a1008' }}>{row.city}</td>
+                        <td className="py-2" style={{ color: '#6b7280' }}>{row.country}</td>
+                        <td className="py-2 font-bold" style={{ color: '#111827' }}>{row.users}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}
