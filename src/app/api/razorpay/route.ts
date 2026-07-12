@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,9 @@ async function rzpFetch(path: string, method = 'GET', body?: any) {
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const { action, data } = await req.json()
 
     if (action === 'get_payments') {
