@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +14,6 @@ export default function AnalyticsPage() {
   const [range, setRange]     = useState('30')
   const [tab, setTab]         = useState('overview')
   
-  // Google Analytics data
   const [gaData, setGaData] = useState({
     activeUsers: 0,
     sessions: 0,
@@ -32,11 +32,10 @@ export default function AnalyticsPage() {
 
   useEffect(() => { fetchData() }, [range])
 
-  // Fetch GA data
   useEffect(() => {
     async function fetchGA() {
       try {
-        const res = await fetch('/api/analytics')
+        const res = await authedFetch('/api/analytics')
         const data = await res.json()
         if (data && !data.error) {
           setGaData(data)
@@ -48,7 +47,7 @@ export default function AnalyticsPage() {
 
     async function fetchTraffic() {
       try {
-        const res = await fetch('/api/analytics/traffic-sources')
+        const res = await authedFetch('/api/analytics/traffic-sources')
         const data = await res.json()
         if (Array.isArray(data)) {
           setTrafficSources(data)
@@ -60,7 +59,7 @@ export default function AnalyticsPage() {
 
     async function fetchPages() {
       try {
-        const res = await fetch('/api/analytics/pages')
+        const res = await authedFetch('/api/analytics/pages')
         const data = await res.json()
         if (Array.isArray(data.topPages)) setTopPages(data.topPages)
         if (Array.isArray(data.landingPages)) setLandingPages(data.landingPages)
@@ -71,7 +70,7 @@ export default function AnalyticsPage() {
 
     async function fetchGeo() {
       try {
-        const res = await fetch('/api/analytics/geography')
+        const res = await authedFetch('/api/analytics/geography')
         const data = await res.json()
         if (Array.isArray(data)) setGeoCities(data)
       } catch (error) {
@@ -81,7 +80,7 @@ export default function AnalyticsPage() {
 
     async function fetchEngagement() {
       try {
-        const res = await fetch('/api/analytics/engagement')
+        const res = await authedFetch('/api/analytics/engagement')
         const data = await res.json()
         if (data) setEngagement(data)
       } catch (error) {
@@ -99,13 +98,11 @@ export default function AnalyticsPage() {
   async function fetchData() {
     setLoading(true)
     
-    // Fetch all orders (no date filter for test data to work)
     const { data } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
 
-    // Filter by date range client-side for flexibility
     const now = new Date()
     const rangeMs = parseInt(range) * 24 * 60 * 60 * 1000
     const cutoff = new Date(now.getTime() - rangeMs)
@@ -119,8 +116,6 @@ export default function AnalyticsPage() {
     setLoading(false)
   }
 
-  //  Calculations 
-
   const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0)
   const totalOrders     = orders.length
   const avgOrderValue   = totalOrders ? Math.round(totalRevenue / totalOrders) : 0
@@ -131,7 +126,6 @@ export default function AnalyticsPage() {
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length
   const rtoRate         = totalOrders ? Math.round((rtoOrders / totalOrders) * 100) : 0
 
-  // Revenue by category
   const categoryRevenue: Record<string, number> = {}
   orders.forEach(o => {
     if (o.items && Array.isArray(o.items)) {
@@ -145,7 +139,6 @@ export default function AnalyticsPage() {
   const topCategories = Object.entries(categoryRevenue)
     .sort((a, b) => b[1] - a[1])
 
-  // State-wise orders
   const stateOrders: Record<string, number> = {}
   orders.forEach(o => {
     const state = o.shipping_address?.state || 'Unknown'
@@ -155,7 +148,6 @@ export default function AnalyticsPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
 
-  // RTO by state
   const stateRTO: Record<string, { total: number; rto: number }> = {}
   orders.forEach(o => {
     const state = o.shipping_address?.state || 'Unknown'
@@ -173,7 +165,6 @@ export default function AnalyticsPage() {
     .sort((a, b) => b.rate - a.rate)
     .slice(0, 10)
 
-  // Peak hours
   const hourCounts: Record<number, number> = {}
   orders.forEach(o => {
     const hour = new Date(o.created_at).getHours()
@@ -187,7 +178,6 @@ export default function AnalyticsPage() {
       count
     }))
 
-  // Coupon usage
   const couponUsage: Record<string, { count: number; discount: number }> = {}
   orders.forEach(o => {
     if (o.coupon_code) {
@@ -200,14 +190,12 @@ export default function AnalyticsPage() {
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 5)
 
-  // Monthly revenue trend
   const monthlyRevenue: Record<string, number> = {}
   orders.forEach(o => {
     const month = new Date(o.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
     monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (o.grand_total || o.total_amount || 0)
   })
 
-  // AOV trend by week
   const weeklyAOV: Record<string, { revenue: number; orders: number }> = {}
   orders.forEach(o => {
     const date = new Date(o.created_at)
@@ -219,7 +207,6 @@ export default function AnalyticsPage() {
     weeklyAOV[key].orders++
   })
 
-  // P&L estimate (assuming 40% cost of goods)
   const estimatedCOGS   = totalRevenue * 0.4
   const estimatedProfit = totalRevenue - estimatedCOGS
   const profitMargin    = totalRevenue ? Math.round((estimatedProfit / totalRevenue) * 100) : 0
@@ -276,7 +263,6 @@ export default function AnalyticsPage() {
           </select>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -291,7 +277,6 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        {/*  OVERVIEW TAB  */}
         {tab === 'overview' && (
           <div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -311,7 +296,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* GA KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: 'Visitors (30d)',     value: gaData.activeUsers,               icon: '👥', color: '#06b6d4' },
@@ -329,7 +313,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* GA engagement KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {[
                 {
@@ -366,7 +349,6 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-6">
-              {/* COD vs Prepaid */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>COD vs Prepaid</h3>
                 <div className="space-y-3">
@@ -391,7 +373,6 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Peak hours */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Peak Order Hours</h3>
                 {loading ? (
@@ -408,7 +389,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Traffic Sources */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Traffic Sources (Last 30 Days)</h3>
               {trafficSources.length === 0 ? (
@@ -426,7 +406,6 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Top Pages & Landing Pages */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Top Pages (Last 30 Days)</h3>
@@ -467,7 +446,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Coupon usage */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Coupon Usage</h3>
               {topCoupons.length === 0 ? (
@@ -499,7 +477,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/*  CATEGORIES TAB  */}
         {tab === 'categories' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -533,7 +510,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/*  GEOGRAPHY TAB  */}
         {tab === 'geography' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
@@ -598,7 +574,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* GA website visitors by city */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>
                 Website Visitors by City (Last 30 Days, from Google Analytics)
@@ -630,7 +605,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/*  OPERATIONS TAB  */}
         {tab === 'operations' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -659,7 +633,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/*  P&L TAB  */}
         {tab === 'pnl' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
