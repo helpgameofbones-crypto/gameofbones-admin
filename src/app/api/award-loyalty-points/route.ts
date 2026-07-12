@@ -8,14 +8,6 @@ const supabase = createClient(
 )
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-// ===== Same XOR/base64 scheme used elsewhere in this codebase =====
-// orders.customer_phone is stored encrypted (see website's encryptData()),
-// but customers.phone is stored plaintext — so matching an order back to a
-// customer row requires decrypting the order's phone first.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 function decryptData(encrypted: string): string {
   if (!encrypted) return ''
@@ -32,35 +24,14 @@ function decryptData(encrypted: string): string {
 }
 function decryptPhone(raw: string): string {
   if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw // already plaintext
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
   const dec = decryptData(raw)
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw
 }
 
-// Matches the earn rate already advertised on the website's "My Rewards"
-// page ("Earn 1 point for every Rs.10 spent") and the redemption rate used
-// at checkout (100 points = Rs.30). Points "expire 30 days after earned"
-// per the same page's copy.
 const POINTS_PER_RS10 = 1
 const POINTS_EXPIRY_DAYS = 30
 
-// Cron job (see vercel.json) that runs periodically and finds orders that
-// were marked "delivered" — whether by an admin changing the status
-// dropdown on /orders, or by the Delhivery status-sync function — but
-// haven't had loyalty points credited yet. Credits points to the matching
-// customer row and emails them their new balance + expiry date.
-//
-// NOTE: this app doesn't have a real per-batch points ledger (points earned
-// at different times don't expire independently) — loyalty_points is a
-// single running balance, same as the existing manual "Add Points" flow on
-// /loyalty. Each time new points are credited here, the customer's single
-// loyalty_points_expire_at is pushed out 30 days. That's a simplification:
-// it means points effectively keep resetting to a fresh 30-day clock as
-// long as a customer keeps ordering, but it can't precisely expire an
-// older batch while a newer batch is still valid. Doing that properly
-// needs a real ledger table (loyalty_transactions: customer_id, points,
-// earned_at, expires_at) — flagging this as a follow-up rather than solving
-// it here, since it needs a schema decision, not just a bug fix.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
