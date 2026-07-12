@@ -1,5 +1,6 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/lib/requireAdmin';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,20 +9,22 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req);
+    if (authError) return authError;
+
     const body = await req.json();
-    
-    const { 
-      customerName, 
+
+    const {
+      customerName,
       customerPhone,
       customerEmail,
-      items, 
-      total, 
-      paymentMethod, 
+      items,
+      total,
+      paymentMethod,
       transactionId,
-      notes 
+      notes
     } = body;
 
-    // Ensure items have all required fields
     const formattedItems = items.map((item: any) => ({
       id: item.product_id || item.id,
       name: item.name,
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (paymentMethod) insertData.payment_method = paymentMethod;
     if (transactionId) insertData.transaction_id = transactionId;
     if (notes) insertData.notes = notes;
-    
+
     insertData.status = 'confirmed';
 
     const { data, error } = await supabase
@@ -59,8 +62,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Order created',
       data
     });
