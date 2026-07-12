@@ -1,21 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Download, FileText, Calendar, Loader } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// FIX: this page previously had no decryption at all, so any order with
-// encrypted PII (the ones that actually came through the live checkout)
-// showed raw base64/XOR ciphertext for phone/email, and the address's
-// street line was blank because it read `addr.line1`, a key that doesn't
-// exist in the saved shape (`street`, not `line1`). This mirrors the same
-// decrypt helpers already used in orders/page.tsx and invoices/page.tsx.
+// Same XOR/base64 scheme as the website's encryptData() — customer_phone and
+// shipping_address.street are stored encrypted.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string) {
+function decryptData(encrypted: string): string {
   if (!encrypted) return ''
   try {
     const binary = atob(encrypted)
@@ -28,342 +27,277 @@ function decryptData(encrypted: string) {
     return encrypted
   }
 }
-function decryptPhone(raw: string) {
+function decryptPhone(raw: string): string {
   if (!raw) return ''
   if (/^\+?\d{10,13}$/.test(raw)) return raw
   const dec = decryptData(raw)
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw
 }
-function decryptEmail(raw: string) {
+function decryptEmail(raw: string): string {
   if (!raw) return ''
   if (raw.includes('@')) return raw
   const dec = decryptData(raw)
   return dec.includes('@') ? dec : raw
 }
-function decryptAddressField(raw: string) {
+function decryptAddressField(raw: string): string {
   if (!raw) return ''
   const dec = decryptData(raw)
-  const junk = dec.replace(/[\x20-\x7E]/g, '').length
-  return junk / Math.max(dec.length, 1) > 0.3 ? raw : dec
+  const printable = dec.replace(/[\x20-\x7E]/g, '').length
+  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec
 }
 
-export default function BulkInvoicesPage() {
-  const [orders, setOrders] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0])
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0])
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [progress, setProgress] = useState(0)
+// Order items are saved with a `quantity` key, not `qty`, and their label is
+// `product_name`, not `name` — reading the wrong keys silently produced
+// "undefinedx undefined" / NaN weight in these exports.
+function itemQty(i: any): number {
+  return i?.quantity ?? i?.qty ?? 1
+}
+function itemName(i: any): string {
+  return i?.name ?? i?.product_name ?? ''
+}
 
-  useEffect(() => { fetchOrders() }, [dateFrom, dateTo, statusFilter])
+export default function BulkExportPage() {
+  const [orders, setOrders]   = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter]   = useState('today')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  useEffect(() => { fetchOrders() }, [filter])
 
   async function fetchOrders() {
     setLoading(true)
-    let query = supabase
+    const from = new Date()
+    if (filter === 'today') from.setHours(0,0,0,0)
+    else if (filter === 'week') from.setDate(from.getDate() - 7)
+    else if (filter === 'month') from.setDate(from.getDate() - 30)
+
+    const { data } = await supabase
       .from('orders')
-      .select('id, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, discount, coupon_code, subtotal, notes, payment_method, status, created_at')
-      .gte('created_at', dateFrom + 'T00:00:00')
-      .lte('created_at', dateTo + 'T23:59:59')
+      .select('*')
+      .gte('created_at', from.toISOString())
+      .not('status', 'in', '("delivered","rto","cancelled")')
       .order('created_at', { ascending: false })
 
-    if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-    const { data } = await query
-    // Decrypt phone/email up front so both the list view and the generated
-    // invoice HTML show the real values instead of ciphertext.
-    const decrypted = (data || []).map((o: any) => ({
-      ...o,
-      customer_phone: decryptPhone(o.customer_phone),
-      customer_email: decryptEmail(o.customer_email),
-    }))
-    setOrders(decrypted)
+    setOrders(data || [])
+    setSelected(new Set())
     setLoading(false)
   }
 
-  function generateInvoiceHTML(order: any) {
-    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
-    let addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
-    const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || ''
-    const street = decryptAddressField(streetRaw)
-    const subtotal = parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || i.qty || 1), 0)
-    const discount = parseFloat(order.discount) || 0
-    const total = order.grand_total || order.total_amount || 0
-    const invoiceNum = 'GOB-' + (order.ref || order.order_number || order.id.slice(0, 8).toUpperCase())
-    const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; color: #1a1a1a; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #c8973a; padding-bottom: 20px; }
-  .brand { font-size: 22px; font-weight: bold; color: #1a1008; }
-  .tagline { font-size: 11px; color: #888; margin-top: 2px; }
-  .invoice-title { font-size: 28px; font-weight: bold; color: #c8973a; }
-  .invoice-meta { font-size: 12px; color: #666; text-align: right; margin-top: 4px; }
-  .section { margin: 20px 0; }
-  .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #888; margin-bottom: 6px; letter-spacing: 1px; }
-  .address { font-size: 13px; line-height: 1.6; }
-  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-  th { background: #1a1008; color: white; padding: 10px 12px; text-align: left; font-size: 12px; }
-  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-  .total-row { font-weight: bold; font-size: 15px; background: #fef9f0; }
-  .discount-row { color: #16a34a; font-size: 13px; }
-  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999; }
-  .badge { display: inline-block; background: ${order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7'}; color: ${order.payment_method === 'cod' ? '#92400e' : '#166534'}; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-</style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <div class="brand"> Game of Bones</div>
-    <div class="tagline">Premium Natural Dehydrated Treats for Happy Dogs</div>
-    <div class="tagline">gameofbones.in  support@gameofbones.in</div>
-  </div>
-  <div>
-    <div class="invoice-title">INVOICE</div>
-    <div class="invoice-meta">${invoiceNum}<br>${date}</div>
-  </div>
-</div>
-
-<div style="display:flex; gap:40px;">
-  <div class="section" style="flex:1">
-    <div class="section-title">Bill To</div>
-    <div class="address">
-      <strong>${order.customer_name}</strong><br>
-      ${order.customer_phone}<br>
-      ${order.customer_email || ''}
-    </div>
-  </div>
-  <div class="section" style="flex:1">
-    <div class="section-title">Ship To</div>
-    <div class="address">
-      ${street}<br>
-      ${addr.city || ''}, ${addr.state || ''}<br>
-      PIN: ${addr.pincode || ''}
-    </div>
-  </div>
-  <div class="section">
-    <div class="section-title">Payment</div>
-    <div class="badge">${(order.payment_method || 'prepaid').toUpperCase()}</div>
-    <div style="font-size:12px;color:#666;margin-top:6px;">Status: ${order.status}</div>
-  </div>
-</div>
-
-<table>
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th style="text-align:center">Qty</th>
-      <th style="text-align:right">Price</th>
-      <th style="text-align:right">Total</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${items.map((item: any) => `
-    <tr>
-      <td>${item.name || item.product_name || 'Product'}</td>
-      <td style="text-align:center">${item.quantity ?? item.qty ?? 1}</td>
-      <td style="text-align:right">${(item.price ?? item.pack_price ?? 0).toLocaleString('en-IN')}</td>
-      <td style="text-align:right">${((item.price ?? item.pack_price ?? 0) * (item.quantity ?? item.qty ?? 1)).toLocaleString('en-IN')}</td>
-    </tr>`).join('')}
-    <tr>
-      <td colspan="3" style="text-align:right">Subtotal</td>
-      <td style="text-align:right">${subtotal.toLocaleString('en-IN')}</td>
-    </tr>
-    ${discount > 0 ? `
-    <tr class="discount-row">
-      <td colspan="3" style="text-align:right">Discount${order.coupon_code ? ' (' + order.coupon_code + ')' : ''}${order.notes ? ' — ' + order.notes : ''}</td>
-      <td style="text-align:right">- ${discount.toLocaleString('en-IN')}</td>
-    </tr>` : ''}
-    <tr class="total-row">
-      <td colspan="3" style="text-align:right">Total Amount</td>
-      <td style="text-align:right; color:#c8973a">${total.toLocaleString('en-IN')}</td>
-    </tr>
-  </tbody>
-</table>
-
-<div class="footer">
-  Thank you for choosing Game of Bones! <br>
-  For support: support@gameofbones.in<br>
-  This is a computer-generated invoice.
-</div>
-</body>
-</html>`
+  function toggleSelect(id: string) {
+    const s = new Set(selected)
+    s.has(id) ? s.delete(id) : s.add(id)
+    setSelected(s)
   }
 
-  async function downloadAll() {
-    if (orders.length === 0) return
-    setGenerating(true)
-    setProgress(0)
-
-    try {
-      // Dynamically import JSZip
-      const JSZip = (await import('jszip')).default
-      const zip = new JSZip()
-      const folder = zip.folder('Game_of_Bones_Invoices')!
-
-      for (let i = 0; i < orders.length; i++) {
-        const order = orders[i]
-        const html = generateInvoiceHTML(order)
-        const filename = `Invoice_${order.ref || order.order_number || order.id.slice(0, 8)}_${order.customer_name?.replace(/\s+/g, '_')}.html`
-        folder.file(filename, html)
-        setProgress(Math.round(((i + 1) / orders.length) * 100))
-      }
-
-      const blob = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `GameOfBones_Invoices_${dateFrom}_to_${dateTo}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('ZIP generation failed:', err)
-      alert('ZIP generation failed. Please try downloading individually.')
+  function selectAll() {
+    if (selected.size === orders.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(orders.map(o => o.id)))
     }
-
-    setGenerating(false)
-    setProgress(0)
   }
 
-  function downloadSingle(order: any) {
-    const html = generateInvoiceHTML(order)
-    const blob = new Blob([html], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Invoice_${order.ref || order.order_number}.html`
+  function exportCSV() {
+    const toExport = orders.filter(o => selected.has(o.id))
+    const rows = [
+      ['Order Ref', 'Date', 'Customer Name', 'Phone', 'Email',
+       'Address', 'City', 'State', 'Pincode', 'Items',
+       'Total', 'Payment', 'Status', 'AWB'],
+      ...toExport.map(o => [
+        o.ref,
+        new Date(o.created_at).toLocaleDateString('en-IN'),
+        o.customer_name,
+        decryptPhone(o.customer_phone),
+        decryptEmail(o.customer_email) || '',
+        decryptAddressField(o.shipping_address?.street || o.shipping_address?.line1 || '') || '',
+        o.shipping_address?.city || '',
+        o.shipping_address?.state || '',
+        o.shipping_address?.pincode || '',
+        (o.items || []).map((i: any) => `${itemQty(i)}x ${itemName(i)}`).join(' | '),
+        o.grand_total,
+        o.payment_method?.toUpperCase(),
+        o.status,
+        o.delhivery_awb || ''
+      ])
+    ]
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
   }
 
-  const totalValue = orders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0)
+  function exportDelhivery() {
+    const toExport = orders.filter(o => selected.has(o.id))
+    const rows = [
+      ['Consignee', 'Mobile', 'Address', 'City', 'State', 'Pincode',
+       'Product', 'Weight', 'COD Amount', 'Order Ref'],
+      ...toExport.map(o => {
+        const weight = (o.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0) / 1000
+        return [
+          o.customer_name,
+          decryptPhone(o.customer_phone),
+          decryptAddressField(o.shipping_address?.street || o.shipping_address?.line1 || ''),
+          o.shipping_address?.city || '',
+          o.shipping_address?.state || '',
+          o.shipping_address?.pincode || '',
+          (o.items || []).map((i: any) => `${itemQty(i)}x ${itemName(i)}`).join(' | '),
+          weight.toFixed(2),
+          o.payment_method === 'cod' ? o.grand_total : 0,
+          o.ref
+        ]
+      })
+    ]
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `delhivery-import-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+  }
+
+  const navLinks = [
+    { label: 'Dashboard',    href: '/dashboard' },
+    { label: 'Orders',       href: '/orders' },
+    { label: 'Products',     href: '/products' },
+    { label: 'Customers',    href: '/customers' },
+    { label: 'Bulk Export',  href: '/bulk-export' },
+    { label: 'Analytics',    href: '/analytics' },
+    { label: 'Inventory',    href: '/inventory' },
+  ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto" style={{ background: '#f9f6f2', minHeight: '100vh' }}>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bulk Invoice Download</h1>
-          <p className="text-sm text-gray-500 mt-1">Download all invoices for a date range as a ZIP file</p>
+    <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
+      <div className="text-white px-6 py-4 flex items-center justify-between"
+        style={{ background: '#1a1008' }}>
+        <div className="flex items-center gap-3">
+          <span className="text-2xl"></span>
+          <div>
+            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
+          </div>
         </div>
-        <button onClick={downloadAll} disabled={orders.length === 0 || generating}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 disabled:opacity-40 transition-colors">
-          {generating ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
-          {generating ? `Generating ${progress}%...` : `Download ${orders.length} Invoices as ZIP`}
-        </button>
+        <nav className="flex gap-1 flex-wrap">
+          {navLinks.map(item => (
+            <a key={item.href} href={item.href}
+              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
+              style={{ color: 'rgba(255,255,255,0.8)' }}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
-        <div className="flex flex-wrap gap-4 items-end">
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <label className="text-xs font-semibold text-gray-600 block mb-1">From Date</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
+            <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Bulk Export</h1>
+            <p className="text-sm mt-1" style={{ color: '#1a1008' }}>
+              Select orders and export to CSV or Delhivery format
+            </p>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 block mb-1">To Date</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 block mb-1">Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
-              <option value="all">All Statuses</option>
-              <option value="delivered">Delivered</option>
-              <option value="dispatched">Dispatched</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="placed">Placed</option>
+          <div className="flex gap-3">
+            <select value={filter} onChange={e => setFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+              style={{ color: '#111827' }}>
+              <option value="today">Today</option>
+              <option value="week">Last 7 days</option>
+              <option value="month">Last 30 days</option>
             </select>
-          </div>
-          <div className="flex gap-2">
-            {['This Month', 'Last Month', 'Last 7 Days'].map(preset => (
-              <button key={preset} onClick={() => {
-                const now = new Date()
-                if (preset === 'This Month') {
-                  setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
-                  setDateTo(now.toISOString().split('T')[0])
-                } else if (preset === 'Last Month') {
-                  setDateFrom(new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0])
-                  setDateTo(new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0])
-                } else {
-                  setDateFrom(new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0])
-                  setDateTo(now.toISOString().split('T')[0])
-                }
-              }}
-                className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors">
-                {preset}
-              </button>
-            ))}
+            {selected.size > 0 && (
+              <>
+                <button onClick={exportCSV}
+                  className="text-white text-sm px-4 py-2 rounded-lg font-medium"
+                  style={{ background: '#3b82f6' }}>
+                  Export {selected.size} Orders (CSV)
+                </button>
+                <button onClick={exportDelhivery}
+                  className="text-white text-sm px-4 py-2 rounded-lg font-medium"
+                  style={{ background: '#10b981' }}>
+                  Export for Delhivery
+                </button>
+              </>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="text-2xl font-bold text-blue-700">{orders.length}</div>
-          <div className="text-xs font-medium text-blue-600 mt-1">Invoices in Range</div>
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <div className="text-2xl font-bold text-green-700">{totalValue.toLocaleString('en-IN')}</div>
-          <div className="text-xs font-medium text-green-600 mt-1">Total Value</div>
-        </div>
-      </div>
-
-      {/* Order List */}
-      {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading orders...</div>
-      ) : orders.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <FileText size={40} className="mx-auto mb-3 opacity-30" />
-          <p>No orders in this date range</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50 border-b">
               <tr>
-                {['Order', 'Customer', 'Date', 'Amount', 'Status', 'Download'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                <th className="px-4 py-3 w-10">
+                  <input type="checkbox"
+                    checked={selected.size === orders.length && orders.length > 0}
+                    onChange={selectAll}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                </th>
+                {['Order Ref','Customer','Items','Total','Payment','Status'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase"
+                    style={{ color: '#1a1008' }}>
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {orders.map(order => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono font-bold text-orange-600 text-xs">
-                    #{order.ref || order.order_number}
+              {loading ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>Loading...</td></tr>
+              ) : orders.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: '#2a1f1a' }}>No orders found</td></tr>
+              ) : orders.map(order => (
+                <tr key={order.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => toggleSelect(order.id)}
+                  style={{ background: selected.has(order.id) ? '#f0fdf4' : 'white' }}>
+                  <td className="px-4 py-3">
+                    <input type="checkbox"
+                      checked={selected.has(order.id)}
+                      onChange={() => toggleSelect(order.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c8973a' }}>
+                    {order.ref}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 text-sm">{order.customer_name}</div>
-                    <div className="text-xs text-gray-400">{order.customer_phone}</div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString('en-IN')}
-                  </td>
-                  <td className="px-4 py-3 font-bold text-gray-900">
-                    {(order.grand_total || order.total_amount || 0).toLocaleString('en-IN')}
+                    <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{decryptPhone(order.customer_phone)}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">
-                      {order.status}
+                    {(order.items || []).slice(0, 2).map((item: any, i: number) => (
+                      <div key={i} className="text-xs" style={{ color: '#1a1008' }}>
+                        {itemQty(item)} {itemName(item)}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="px-4 py-3 font-bold" style={{ color: '#111827' }}>
+                    {order.grand_total?.toLocaleString('en-IN')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs px-2 py-1 rounded-full font-medium"
+                      style={{
+                        background: order.payment_method === 'cod' ? '#fef3c7' : '#dcfce7',
+                        color: order.payment_method === 'cod' ? '#92400e' : '#166534'
+                      }}>
+                      {order.payment_method?.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => downloadSingle(order)}
-                      className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-medium">
-                      <Download size={12} /> HTML
-                    </button>
+                    <span className="text-xs px-2 py-1 rounded-full font-medium capitalize"
+                      style={{ background: '#f3f4f6', color: '#1a1008' }}>
+                      {order.status?.replace('_', ' ')}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-    </div>
-  )
-}
+
+        {selected.size > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 border borde
