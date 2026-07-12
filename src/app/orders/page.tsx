@@ -11,6 +11,10 @@ const supabase = createClient(
 // Next's strict TypeScript build fails the WHOLE deployment (for every page,
 // not just this one) if any function parameter has no inferrable type —
 // that's the exact error that's been silently breaking every deploy.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
 function decryptData(encrypted: string): string {
   if (!encrypted) return '';
@@ -534,13 +538,4 @@ export default function OrdersPage() {
               )}
 
               <button onClick={() => deleteOrder(selected.id, selected.ref)} disabled={deleteBusy}
-                style={{ width: '100%', padding: '10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: deleteBusy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
-                {deleteBusy ? 'Deleting...' : '🗑 Delete This Order'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+                sty
