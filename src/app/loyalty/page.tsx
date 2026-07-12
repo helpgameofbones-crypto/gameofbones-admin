@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -50,8 +50,12 @@ export default function LoyaltyPage() {
     if (!selected || !pointsAmount) return
     setAddingPoints(true)
     const newPoints = (selected.loyalty_points || 0) + parseInt(pointsAmount)
+    // Same 30-day expiry window used by the automatic on-delivery credit —
+    // see api/award-loyalty-points/route.ts for the caveat that this is a
+    // single running expiry, not a per-batch ledger.
+    const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString()
     await supabase.from('customers')
-      .update({ loyalty_points: newPoints })
+      .update({ loyalty_points: newPoints, loyalty_points_expire_at: expiresAt })
       .eq('id', selected.id)
     await supabase.from('activity_log').insert({
       action:      'loyalty points added',
@@ -60,7 +64,7 @@ export default function LoyaltyPage() {
       entity_name: selected.name,
       details:     `+${pointsAmount} points  ${pointsReason}`,
     })
-    setSelected({ ...selected, loyalty_points: newPoints })
+    setSelected({ ...selected, loyalty_points: newPoints, loyalty_points_expire_at: expiresAt })
     setAddingPoints(false)
     setPointsAmount('')
     setPointsReason('')
@@ -248,6 +252,11 @@ export default function LoyaltyPage() {
                      {selected.loyalty_points || 0}
                   </div>
                   <div className="text-xs mt-1" style={{ color: '#92400e' }}>points balance</div>
+                  {selected.loyalty_points_expire_at && (
+                    <div className="text-xs mt-2" style={{ color: '#92400e' }}>
+                      Expires {new Date(selected.loyalty_points_expire_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <input
