@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 interface Product {
   id: string;
@@ -62,7 +63,6 @@ export default function ManualOrderPage() {
     setSelectedItems(updated);
   };
 
-  // When gifting, the order is recorded at ₹0 — no payment ever changes hands.
   const totalAmount = isGift ? 0 : selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   function toggleGift(checked: boolean) {
@@ -103,7 +103,7 @@ export default function ManualOrderPage() {
         notes: notesWithGiftTag
       };
 
-      const response = await fetch('/api/manual-order', {
+      const response = await authedFetch('/api/manual-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
