@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { corsHeaders } from '@/app/lib/cors'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,37 +9,28 @@ const supabase = createClient(
 )
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+export async function OPTIONS(req: NextRequest) {
+  return NextResponse.json({}, { headers: corsHeaders(req) })
 }
 
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders })
-}
-
-// Called from website when phone is entered at checkout but order not placed
 export async function POST(req: NextRequest) {
+  const headers = corsHeaders(req)
   try {
     const { phone, email, name, items, total } = await req.json()
     if (!phone || !items?.length) {
-      return NextResponse.json({ ok: true }, { headers: corsHeaders })
+      return NextResponse.json({ ok: true }, { headers })
     }
-
-    // Save abandoned cart to Supabase
     await supabase.from('abandoned_carts').upsert({
       customer_phone: phone,
       customer_email: email || null,
       customer_name: name || null,
-      items,
-      total,
+      items, total,
       abandoned_at: new Date().toISOString(),
       recovered: false,
     }, { onConflict: 'customer_phone' })
 
-    return NextResponse.json({ ok: true }, { headers: corsHeaders })
+    return NextResponse.json({ ok: true }, { headers })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500, headers: corsHeaders })
+    return NextResponse.json({ error: e.message }, { status: 500, headers })
   }
 }
