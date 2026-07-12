@@ -9,6 +9,10 @@ const supabase = createClient(
 
 // Same XOR/base64 scheme as the website's encryptData() — customer_phone and
 // shipping_address.street are stored encrypted.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 function decryptData(encrypted: string): string {
   if (!encrypted) return ''
@@ -296,15 +300,4 @@ export default function BulkExportPage() {
         </div>
 
         {selected.size > 0 && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <p className="text-sm" style={{ color: '#1e40af' }}>
-              <strong>{selected.size} orders selected.</strong> Click
-              "Export Orders (CSV)" for a general export or
-              "Export for Delhivery" to get a CSV formatted for Delhivery bulk upload.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+          <div className="mt-4 p-4 bg-blue-50 border borde
