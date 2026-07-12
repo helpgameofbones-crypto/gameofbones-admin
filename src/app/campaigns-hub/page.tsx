@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,7 +126,6 @@ export default function CampaignsHubPage() {
     const productsData = prods.data || []
     const ordersData   = orders.data || []
 
-    // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty`.
     const salesMap: Record<string, number> = {}
     ordersData.forEach(o => {
       ;(o.items || []).forEach((item: any) => {
@@ -190,7 +190,7 @@ export default function CampaignsHubPage() {
       is_active:   true,
     }).single()
 
-    const res = await fetch('/api/send-campaign', {
+    const res = await authedFetch('/api/send-campaign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -226,7 +226,7 @@ export default function CampaignsHubPage() {
       ? ` Rainy day treats for your pup!`
       : ` Perfect weather for a treat! `
 
-    const res = await fetch('/api/send-campaign', {
+    const res = await authedFetch('/api/send-campaign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -321,7 +321,6 @@ export default function CampaignsHubPage() {
           ))}
         </div>
 
-        {/* Festival Offers */}
         {tab === 'festivals' && (
           <div className="grid grid-cols-3 gap-6">
             <div className="col-span-2">
@@ -348,7 +347,6 @@ export default function CampaignsHubPage() {
                 })}
               </div>
 
-              {/* Preview */}
               {festivalCampaign.festival && (
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                   <div className="flex justify-between items-center mb-3">
@@ -418,7 +416,6 @@ export default function CampaignsHubPage() {
           </div>
         )}
 
-        {/* Weather Campaigns */}
         {tab === 'weather' && (
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -483,7 +480,6 @@ export default function CampaignsHubPage() {
           </div>
         )}
 
-        {/* Stock Replenishment */}
         {tab === 'replenishment' && (
           <div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
@@ -544,7 +540,6 @@ export default function CampaignsHubPage() {
           </div>
         )}
 
-        {/* COD Limiter */}
         {tab === 'cod_limiter' && (
           <div className="grid grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -600,7 +595,6 @@ export default function CampaignsHubPage() {
         )}
       </div>
 
-      {/* Email Preview Modal */}
       {previewHtml && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)' }}>
