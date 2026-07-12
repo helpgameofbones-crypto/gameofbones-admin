@@ -40,6 +40,7 @@ const SECTIONS = [
     { name: 'Coupons', href: '/coupons', icon: '🏷️', desc: 'Manage discount codes and promotions' },
     { name: 'Referrals', href: '/referrals', icon: '🤝', desc: 'Track referral signups and rewards' },
     { name: 'Email Captures', href: '/email-captures', icon: '📧', desc: 'Emails collected from spin wheel & popups' },
+    { name: 'Influencers', href: '/influencers', icon: '🤳', desc: 'Track influencer collabs — barter or paid, and what was sent' },
   ]},
   { title: 'ANALYTICS', color: '#6366f1', items: [
     { name: 'Overview', href: '/analytics', icon: '📊', desc: 'Revenue trends, conversion rates, AOV' },
