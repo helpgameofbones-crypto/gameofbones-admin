@@ -357,4 +357,17 @@ export default function BulkInvoicesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button o
+                    <button onClick={() => downloadSingle(order)}
+                      className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-medium">
+                      <Download size={12} /> HTML
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
