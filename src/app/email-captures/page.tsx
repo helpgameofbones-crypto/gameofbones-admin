@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 interface EmailCapture {
   id: number;
@@ -24,7 +25,7 @@ export default function EmailCaptures() {
   const fetchEmails = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/email-captures');
+      const res = await authedFetch('/api/email-captures');
 
       if (!res.ok) throw new Error('Failed to fetch');
 
@@ -44,7 +45,7 @@ export default function EmailCaptures() {
     if (!confirm('Are you sure you want to delete this email?')) return;
 
     try {
-      const res = await fetch('/api/email-captures', {
+      const res = await authedFetch('/api/email-captures', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
