@@ -18,6 +18,10 @@ const supabase = createClient(
 // deployment since this file was last touched — Vercel was silently
 // re-serving an old build the whole time, which is why none of the other
 // fixes (address, discount, notes, etc.) ever appeared live.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
 function decryptData(encrypted: string): string {
   if (!encrypted) return '';
@@ -217,16 +221,4 @@ export default function CustomersPage() {
                     <div style={{ fontSize: 11, color: '#6b7280' }}>{new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase',
-                    background: o.status === 'delivered' ? '#dcfce7' : o.status === 'cancelled' ? '#fee2e2' : '#fef3c7',
-                    color: o.status === 'delivered' ? '#16a34a' : o.status === 'cancelled' ? '#ef4444' : '#92400e' }}>
-                    {o.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+                    background:
