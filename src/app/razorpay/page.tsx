@@ -1,5 +1,6 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function RazorpayPage() {
   const [tab, setTab]             = useState('payments')
@@ -23,7 +24,7 @@ export default function RazorpayPage() {
   async function fetchPayments() {
     setLoading(true)
     try {
-      const res = await fetch('/api/razorpay', {
+      const res = await authedFetch('/api/razorpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,7 +44,7 @@ export default function RazorpayPage() {
     if (!refundModal || !refundAmount) return
     setRefunding(refundModal.id)
     try {
-      const res = await fetch('/api/razorpay', {
+      const res = await authedFetch('/api/razorpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,7 +154,6 @@ export default function RazorpayPage() {
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Total Collected',  value: '' + totalCaptured.toLocaleString('en-IN'),  icon: '', color: '#10b981' },
@@ -171,7 +171,6 @@ export default function RazorpayPage() {
           ))}
         </div>
 
-        {/* Search */}
         <div className="flex gap-3 mb-4">
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by payment ID, email, phone..."
@@ -267,7 +266,6 @@ export default function RazorpayPage() {
         </div>
       </div>
 
-      {/* Refund Modal */}
       {refundModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}>
