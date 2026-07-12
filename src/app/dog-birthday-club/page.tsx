@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
@@ -37,7 +38,7 @@ export default function DogBirthdayClubPage() {
   async function sendBirthdayEmail(dogId: string, email: string, dogName: string) {
     setEmailSending({ ...emailSending, [dogId]: true });
     try {
-      const res = await fetch('/api/send-birthday-email', {
+      const res = await authedFetch('/api/send-birthday-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dogId })
