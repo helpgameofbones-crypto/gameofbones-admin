@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { runGA4Report } from '@/app/lib/ga4'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const data = await runGA4Report({
       dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
       metrics: [
@@ -25,13 +29,8 @@ export async function GET() {
     })
   } catch (error: any) {
     console.error('GA4 analytics error:', error.message)
-    // Return zeros (not an HTTP error) so the dashboard renders instead of breaking,
-    // but flag it so the UI/console can surface the real cause.
     return NextResponse.json({
-      activeUsers: 0,
-      sessions: 0,
-      bounceRate: 0,
-      conversions: 0,
+      activeUsers: 0, sessions: 0, bounceRate: 0, conversions: 0,
       error: error.message,
     })
   }
