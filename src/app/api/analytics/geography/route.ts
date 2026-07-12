@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { runGA4Report } from '@/app/lib/ga4'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const data = await runGA4Report({
       dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
       dimensions: [{ name: 'city' }, { name: 'country' }],
