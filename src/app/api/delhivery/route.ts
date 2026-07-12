@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +14,10 @@ const DELHIVERY_BASE  = 'https://track.delhivery.com'
 // customer_phone, customer_email and shipping_address.street are stored
 // encrypted — Delhivery (and any human reading the label) needs the real
 // values, so we decrypt here before building the shipment payload.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 function decryptData(encrypted: string): string {
   if (!encrypted) return ''
@@ -29,27 +34,26 @@ function decryptData(encrypted: string): string {
 }
 function decryptPhone(raw: string): string {
   if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw // already plaintext
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
   const dec = decryptData(raw)
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw
 }
 function decryptAddressField(raw: string): string {
   if (!raw) return ''
   const dec = decryptData(raw)
-  // if decrypting produces mostly non-printable junk, it probably wasn't encrypted — keep original
   const printable = dec.replace(/[\x20-\x7E]/g, '').length
   return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec
 }
 
-// Order items are saved with a `quantity` key (see website checkout), not
-// `qty` — reading `.qty` on them silently returns undefined and poisons every
-// downstream sum with NaN (that's the "NaNg" weight bug). Accept either.
 function itemQty(i: any): number {
   return i?.quantity ?? i?.qty ?? 1
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const { action, orderId, orderData } = await req.json()
 
     if (action === 'create_shipment') {
@@ -62,7 +66,6 @@ export async function POST(req: NextRequest) {
       const totalQty = (order.items || []).reduce((s: number, i: any) => s + itemQty(i), 0)
       const totalWeightG = (order.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0)
 
-      // Create Delhivery shipment
       const payload = {
         shipments: [{
           name:              order.customer_name,
@@ -91,9 +94,7 @@ export async function POST(req: NextRequest) {
           waybill:           '',
           quantity:          totalQty,
         }],
-        pickup_location: {
-          name: 'game of bones'
-        }
+        pickup_location: { name: 'game of bones' }
       }
 
       const formData = new URLSearchParams()
