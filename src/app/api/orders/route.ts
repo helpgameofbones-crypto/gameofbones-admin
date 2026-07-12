@@ -1,10 +1,14 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const order = await req.json()
     const { type } = order
 
