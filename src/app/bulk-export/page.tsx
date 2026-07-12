@@ -300,4 +300,15 @@ export default function BulkExportPage() {
         </div>
 
         {selected.size > 0 && (
-          <div className="mt-4 p-4 bg-blue-50 border borde
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-sm" style={{ color: '#1e40af' }}>
+              <strong>{selected.size} orders selected.</strong> Click
+              "Export Orders (CSV)" for a general export or
+              "Export for Delhivery" to get a CSV formatted for Delhivery bulk upload.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
