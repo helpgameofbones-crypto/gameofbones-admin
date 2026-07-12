@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,7 +76,7 @@ export default function DelhiveryPage() {
     setGenerating(order.id)
     setMsg('')
     try {
-      const res = await fetch('/api/delhivery', {
+      const res = await authedFetch('/api/delhivery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -104,7 +105,7 @@ export default function DelhiveryPage() {
     let success = 0
     for (const order of toGenerate) {
       try {
-        const res = await fetch('/api/delhivery', {
+        const res = await authedFetch('/api/delhivery', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -126,7 +127,7 @@ export default function DelhiveryPage() {
 
   async function trackShipment(awb: string) {
     try {
-      const res = await fetch('/api/delhivery', {
+      const res = await authedFetch('/api/delhivery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'track', orderData: { awb } })
@@ -140,7 +141,7 @@ export default function DelhiveryPage() {
 
   async function checkPincode(pincode: string) {
     try {
-      const res = await fetch('/api/delhivery', {
+      const res = await authedFetch('/api/delhivery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'check_pincode', orderData: { pincode } })
@@ -214,7 +215,6 @@ export default function DelhiveryPage() {
           </div>
         )}
 
-        {/* Pincode checker */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6 flex items-center gap-3 flex-wrap">
           <span className="font-medium text-sm" style={{ color: '#1a1008' }}> Check Pincode</span>
           <input value={pincodeCheck} onChange={e => setPincodeCheck(e.target.value)}
@@ -236,7 +236,6 @@ export default function DelhiveryPage() {
           )}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-4">
           {[
             { key: 'pending',    label: 'Needs AWB' },
@@ -255,7 +254,6 @@ export default function DelhiveryPage() {
           ))}
         </div>
 
-        {/* Bulk actions */}
         {selectedIds.size > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 flex items-center gap-3">
             <span className="text-sm font-medium" style={{ color: '#1e40af' }}>
@@ -380,7 +378,6 @@ export default function DelhiveryPage() {
           </table>
         </div>
 
-        {/* Tracking Modal */}
         {tracking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -414,4 +411,20 @@ export default function DelhiveryPage() {
                             </div>
                             <div style={{ color: '#2a1f1a' }}>
                               {scan.ScanDetail?.ScannedLocation}  {scan.ScanDetail?.ScanDateTime}
-                        
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: '#2a1f1a' }}>No tracking data available yet</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
