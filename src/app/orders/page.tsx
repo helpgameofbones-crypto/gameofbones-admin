@@ -538,4 +538,13 @@ export default function OrdersPage() {
               )}
 
               <button onClick={() => deleteOrder(selected.id, selected.ref)} disabled={deleteBusy}
-                sty
+                style={{ width: '100%', padding: '10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: deleteBusy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                {deleteBusy ? 'Deleting...' : '🗑 Delete This Order'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
