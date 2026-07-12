@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
@@ -8,7 +9,6 @@ const supabase = createClient(
 );
 
 const SUPABASE_FN_URL = 'https://syuostlqzzinigqwjzap.supabase.co/functions/v1';
-const DELHIVERY_TOKEN = '590d454727ba1419777966ef591787d330b5cc30';
 
 export default function DelhiverySyncPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -44,14 +44,21 @@ export default function DelhiverySyncPage() {
     setSyncing(false);
   }
 
+  // Routed through the server-side /api/delhivery route instead of calling
+  // track.delhivery.com directly from the browser — that used to require a
+  // hardcoded DELHIVERY_TOKEN constant shipped in this page's client bundle,
+  // visible to anyone via view-source. The server route reads the token from
+  // process.env.DELHIVERY_API_TOKEN and is itself gated by requireAdmin().
   async function trackSingle(awb: string) {
     setTrackResult(null);
     try {
-      const res = await fetch(`https://track.delhivery.com/api/v1/packages/json/?waybill=${awb}`, {
-        headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
+      const res = await authedFetch('/api/delhivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'track', orderData: { awb } })
       });
       const data = await res.json();
-      setTrackResult(data?.ShipmentData?.[0]?.Shipment || { error: 'No data found' });
+      setTrackResult(data?.tracking?.ShipmentData?.[0]?.Shipment || { error: 'No data found' });
     } catch (e: any) {
       setTrackResult({ error: e.message });
     }
@@ -78,7 +85,6 @@ export default function DelhiverySyncPage() {
         </button>
       </div>
 
-      {/* Sync result */}
       {syncResult && (
         <div style={{ background: syncResult.error ? '#fef2f2' : '#f0fdf4', border: `1px solid ${syncResult.error ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
           {syncResult.error ? (
@@ -96,7 +102,6 @@ export default function DelhiverySyncPage() {
         </div>
       )}
 
-      {/* Quick stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{orders.length}</div>
@@ -116,7 +121,6 @@ export default function DelhiverySyncPage() {
         </div>
       </div>
 
-      {/* Manual AWB tracker */}
       <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 24 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Track Individual AWB</h3>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -153,7 +157,6 @@ export default function DelhiverySyncPage() {
         )}
       </div>
 
-      {/* Orders with AWB table */}
       {loading ? <p>Loading...</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
