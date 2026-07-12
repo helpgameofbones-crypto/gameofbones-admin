@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const resend  = new Resend(process.env.RESEND_API_KEY)
 const supabase = createClient(
@@ -10,6 +11,9 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = await requireAdmin(req)
+    if (authError) return authError
+
     const { customers, campaign } = await req.json()
     if (!customers?.length) return NextResponse.json({ error: 'No customers', sent: 0 })
 
@@ -19,7 +23,6 @@ export async function POST(req: NextRequest) {
     for (const customer of customers) {
       if (!customer.email) continue
       try {
-        // Build HTML — replace {{name}} placeholder with actual name
         const html = campaign.useHtml && campaign.htmlTemplate
           ? campaign.htmlTemplate.replace(/\{\{name\}\}/g, customer.name || 'Friend')
           : buildDefaultHtml(customer.name || 'Friend', campaign)
@@ -31,15 +34,12 @@ export async function POST(req: NextRequest) {
           html,
         })
         sent++
-
-        // Small delay to avoid rate limits
         await new Promise(r => setTimeout(r, 100))
       } catch (e: any) {
         errors.push(customer.email + ': ' + e.message)
       }
     }
 
-    // Log campaign to activity log
     await supabase.from('activity_log').insert({
       action:      'campaign sent',
       entity_type: 'campaign',
