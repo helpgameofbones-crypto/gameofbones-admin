@@ -11,3 +11,4 @@
     { "path": "/api/award-loyalty-points", "schedule": "0 */3 * * *" }
   ]
 }
+
