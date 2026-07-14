@@ -11,13 +11,6 @@ const DELHIVERY_TOKEN = process.env.DELHIVERY_API_TOKEN
 const DELHIVERY_BASE  = 'https://track.delhivery.com'
 
 // ===== Same XOR/base64 scheme used by the website's encryptData() =====
-// customer_phone, customer_email and shipping_address.street are stored
-// encrypted — Delhivery (and any human reading the label) needs the real
-// values, so we decrypt here before building the shipment payload.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 function decryptData(encrypted: string): string {
   if (!encrypted) return ''
@@ -53,6 +46,11 @@ export async function POST(req: NextRequest) {
   try {
     const authError = await requireAdmin(req)
     if (authError) return authError
+
+    if (!DELHIVERY_TOKEN) {
+      console.error('[delhivery] DELHIVERY_API_TOKEN is not set')
+      return NextResponse.json({ error: 'Server misconfiguration: DELHIVERY_API_TOKEN is not set' }, { status: 500 })
+    }
 
     const { action, orderId, orderData } = await req.json()
 
@@ -94,7 +92,9 @@ export async function POST(req: NextRequest) {
           waybill:           '',
           quantity:          totalQty,
         }],
-        pickup_location: { name: 'game of bones' }
+        pickup_location: {
+          name: 'game of bones'
+        }
       }
 
       const formData = new URLSearchParams()
@@ -110,7 +110,19 @@ export async function POST(req: NextRequest) {
         body: formData.toString()
       })
 
-      const data = await res.json()
+      const rawText = await res.text()
+      console.log('[delhivery] create_shipment HTTP status:', res.status)
+      console.log('[delhivery] create_shipment raw response (first 2000 chars):', rawText.slice(0, 2000))
+
+      let data: any
+      try {
+        data = JSON.parse(rawText)
+      } catch (parseErr) {
+        console.error('[delhivery] Delhivery did not return valid JSON:', parseErr)
+        return NextResponse.json({
+          error: `Delhivery returned a non-JSON response (HTTP ${res.status}). Raw: ${rawText.slice(0, 300)}`
+        }, { status: 502 })
+      }
 
       if (data.packages && data.packages[0]?.waybill) {
         const awb = data.packages[0].waybill
@@ -128,7 +140,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ ok: true, awb })
       } else {
-        return NextResponse.json({ error: data.rmk || 'Failed to create shipment', raw: data }, { status: 400 })
+        console.error('[delhivery] Delhivery rejected shipment:', JSON.stringify(data))
+        return NextResponse.json({ error: data.rmk || data.error || 'Failed to create shipment', raw: data }, { status: 400 })
       }
     }
 
@@ -137,8 +150,14 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${DELHIVERY_BASE}/api/v1/packages/json/?waybill=${awb}&verbose=true`, {
         headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
       })
-      const data = await res.json()
-      return NextResponse.json({ ok: true, tracking: data })
+      const rawText = await res.text()
+      try {
+        const data = JSON.parse(rawText)
+        return NextResponse.json({ ok: true, tracking: data })
+      } catch {
+        console.error('[delhivery] track: non-JSON response, status', res.status, rawText.slice(0, 500))
+        return NextResponse.json({ error: `Delhivery tracking returned non-JSON (HTTP ${res.status})` }, { status: 502 })
+      }
     }
 
     if (action === 'check_pincode') {
@@ -146,14 +165,21 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${DELHIVERY_BASE}/c/api/pin-codes/json/?filter_codes=${pincode}`, {
         headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
       })
-      const data = await res.json()
-      const isServiceable = data.delivery_codes?.length > 0
-      return NextResponse.json({ ok: true, serviceable: isServiceable, data })
+      const rawText = await res.text()
+      try {
+        const data = JSON.parse(rawText)
+        const isServiceable = data.delivery_codes?.length > 0
+        return NextResponse.json({ ok: true, serviceable: isServiceable, data })
+      } catch {
+        console.error('[delhivery] check_pincode: non-JSON response, status', res.status, rawText.slice(0, 500))
+        return NextResponse.json({ error: `Delhivery pincode check returned non-JSON (HTTP ${res.status})` }, { status: 502 })
+      }
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
 
   } catch (error: any) {
+    console.error('[delhivery] unhandled error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
