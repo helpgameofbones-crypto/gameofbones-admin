@@ -8,8 +8,7 @@ interface Coupon {
   min_order: number | null;
   valid_until: string | null;
   usagepercustomer: number | null;
-  usagelimit: number | null;
-  uses_count: number | null;
+  max_uses: number | null;
   is_active: boolean | null;
 }
 
@@ -30,6 +29,12 @@ function discountLabel(c: Coupon) {
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  // Live usage counts, keyed by coupon code — computed from actual orders
+  // rather than trusting a stored counter, since nothing in this codebase
+  // ever incremented one. This also matches how the storefront's checkout
+  // itself checks max_uses (see index.html applyDiscount()), so the number
+  // shown here is always the same one actually being enforced.
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [showModal, setShowModal] = useState(false);
   const [couponData, setCouponData] = useState({
     code: '',
@@ -38,7 +43,7 @@ export default function CouponsPage() {
     min_order: 0,
     valid_until: '',
     usagepercustomer: 1,
-    usagelimit: 0,
+    max_uses: 0,
     is_active: true,
   });
 
@@ -53,7 +58,20 @@ export default function CouponsPage() {
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setCoupons((data as Coupon[]) || []);
+      const list = (data as Coupon[]) || [];
+      setCoupons(list);
+
+      // Count real usage per code from the orders table.
+      const { data: orderRows } = await supabase
+        .from('orders')
+        .select('coupon_code')
+        .not('coupon_code', 'is', null);
+      const counts: Record<string, number> = {};
+      (orderRows || []).forEach((o: any) => {
+        if (!o.coupon_code) return;
+        counts[o.coupon_code] = (counts[o.coupon_code] || 0) + 1;
+      });
+      setUsageCounts(counts);
     } catch (error) {
       console.error('Error fetching coupons:', error);
     }
@@ -72,8 +90,7 @@ export default function CouponsPage() {
         min_order: couponData.min_order || null,
         valid_until: couponData.valid_until || null,
         usagepercustomer: couponData.usagepercustomer,
-        usagelimit: couponData.usagelimit || null,
-        uses_count: 0,
+        max_uses: couponData.max_uses || null,
         is_active: couponData.is_active,
       };
       const { error } = await supabase.from('coupons').insert([payload]);
@@ -81,7 +98,7 @@ export default function CouponsPage() {
 
       setCouponData({
         code: '', type: 'percent', value: 10, min_order: 0,
-        valid_until: '', usagepercustomer: 1, usagelimit: 0, is_active: true,
+        valid_until: '', usagepercustomer: 1, max_uses: 0, is_active: true,
       });
       setShowModal(false);
       fetchCoupons();
@@ -155,7 +172,7 @@ export default function CouponsPage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#3a3028', marginBottom: '8px', textTransform: 'uppercase' }}>Total Limit (0 = unlimited)</label>
-                <input type="number" min="0" value={couponData.usagelimit} onChange={(e) => setCouponData({ ...couponData, usagelimit: parseInt(e.target.value) || 0 })} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
+                <input type="number" min="0" value={couponData.max_uses} onChange={(e) => setCouponData({ ...couponData, max_uses: parseInt(e.target.value) || 0 })} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px' }} />
               </div>
             </div>
 
@@ -185,13 +202,3 @@ export default function CouponsPage() {
                 {coupon.usagepercustomer ? `${coupon.usagepercustomer}× per customer` : 'Unlimited per customer'}
               </p>
             </div>
-            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.uses_count ?? 0} / {coupon.usagelimit || '∞ (no overall cap)'}</p></div>
-            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.valid_until ? new Date(coupon.valid_until).toLocaleDateString() : 'No expiry'}</p></div>
-            <div><p style={{ color: coupon.is_active ? '#2a7c6f' : '#c0392b', margin: 0 }}>{coupon.is_active ? 'Active' : 'Inactive'}</p></div>
-            <div><button onClick={() => handleToggleCoupon(coupon.id, !coupon.is_active)} style={{ padding: '6px 12px', background: coupon.is_active ? '#c0392b' : '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', width: '100%' }}>{coupon.is_active ? 'Deactivate' : 'Activate'}</button></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
