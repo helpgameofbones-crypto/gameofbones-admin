@@ -102,9 +102,4 @@ export async function GET(req: NextRequest) {
     sent++
   }
 
-  return NextResponse.json({
-    ok: true,
-    orders_checked: deliveredOrders?.length || 0,
-    emails_sent: sent
-  })
-}
+  retur
