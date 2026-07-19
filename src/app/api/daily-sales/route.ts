@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 // Same XOR/base64 scheme as the website's encryptData() — customer_phone is stored encrypted.
 // TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
@@ -46,6 +52,7 @@ export async function GET(req: NextRequest) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  // Fetch yesterday's orders
   const { data: orders } = await supabase
     .from('orders')
     .select('*')
@@ -59,6 +66,8 @@ export async function GET(req: NextRequest) {
   const prepaidOrders = orders?.filter(o => o.payment_method !== 'cod').length || 0
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
 
+  // Product breakdown
+  // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty`.
   const productCount: Record<string, number> = {}
   orders?.forEach(o => {
     const items = Array.isArray(o.items) ? o.items : []
@@ -72,6 +81,7 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
 
+  // Fetch last 7 days for comparison
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
   const { data: weekOrders } = await supabase
@@ -98,6 +108,7 @@ export async function GET(req: NextRequest) {
   </div>
 
   <div style="background:white;padding:24px 28px">
+    <!-- Key numbers -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
       <div style="text-align:center;padding:16px;background:#f9f6f2;border-radius:8px">
         <div style="font-size:28px;font-weight:800;color:#1a1008">${totalOrders}</div>
@@ -113,6 +124,7 @@ export async function GET(req: NextRequest) {
       </div>
     </div>
 
+    <!-- Payment split -->
     <div style="margin-bottom:20px;padding:14px 16px;background:#f9f6f2;border-radius:8px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a7a6a;margin-bottom:10px">Payment Split</div>
       <div style="display:flex;gap:16px">
@@ -125,6 +137,7 @@ export async function GET(req: NextRequest) {
       </div>
     </div>
 
+    <!-- Top products -->
     ${topProducts.length > 0 ? `
     <div style="margin-bottom:20px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a7a6a;margin-bottom:10px">Top Products</div>
@@ -135,6 +148,7 @@ export async function GET(req: NextRequest) {
         </div>`).join('')}
     </div>` : '<div style="color:#8a7a6a;font-size:14px;text-align:center;padding:20px">No orders yesterday</div>'}
 
+    <!-- Orders list -->
     ${totalOrders > 0 ? `
     <div>
       <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8a7a6a;margin-bottom:10px">Order Details</div>
@@ -155,12 +169,8 @@ export async function GET(req: NextRequest) {
 </div>
 </body></html>`
 
-  await resend.emails.send({
-    from: 'Game of Bones <onboarding@resend.dev>',
+  await transporter.sendMail({
+    from: process.env.GMAIL_USER,
     to: 'helpgameofbones@gmail.com',
     subject: `Daily Sales: Rs.${totalRevenue.toLocaleString('en-IN')} · ${totalOrders} orders · ${dateStr}`,
     html,
-  })
-
-  return NextResponse.json({ success: true, orders: totalOrders, revenue: totalRevenue })
-}
