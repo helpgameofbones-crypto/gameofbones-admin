@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -47,7 +46,7 @@ export async function GET(req: NextRequest) {
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
             <div style="background:#1a1008;padding:24px;text-align:center">
-              <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
+              <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
             </div>
             <div style="background:#f9f6f2;padding:32px">
               <h2 style="color:#1a1008">Order Cancelled</h2>
@@ -56,7 +55,7 @@ export async function GET(req: NextRequest) {
               <p style="color:#6b7280">If you still want to order, please place a new order at gameofbones.in</p>
               <div style="text-align:center;margin-top:24px">
                 <a href="https://gameofbones.in" style="background:#c8973a;color:#1a1008;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold">
-                  Order Again →
+                  Order Again â†’
                 </a>
               </div>
             </div>

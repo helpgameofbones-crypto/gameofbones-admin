@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
-// ─────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // CARE LIBRARY DRIP
 // Runs daily. Finds orders that were marked delivered 5-6 days ago and
 // haven't had the care-library email sent yet, then emails the customer a
@@ -10,22 +10,21 @@ import { Resend } from 'resend'
 // and sterilization trackers, emergency contact sheet) plus a couple of
 // relevant blog posts. This is meant to turn a one-time buyer into someone
 // invested in the brand's street-dog-welfare mission, not just a treats
-// customer — and it's a light-touch nudge that also drives repeat visits
+// customer â€” and it's a light-touch nudge that also drives repeat visits
 // to the site.
-// ─────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 const SITE = 'https://gameofbones.in'
 const CARE_LIBRARY_LINKS = [
-  { label: 'Feeding & Health Log', url: `${SITE}/feeding-health-log.html`, blurb: 'A weekly log to track any community dogs you feed — health, behavior, follow-ups.' },
+  { label: 'Feeding & Health Log', url: `${SITE}/feeding-health-log.html`, blurb: 'A weekly log to track any community dogs you feed â€” health, behavior, follow-ups.' },
   { label: 'Sterilization Records', url: `${SITE}/sterilization-records.html`, blurb: 'ABC (Animal Birth Control) surgery tracker, plus free sterilization programs in Mumbai.' },
   { label: 'Vaccination Records', url: `${SITE}/vaccination-records.html`, blurb: 'Track rabies and other vaccinations for dogs you look after.' },
-  { label: 'Emergency Contact Sheet', url: `${SITE}/emergency-contacts.html`, blurb: 'Rescue orgs and vets across Mumbai, organized by area — print & save.' },
+  { label: 'Emergency Contact Sheet', url: `${SITE}/emergency-contacts.html`, blurb: 'Rescue orgs and vets across Mumbai, organized by area â€” print & save.' },
 ]
 
 export async function GET(req: NextRequest) {
@@ -77,34 +76,34 @@ export async function GET(req: NextRequest) {
       await resend.emails.send({
         from: 'onboarding@resend.dev',
         to: customer.email,
-        subject: `A few resources for you (and the strays in your neighborhood) 🐾`,
+        subject: `A few resources for you (and the strays in your neighborhood) ðŸ¾`,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
             <div style="background:#1a1008;padding:24px;text-align:center">
-              <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
+              <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
             </div>
             <div style="background:#f9f6f2;padding:32px">
               <h2 style="color:#1a1008;margin:0 0 8px">Hi ${firstName}!</h2>
               <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
-                Your order should have settled in by now — hope your dog is enjoying the treats,
+                Your order should have settled in by now â€” hope your dog is enjoying the treats,
                 ${dogLine}. Beyond treats, Game of Bones also supports community dogs across Mumbai.
                 If you ever feed or look after a street dog, these free resources might help:
               </p>
               ${CARE_LIBRARY_LINKS.map(l => `
                 <div style="background:white;border-radius:12px;padding:16px 20px;margin-bottom:12px;border-left:4px solid #c8973a">
-                  <a href="${l.url}" style="color:#1a1008;font-weight:700;font-size:15px;text-decoration:none">${l.label} →</a>
+                  <a href="${l.url}" style="color:#1a1008;font-weight:700;font-size:15px;text-decoration:none">${l.label} â†’</a>
                   <div style="color:#6b7280;font-size:12px;margin-top:4px">${l.blurb}</div>
                 </div>
               `).join('')}
               <div style="text-align:center;margin-top:24px">
                 <a href="${SITE}" style="background:#c8973a;color:#1a1008;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block">
-                  Visit Game of Bones →
+                  Visit Game of Bones â†’
                 </a>
               </div>
             </div>
             <div style="background:#1a1008;padding:16px;text-align:center">
               <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">
-                Game of Bones · gameofbones.in · You're receiving this because you ordered from us
+                Game of Bones Â· gameofbones.in Â· You're receiving this because you ordered from us
               </p>
             </div>
           </div>

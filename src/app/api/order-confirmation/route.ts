@@ -5,7 +5,10 @@ import { corsHeaders } from '@/app/lib/cors'
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
 })
 
 const supabase = createClient(
@@ -13,9 +16,38 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = Buffer.from(encrypted, 'base64').toString('binary')
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptEmail(raw: string): string {
+  if (!raw) return ''
+  if (raw.includes('@')) return raw
+  const dec = decryptData(raw)
+  return dec.includes('@') ? dec : raw
+}
+
 function escapeHtml(s: any) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
+
+// Items are saved by the website as { product_name, pack_label, quantity,
+// pack_price } — not { name, size, qty, price }. Reading the wrong keys is
+// why every item line showed "undefined" / "Rs.NaN".
+function itemName(i: any): string { return i?.name ?? i?.product_name ?? 'Item' }
+function itemSize(i: any): string { return i?.size ?? i?.pack_label ?? '' }
+function itemQty(i: any): number { return i?.qty ?? i?.quantity ?? 1 }
+function itemPrice(i: any): number { return i?.price ?? i?.pack_price ?? 0 }
 
 export async function OPTIONS(req: NextRequest) {
   return NextResponse.json({}, { headers: corsHeaders(req) })
@@ -40,15 +72,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404, headers })
     }
 
-    const toEmail = dbOrder.customer_email || 'hello@gameofbones.in'
+    const toEmail = decryptEmail(dbOrder.customer_email) || 'hello@gameofbones.in'
 
-    const itemsHtml = (dbOrder.items || []).map((item: any) =>
-      `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${escapeHtml(item.name)}${item.size ? ' - ' + escapeHtml(item.size) : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(item.price * item.qty).toLocaleString('en-IN')}</td></tr>`
-    ).join('')
+    const itemsHtml = (dbOrder.items || []).map((item: any) => {
+      const name = itemName(item)
+      const size = itemSize(item)
+      const qty = itemQty(item)
+      const price = itemPrice(item)
+      return `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${escapeHtml(name)}${size ? ' - ' + escapeHtml(size) : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(price * qty).toLocaleString('en-IN')}</td></tr>`
+    }).join('')
 
     const addressStr = dbOrder.shipping_address ?
-      [dbOrder.shipping_address.line1, dbOrder.shipping_address.line2, dbOrder.shipping_address.city, dbOrder.shipping_address.state, dbOrder.shipping_address.pincode]
-        .filter(Boolean).map(escapeHtml).join(', ') : ''
+      [
+        dbOrder.shipping_address.line1,
+        dbOrder.shipping_address.line2,
+        dbOrder.shipping_address.city,
+        dbOrder.shipping_address.state,
+        dbOrder.shipping_address.pincode
+      ].filter(Boolean).map(escapeHtml).join(', ') : ''
+
+    // The ₹40 COD handling fee isn't stored as its own column anywhere — it's
+    // folded straight into grand_total by the checkout code — so it has to be
+    // shown here as the same fixed amount the checkout applies for COD orders.
+    const codFee = dbOrder.payment_method === 'cod' ? 40 : 0
 
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
 <div style="max-width:600px;margin:0 auto;padding:32px 16px">
@@ -70,12 +116,16 @@ ${itemsHtml}
 <div style="border-top:1px solid #f0ebe3;padding-top:16px;text-align:right">
 ${dbOrder.shipping > 0 ? '<p style="font-size:13px;color:#8a7a6a;margin:4px 0">Shipping: Rs.' + dbOrder.shipping + '</p>' : '<p style="font-size:13px;color:#16a34a;margin:4px 0">Shipping: FREE</p>'}
 ${dbOrder.discount > 0 ? '<p style="font-size:13px;color:#16a34a;margin:4px 0">Discount: -Rs.' + dbOrder.discount + '</p>' : ''}
+${codFee > 0 ? '<p style="font-size:13px;color:#8a7a6a;margin:4px 0">COD Handling Fee: Rs.' + codFee + '</p>' : ''}
 <p style="font-size:16px;font-weight:700;color:#1a1008;margin:8px 0">Total: Rs.${dbOrder.grand_total?.toLocaleString('en-IN')}</p>
 </div>
 ${addressStr ? '<p style="font-size:13px;color:#8a7a6a;margin-top:16px"><strong>Delivering to:</strong><br>' + escapeHtml(dbOrder.customer_name) + ', ' + addressStr + '</p>' : ''}
 ${dbOrder.payment_method === 'cod' ? '<div style="background:#fef9ec;border:1px solid #c8973a;padding:12px 16px;margin-top:16px;font-size:13px;color:#1a1008"><strong>COD:</strong> Please keep Rs.' + dbOrder.grand_total?.toLocaleString('en-IN') + ' ready at delivery.</div>' : ''}
+<div style="text-align:center;margin-top:24px">
+<a href="https://gameofbones.in/?page=track&ref=${encodeURIComponent(dbOrder.ref)}" style="display:inline-block;background:#c8973a;color:#1a1008;padding:14px 36px;font-weight:700;font-size:13px;text-decoration:none;border-radius:2px;letter-spacing:.1em">VIEW ORDER</a>
+</div>
 <div style="background:#fef9ec;border:1px solid #c8973a;padding:12px 16px;margin-top:16px;font-size:13px;color:#1a1008;border-radius:4px">
-<strong>What's next?</strong><br>
+<strong>What\'s next?</strong><br>
 We'll dispatch your order within 24 hours and send you a tracking number via email. Keep an eye on your inbox! 📬
 </div>
 </div>

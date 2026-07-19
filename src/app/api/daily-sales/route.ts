@@ -1,16 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
-// Same XOR/base64 scheme as the website's encryptData() — customer_phone is stored encrypted.
+// Same XOR/base64 scheme as the website's encryptData() â€” customer_phone is stored encrypted.
 // TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// key is hardcoded and shipped to client bundles â€” it provides no real protection. Replace with
 // server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
 // data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
@@ -120,7 +119,7 @@ export async function GET(req: NextRequest) {
         <div style="font-size:14px;color:#1a1008">Prepaid: <strong>${prepaidOrders}</strong></div>
         <div style="font-size:14px;color:#${dailyAvg7 > 0 ? (totalRevenue >= dailyAvg7 ? '16a34a' : 'dc2626') : '8a7a6a'}">
           vs 7-day avg: <strong>Rs.${dailyAvg7.toLocaleString('en-IN')}</strong>
-          ${totalRevenue >= dailyAvg7 ? ' ↑' : ' ↓'}
+          ${totalRevenue >= dailyAvg7 ? ' â†‘' : ' â†“'}
         </div>
       </div>
     </div>
@@ -144,13 +143,13 @@ export async function GET(req: NextRequest) {
             <span style="font-weight:700;color:#c8973a">${o.ref}</span>
             <span style="font-weight:700;color:#1a1008">Rs.${o.grand_total?.toLocaleString('en-IN')}</span>
           </div>
-          <div style="color:#8a7a6a;margin-top:2px">${o.customer_name} · ${decryptPhone(o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
+          <div style="color:#8a7a6a;margin-top:2px">${o.customer_name} Â· ${decryptPhone(o.customer_phone)} Â· ${o.payment_method?.toUpperCase()}</div>
         </div>`).join('') || ''}
     </div>` : ''}
   </div>
 
   <div style="background:#1a1008;padding:16px 28px;border-radius:0 0 8px 8px;text-align:center">
-    <a href="https://gameofbones-admin.vercel.app/orders" style="font-size:12px;color:#c8973a;text-decoration:none">View All Orders →</a>
+    <a href="https://gameofbones-admin.vercel.app/orders" style="font-size:12px;color:#c8973a;text-decoration:none">View All Orders â†’</a>
   </div>
 </div>
 </body></html>`
@@ -158,7 +157,7 @@ export async function GET(req: NextRequest) {
   await resend.emails.send({
     from: 'Game of Bones <onboarding@resend.dev>',
     to: 'helpgameofbones@gmail.com',
-    subject: `Daily Sales: Rs.${totalRevenue.toLocaleString('en-IN')} · ${totalOrders} orders · ${dateStr}`,
+    subject: `Daily Sales: Rs.${totalRevenue.toLocaleString('en-IN')} Â· ${totalOrders} orders Â· ${dateStr}`,
     html,
   })
 

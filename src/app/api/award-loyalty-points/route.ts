@@ -1,13 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
+// ===== Same XOR/base64 scheme used elsewhere in this codebase =====
+// orders.customer_phone is stored encrypted (see website's encryptData()),
+// but customers.phone is stored plaintext — so matching an order back to a
+// customer row requires decrypting the order's phone first.
+// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
+// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
+// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
+// data migration for existing rows. Not safe to change here without DB access to migrate data.
 const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 function decryptData(encrypted: string): string {
   if (!encrypted) return ''
@@ -24,14 +31,41 @@ function decryptData(encrypted: string): string {
 }
 function decryptPhone(raw: string): string {
   if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  if (/^\+?\d{10,13}$/.test(raw)) return raw // already plaintext
   const dec = decryptData(raw)
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw
 }
+function decryptEmail(raw: string | null | undefined): string {
+  if (!raw) return ''
+  if (raw.includes('@')) return raw // already plaintext
+  const dec = decryptData(raw)
+  return dec.includes('@') ? dec : ''
+}
 
+// Matches the earn rate already advertised on the website's "My Rewards"
+// page ("Earn 1 point for every Rs.10 spent") and the redemption rate used
+// at checkout (100 points = Rs.30). Points "expire 30 days after earned"
+// per the same page's copy.
 const POINTS_PER_RS10 = 1
 const POINTS_EXPIRY_DAYS = 30
 
+// Cron job (see vercel.json) that runs periodically and finds orders that
+// were marked "delivered" — whether by an admin changing the status
+// dropdown on /orders, or by the Delhivery status-sync function — but
+// haven't had loyalty points credited yet. Credits points to the matching
+// customer row and emails them their new balance + expiry date.
+//
+// NOTE: this app doesn't have a real per-batch points ledger (points earned
+// at different times don't expire independently) — loyalty_points is a
+// single running balance, same as the existing manual "Add Points" flow on
+// /loyalty. Each time new points are credited here, the customer's single
+// loyalty_points_expire_at is pushed out 30 days. That's a simplification:
+// it means points effectively keep resetting to a fresh 30-day clock as
+// long as a customer keeps ordering, but it can't precisely expire an
+// older batch while a newer batch is still valid. Doing that properly
+// needs a real ledger table (loyalty_transactions: customer_id, points,
+// earned_at, expires_at) — flagging this as a Follow-up rather than solving
+// it here, since it needs a schema decision, not just a bug fix.
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -60,15 +94,56 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id, name, email, phone, loyalty_points')
-        .eq('phone', phone)
-        .maybeSingle()
+      let customer: { id: string; name: string; email: string | null; phone: string; loyalty_points: number | null } | null = null
+      {
+        const { data } = await supabase
+          .from('customers')
+          .select('id, name, email, phone, loyalty_points')
+          .eq('phone', phone)
+          .maybeSingle()
+        customer = data
+      }
 
+      // Phone formats can differ between what a customer typed at checkout
+      // (which is what `phone` is, after decrypting) and what's stored on the
+      // customers row (with/without +91, spaces, dashes) — retry on the last
+      // 10 digits before giving up. This was previously an exact-match-only
+      // lookup, which is why orders with a differently-formatted phone never
+      // matched and silently never credited points.
       if (!customer) {
-        results.push({ ref: order.ref, skipped: 'no matching customer row for phone' })
-        continue
+        const last10 = phone.replace(/\D/g, '').slice(-10)
+        if (last10.length === 10) {
+          const { data } = await supabase
+            .from('customers')
+            .select('id, name, email, phone, loyalty_points')
+            .ilike('phone', `%${last10}`)
+            .maybeSingle()
+          customer = data
+        }
+      }
+
+      // Still no customer row at all — rather than skipping forever (which is
+      // exactly why some delivered orders never credited points, e.g. when a
+      // customer's very first order is the one being delivered and no /customers
+      // row was ever created for them), create one now from the order's own
+      // details so points can be credited on this run instead of never.
+      if (!customer) {
+        const { data: created, error: createError } = await supabase
+          .from('customers')
+          .insert({
+            name: order.customer_name || 'Customer',
+            email: decryptEmail(order.customer_email) || null,
+            phone,
+            loyalty_points: 0,
+          })
+          .select('id, name, email, phone, loyalty_points')
+          .maybeSingle()
+
+        if (createError || !created) {
+          results.push({ ref: order.ref, skipped: `no matching customer row and auto-create failed: ${createError?.message || 'unknown error'}` })
+          continue
+        }
+        customer = created
       }
 
       const pointsEarned = Math.floor((order.grand_total || 0) / 10) * POINTS_PER_RS10
@@ -97,14 +172,24 @@ export async function GET(req: NextRequest) {
         details:     `+${pointsEarned} points — auto-credited on delivery of order ${order.ref}`,
       })
 
-      const toEmail = order.customer_email || customer.email
+      // Crediting is done and committed at this point — everything below is
+      // best-effort notification only. A failed email must NOT be reported as
+      // an error for this order (that's exactly what happened before: the
+      // credit succeeded but an email exception made the whole order look
+      // like it failed, which was misleading).
+      credited++
+      const orderResult: any = { ref: order.ref, customer: customer.name, pointsEarned, newBalance }
+      results.push(orderResult)
+
+      const toEmail = decryptEmail(order.customer_email) || customer.email || ''
       if (toEmail) {
-        const expiryLabel = expiresAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-        await resend.emails.send({
-          from: 'onboarding@resend.dev',
-          to: toEmail,
-          subject: `You just earned ${pointsEarned} loyalty points! 🐾`,
-          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        try {
+          const expiryLabel = expiresAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+          await resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to: toEmail,
+            subject: `You just earned ${pointsEarned} loyalty points! 🐾`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
 <div style="background:#1a1008;padding:24px;text-align:center">
   <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
 </div>
@@ -129,11 +214,13 @@ export async function GET(req: NextRequest) {
   <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">Game of Bones · gameofbones.in</p>
 </div>
 </div>`
-        })
+          })
+        } catch (emailError: any) {
+          orderResult.emailError = `points credited fine, but the notification email failed: ${emailError.message}`
+        }
+      } else {
+        orderResult.emailError = 'points credited fine, but no usable email address was found to notify the customer'
       }
-
-      credited++
-      results.push({ ref: order.ref, customer: customer.name, pointsEarned, newBalance })
     } catch (e: any) {
       results.push({ ref: order.ref, error: e.message })
     }

@@ -1,13 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
-const DELHIVERY_TOKEN = '590d454727ba1419777966ef591787d330b5cc30';
+// SECURITY: this used to call track.delhivery.com directly from the browser
+// with a hardcoded API token embedded right in this file — visible to anyone
+// who opened devtools on this page. Now routed through the already-existing,
+// already-authenticated /api/delhivery server route (action: 'track'), which
+// keeps the real Delhivery token server-side only (DELHIVERY_API_TOKEN env
+// var). If that hardcoded token above is still live, rotate it in Delhivery's
+// dashboard — it's been shipping to the browser bundle.
 
 interface OrderETA {
   id: number; ref: string; customer_name: string; customer_phone: string;
@@ -39,11 +46,13 @@ export default function DeliveryEstimatorPage() {
     for (const order of updated) {
       if (!order.delhivery_awb) continue;
       try {
-        const res = await fetch(`https://track.delhivery.com/api/v1/packages/json/?waybill=${order.delhivery_awb}`, {
-          headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
+        const res = await authedFetch('/api/delhivery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'track', orderData: { awb: order.delhivery_awb } })
         });
         const data = await res.json();
-        const shipment = data?.ShipmentData?.[0]?.Shipment;
+        const shipment = data?.tracking?.ShipmentData?.[0]?.Shipment;
         if (shipment?.ExpectedDeliveryDate) {
           order.delhiveryETA = shipment.ExpectedDeliveryDate;
           const eta = new Date(shipment.ExpectedDeliveryDate);

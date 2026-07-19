@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -40,15 +39,15 @@ export async function GET(req: NextRequest) {
     await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: order.customer_email,
-      subject: `How did ${items} go down? 🐾`,
+      subject: `How did ${items} go down? ðŸ¾`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1a1008;padding:24px;text-align:center">
-            <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
+            <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
           </div>
 
           <div style="background:#f9f6f2;padding:32px;text-align:center">
-            <div style="font-size:48px;margin-bottom:16px">⭐</div>
+            <div style="font-size:48px;margin-bottom:16px">â­</div>
             <h2 style="color:#1a1008;margin:0 0 8px">
               How did your pup like the treats?
             </h2>
@@ -57,7 +56,7 @@ export async function GET(req: NextRequest) {
             </p>
             <p style="color:#6b7280;font-size:14px;margin:0 0 24px">
               Your order <strong>${order.ref}</strong> was delivered 3 days ago.
-              We'd love to know what your dog thought! 🐶
+              We'd love to know what your dog thought! ðŸ¶
             </p>
 
             <div style="background:white;border-radius:12px;padding:20px;margin-bottom:24px">
@@ -65,17 +64,17 @@ export async function GET(req: NextRequest) {
                 Tap a star to rate your experience
               </div>
               <div style="font-size:40px;letter-spacing:8px;margin-bottom:16px">
-                ⭐⭐⭐⭐⭐
+                â­â­â­â­â­
               </div>
               <a href="https://gameofbones.in"
                 style="background:#c8973a;color:#1a1008;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block">
-                Leave a Review →
+                Leave a Review â†’
               </a>
             </div>
 
             <div style="background:#fef3c7;border-radius:12px;padding:16px;margin-bottom:16px">
               <p style="margin:0;font-size:13px;color:#92400e">
-                🎁 <strong>Leave a review and get 10% off</strong> your next order!
+                ðŸŽ <strong>Leave a review and get 10% off</strong> your next order!
                 We'll send you a code once your review is live.
               </p>
             </div>
@@ -87,7 +86,7 @@ export async function GET(req: NextRequest) {
 
           <div style="background:#1a1008;padding:16px;text-align:center">
             <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">
-              Game of Bones · gameofbones.in
+              Game of Bones Â· gameofbones.in
             </p>
           </div>
         </div>
