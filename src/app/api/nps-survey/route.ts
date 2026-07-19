@@ -110,7 +110,4 @@ export async function POST(req: NextRequest) {
   const { id, score, feedback } = await req.json()
   await supabase
     .from('nps_surveys')
-    .update({ score, feedback, responded_at: new Date().toISOString() })
-    .eq('id', id)
-  return NextResponse.json({ ok: true })
-}
+    .update({ score
