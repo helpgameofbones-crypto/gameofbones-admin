@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -6,6 +6,33 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+// BUGFIX: orders.customer_phone is stored XOR+base64 "encrypted" by the
+// website's encryptData(), but customers.phone (this page's other data
+// source) is plaintext. Every `o.customer_phone === c.phone` comparison in
+// this file was comparing ciphertext to plaintext and could never match —
+// Reorder Prediction and Win-back Candidates silently had nothing to show.
+// Decrypt orders.customer_phone once at fetch time so those comparisons work.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = atob(encrypted)
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
 
 export default function CustomerIntelligencePage() {
   const [tab, setTab]               = useState('import')
@@ -39,7 +66,7 @@ export default function CustomerIntelligencePage() {
       supabase.from('products').select('id, name, price, product_sizes(*)').eq('is_active', true).order('name'),
     ])
     setCustomers(cust.data || [])
-    setOrders(ords.data || [])
+    setOrders((ords.data || []).map(o => ({ ...o, customer_phone: decryptPhone(o.customer_phone) })))
     setSubscriptions(subs.data || [])
     setProducts(prods.data || [])
     setLoading(false)
@@ -621,28 +648,4 @@ export default function CustomerIntelligencePage() {
                   if (c.total_orders === 0) return false
                   const lastOrder = orders.filter(o => o.customer_phone === c.phone)
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-                  if (!lastOrder) return false
-                  const daysSince = (Date.now() - new Date(lastOrder.created_at).getTime()) / 86400000
-                  return daysSince > 60
-                }).slice(0, 6).map(c => (
-                  <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50">
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
-                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders  {c.total_spent}</div>
-                    </div>
-                    <a href={`https://wa.me/91${c.phone}?text=Hi ${c.name}! We miss you at Game of Bones  Come back for a special offer!`}
-                      target="_blank" rel="noreferrer"
-                      className="text-xs px-2 py-1 rounded font-medium text-white"
-                      style={{ background: '#25d366', textDecoration: 'none' }}>
-                      WhatsApp
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+                  if (!lastOrder)
