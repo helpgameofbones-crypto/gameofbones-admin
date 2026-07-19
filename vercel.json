@@ -8,6 +8,7 @@
     { "path": "/api/auto-cancel-cod",      "schedule": "0 7 * * *"  },
     { "path": "/api/sheets-sync",          "schedule": "0 16 * * *" },
     { "path": "/api/care-library-drip",    "schedule": "0 8 * * *"  },
-    { "path": "/api/award-loyalty-points", "schedule": "0 */3 * * *" }
+    { "path": "/api/award-loyalty-points", "schedule": "0 */3 * * *" },
+    { "path": "/api/nps-survey",           "schedule": "0 9 * * *"  }
   ]
 }
