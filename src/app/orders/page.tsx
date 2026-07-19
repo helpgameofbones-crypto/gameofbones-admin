@@ -163,15 +163,23 @@ export default function OrdersPage() {
   }
 
   async function updateStatus(id: string, newStatus: string) {
-  const updates: Record<string, any> = { status: newStatus };
-  if (newStatus === 'delivered') {
-    const current = orders.find(o => o.id === id);
-    if (!current?.delivered_at) updates.delivered_at = new Date().toISOString();
+    // BUGFIX: marking an order "delivered" never actually recorded when —
+    // delivered_at stayed null forever. That silently broke two features
+    // that both depend on delivered_at: the Returns page (which refuses to
+    // let ANY order be returned unless delivered_at is set) and the
+    // Care Library drip email cron (which filters on delivered_at and so
+    // never had anything to send). Only stamp it the first time an order
+    // actually reaches "delivered", so re-saving a later status change
+    // doesn't overwrite the real delivery time.
+    const updates: Record<string, any> = { status: newStatus };
+    if (newStatus === 'delivered') {
+      const current = orders.find(o => o.id === id);
+      if (!current?.delivered_at) updates.delivered_at = new Date().toISOString();
+    }
+    await supabase.from('orders').update(updates).eq('id', id);
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
+    if (selected && selected.id === id) setSelected({ ...selected, ...updates });
   }
-  await supabase.from('orders').update(updates).eq('id', id);
-  setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
-  if (selected && selected.id === id) setSelected({ ...selected, ...updates });
-}
 
   // NEW: add a note directly from the order detail panel, so nobody has to
   // jump over to the separate Order Notes page just to log something.
@@ -254,17 +262,18 @@ export default function OrdersPage() {
   function clearSelection() { setCheckedIds(new Set()); }
 
   async function applyBulkStatus() {
-  if (checkedIds.size === 0) return;
-  setBulkBusy(true);
-  const ids = Array.from(checkedIds);
-  const updates: Record<string, any> = { status: bulkStatus };
-  if (bulkStatus === 'delivered') updates.delivered_at = new Date().toISOString();
-  const { error } = await supabase.from('orders').update(updates).in('id', ids);
-  setBulkBusy(false);
-  if (error) { alert('Bulk update failed: ' + error.message); return; }
-  setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, ...updates } : o));
-  clearSelection();
-}
+    if (checkedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(checkedIds);
+    // Same delivered_at fix as updateStatus() above, applied to bulk actions too.
+    const updates: Record<string, any> = { status: bulkStatus };
+    if (bulkStatus === 'delivered') updates.delivered_at = new Date().toISOString();
+    const { error } = await supabase.from('orders').update(updates).in('id', ids);
+    setBulkBusy(false);
+    if (error) { alert('Bulk update failed: ' + error.message); return; }
+    setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, ...updates } : o));
+    clearSelection();
+  }
 
   function bulkExportCsv() {
     const ids = Array.from(checkedIds);
