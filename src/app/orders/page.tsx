@@ -72,17 +72,33 @@ function parseItems(items: any): string[] {
   return [String(items)];
 }
 
-// Split the free-text `notes` field (e.g. "Coupon ABC applied | Online payment
-// discount: -₹30") into individual, readable discount line items so the
-// order/invoice total isn't just a single opaque number.
-function parseDiscountLines(notes: string | null | undefined, couponCode: string | null | undefined): string[] {
-  const lines: string[] = [];
+// Split the free-text `notes` field (pipe-separated: coupon / loyalty points /
+// bulk-quantity / online-payment discount lines, a COD handling charge line,
+// and the customer's own free-text note) into three independently-rendered
+// groups. Previously this returned one flat list and the ENTIRE block --
+// including the customer's note -- only rendered when order.discount > 0,
+// which silently hid the customer's note (and any COD charge, which was
+// never shown anywhere at all) on a plain COD order with no discount.
+function parseOrderNoteLines(notes: string | null | undefined, couponCode: string | null | undefined) {
+  const discountLines: string[] = [];
+  const chargeLines: string[] = [];
+  const customerNoteLines: string[] = [];
+
   if (notes) {
-    notes.split('|').map(s => s.trim()).filter(Boolean).forEach(l => lines.push(l));
+    notes.split('|').map(s => s.trim()).filter(Boolean).forEach(l => {
+      if (l.startsWith('Customer note:')) {
+        customerNoteLines.push(l.replace(/^Customer note:\s*/, ''));
+      } else if (l.startsWith('COD handling charge')) {
+        chargeLines.push(l);
+      } else {
+        discountLines.push(l);
+      }
+    });
   } else if (couponCode) {
-    lines.push(`Coupon ${couponCode} applied`);
+    discountLines.push(`Coupon ${couponCode} applied`);
   }
-  return lines;
+
+  return { discountLines, chargeLines, customerNoteLines };
 }
 
 // FIX: some orders (older/seed data) store the street under `address` or
@@ -493,8 +509,14 @@ export default function OrdersPage() {
               </div>
 
               {/* Order Summary — always shows the full breakdown (order value,
-                  every discount line, shipping) instead of just a single total,
-                  so it's clear exactly how the subtotal became the final total. */}
+                  every discount line, any COD surcharge, shipping, and the
+                  customer's own note) instead of just a single opaque total.
+                  Each group renders independently now: the discount lines
+                  still only show when there's an actual discount to explain,
+                  but the COD charge line and the customer's note ALWAYS show
+                  when present — previously both were nested inside the
+                  discount>0 check, so a plain COD order with no discount
+                  silently hid a note the customer had actually typed in. */}
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 10 }}>Order Summary</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
@@ -503,7 +525,7 @@ export default function OrdersPage() {
                 </div>
                 {(selected.discount || 0) > 0 && (
                   <>
-                    {parseDiscountLines(selected.notes, selected.coupon_code).map((line, i) => (
+                    {parseOrderNoteLines(selected.notes, selected.coupon_code).discountLines.map((line, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: '#92400e' }}>
                         <span>{line}</span>
                       </div>
@@ -520,47 +542,13 @@ export default function OrdersPage() {
                     <span style={{ fontWeight: 600 }}>₹{selected.shipping.toLocaleString('en-IN')}</span>
                   </div>
                 )}
+                {parseOrderNoteLines(selected.notes, selected.coupon_code).chargeLines.map((line, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: '#1d4ed8' }}>
+                    <span>{line}</span>
+                  </div>
+                ))}
                 <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1008' }}>Total Charged</span>
                   <span style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Payment: {(selected.payment_method || 'online').toUpperCase()}</div>
-              </div>
-
-              {selected.transaction_id && (
-                <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bbf7d0' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#16a34a' }}>Razorpay Transaction ID</div>
-                  <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>{selected.transaction_id}</div>
-                </div>
-              )}
-
-              {selected.delhivery_awb && (
-                <div style={{ background: '#f0f9ff', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bae6fd' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#0284c7' }}>Delhivery AWB</div>
-                  <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{selected.delhivery_awb}</div>
-                  <a href={`https://www.delhivery.com/track/package/${selected.delhivery_awb}`} target="_blank" rel="noopener"
-                    style={{ fontSize: 12, color: '#0284c7', fontWeight: 600 }}>Track on Delhivery →</a>
-                </div>
-              )}
-
-              {selected.shipping_address && (
-                <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
-                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
-                    {typeof selected.shipping_address === 'string' ? selected.shipping_address :
-                      [selected.shipping_address.street, selected.shipping_address.city, selected.shipping_address.state, selected.shipping_address.pincode].filter(Boolean).join(', ')}
-                  </div>
-                </div>
-              )}
-
-              <button onClick={() => deleteOrder(selected.id, selected.ref)} disabled={deleteBusy}
-                style={{ width: '100%', padding: '10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: deleteBusy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
-                {deleteBusy ? 'Deleting...' : '🗑 Delete This Order'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Payment: {(selected.payment_method || 'onli
