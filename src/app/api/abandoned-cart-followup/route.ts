@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 // Cron job: runs every hour, sends email to abandoned carts from 1-2 hours ago
 export async function GET(req: NextRequest) {
@@ -54,7 +60,7 @@ export async function GET(req: NextRequest) {
       </a>
     </div>
     <p style="font-size:12px;color:#8a7a6a;text-align:center;margin-top:20px">
-      Use code <strong>SAVE50</strong> for Rs.50 off if you complete your order in the next 24 hours!
+      Use code <strong>SAVE50</strong> for Rs.30 off if you complete your order in the next 24 hours!
     </p>
   </div>
   <div style="background:#1a1008;padding:16px;text-align:center;border-radius:0 0 8px 8px">
@@ -62,14 +68,7 @@ export async function GET(req: NextRequest) {
   </div>
 </div></body></html>`
 
-    await resend.emails.send({
-      from: 'Game of Bones <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
       to: cart.customer_email,
-      subject: `${cart.customer_name?.split(' ')[0] || 'Hey'}, your dog treats are waiting! 🐾`,
-      html,
-    })
-    sent++
-  }
-
-  return NextResponse.json({ sent })
-}
+      subject: `${cart.customer_name?.split(' ')[0] || 'Hey'}, your dog tre
