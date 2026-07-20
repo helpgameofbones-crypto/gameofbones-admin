@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 import { requireAdmin } from '@/app/lib/requireAdmin'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
   try {
