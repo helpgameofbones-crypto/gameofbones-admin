@@ -174,3 +174,7 @@ export async function GET(req: NextRequest) {
     to: 'helpgameofbones@gmail.com',
     subject: `Daily Sales: Rs.${totalRevenue.toLocaleString('en-IN')} · ${totalOrders} orders · ${dateStr}`,
     html,
+  })
+
+  return NextResponse.json({ success: true, orders: totalOrders, revenue: totalRevenue })
+}
