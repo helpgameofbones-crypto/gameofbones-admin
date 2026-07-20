@@ -124,4 +124,9 @@ export async function GET(req: NextRequest) {
     sent++
   }
 
-  retur
+  return NextResponse.json({
+    ok: true,
+    customers_checked: customers?.length || 0,
+    reminders_sent: sent
+  })
+}
