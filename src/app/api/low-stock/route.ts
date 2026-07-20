@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -41,7 +40,7 @@ export async function GET(req: NextRequest) {
         <div style="background:#f9f6f2;padding:24px">
           <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;padding:16px;margin-bottom:20px">
             <p style="margin:0;font-size:14px;color:#92400e">
-              ⚠️ <strong>${lowStock.length} product${lowStock.length > 1 ? 's' : ''}</strong> 
+              ⚠️ <strong>${lowStock.length} product${lowStock.length > 1 ? 's' : ''}</strong>
               ${lowStock.length > 1 ? 'are' : 'is'} running low on stock. Please restock soon.
             </p>
           </div>
