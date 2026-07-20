@@ -1,21 +1,13 @@
 'use client'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabaseBrowserClient'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabase = createClient(
-  SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-// Fallback: read the session token directly out of localStorage using
-// Supabase's default storage key format (sb-<project-ref>-auth-token).
-// This app briefly ends up with more than one GoTrueClient instance in the
-// same tab (one on the page itself, one here), and in that situation
-// supabase.auth.getSession() has been observed to resolve with no session
-// even though a valid one is sitting in storage. Reading storage directly
-// sidesteps that entirely.
+// Legacy fallback: some older sessions may still have a token sitting in
+// localStorage from before this app switched to the cookie-backed
+// createBrowserClient (see supabaseBrowserClient.ts). Harmless to keep as a
+// secondary check — costs nothing if it finds nothing.
 function getTokenFromStorage(): string | null {
   try {
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
     const raw = localStorage.getItem(`sb-${projectRef}-auth-token`)
     if (!raw) return null
@@ -28,10 +20,11 @@ function getTokenFromStorage(): string | null {
 
 // Use this instead of the raw fetch() for any call to an admin-only API
 // route (razorpay, manual-order, delhivery, orders, email-captures,
-// dog-birthday, send-birthday-email, send-campaign, analytics/*). This
-// app's browser client stores the Supabase session in localStorage, not in
-// a cookie, so a plain fetch() carries no auth information the server can
-// see — requireAdmin() on the server side checks for this Bearer token.
+// dog-birthday, send-birthday-email, send-campaign, analytics/*).
+// The session cookie set by createBrowserClient is same-origin, so a plain
+// fetch() to these routes would actually carry it automatically — but we
+// also attach it as a Bearer token here since requireAdmin() checks for
+// that first, and it's a safe belt-and-suspenders against cookie edge cases.
 export async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   let token: string | null = null
   try {
