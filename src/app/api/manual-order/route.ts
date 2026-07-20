@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (authError) return authError;
 
     const body = await req.json();
-    
+
     const {
       customerName,
       customerPhone,
@@ -59,4 +59,36 @@ export async function POST(req: NextRequest) {
     if (customerEmail) insertData.customer_email = customerEmail;
     if (paymentMethod) insertData.payment_method = paymentMethod;
     if (transactionId) insertData.transaction_id = transactionId;
-    if (discountType && computed
+    if (discountType && computedDiscount > 0) {
+      insertData.coupon_code = discountType === 'percent' ? `MANUAL_${discountValue}PCT` : `MANUAL_${discountValue}OFF`;
+    }
+    if (notes) insertData.notes = notes;
+
+    insertData.status = 'confirmed';
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert([insertData])
+      .select();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Order created',
+      data
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return NextResponse.json(
+      { success: false, error: String(error) },
+      { status: 500 }
+    );
+  }
+}
