@@ -184,4 +184,29 @@ export default function ShipmentTrackerPage() {
                   <div style={{ fontSize: 12, color: '#6b7280' }}>{trackingDetail.Status?.StatusLocation || ''}</div>
                 </div>
                 {trackingDetail.ExpectedDeliveryDate && (
-                  <div style={{ marginBottom: 12, backgr
+                  <div style={{ marginBottom: 12, background: '#f0fdf4', padding: 10, borderRadius: 4 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#16a34a' }}>Expected Delivery</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{trackingDetail.ExpectedDeliveryDate}</div>
+                  </div>
+                )}
+                {trackingDetail.Scans && (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: 8 }}>Scan History</div>
+                    <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                      {trackingDetail.Scans.map((scan: any, i: number) => (
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{scan.ScanDetail?.Instructions || scan.ScanDetail?.Scan || '—'}</div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{scan.ScanDetail?.ScannedLocation || ''} · {new Date(scan.ScanDetail?.ScanDateTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
