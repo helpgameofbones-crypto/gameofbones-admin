@@ -70,27 +70,27 @@ export async function POST(req: NextRequest) {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1a1008;">Happy Birthday to ${birthday.dog_name}! 🎂🐾</h2>
           <p style="font-size: 16px; color: #7a6a5a;">Hi ${birthday.customer_name},</p>
-          
+
           <p style="font-size: 16px; color: #7a6a5a;">
             We'd like to celebrate <strong>${birthday.dog_name}'s special day</strong> with a birthday surprise!
           </p>
-          
+
           <div style="background: #faf6f0; border: 2px solid #c8973a; padding: 24px; text-align: center; margin: 24px 0; border-radius: 4px;">
             <p style="font-size: 14px; color: #7a6a5a; margin: 0 0 12px 0;">Your Exclusive Birthday Discount</p>
             <p style="font-size: 32px; font-weight: bold; color: #c8973a; margin: 0; letter-spacing: 2px;">20% OFF</p>
             <p style="font-size: 12px; color: #7a6a5a; margin: 12px 0 0 0;">Use code at checkout</p>
           </div>
-          
+
           <div style="background: #fff; border: 1px solid #ede5d8; padding: 16px; text-align: center; margin: 20px 0; border-radius: 4px;">
             <p style="font-size: 12px; color: #7a6a5a; margin: 0 0 8px 0;">Your Unique Discount Code:</p>
             <p style="font-size: 18px; font-weight: bold; color: #1a1008; letter-spacing: 1px; margin: 0; font-family: monospace;">${uniqueCode}</p>
             <p style="font-size: 11px; color: #7a6a5a; margin: 8px 0 0 0;">This code is unique to ${birthday.dog_name} and can only be used once</p>
           </div>
-          
+
           <p style="font-size: 14px; color: #7a6a5a;">
             <a href="https://gameofbones.in/shop" style="color: #c8973a; text-decoration: none; font-weight: bold;">Shop Now & Treat Your Pup →</a>
           </p>
-          
+
           <p style="font-size: 12px; color: #7a6a5a; margin-top: 32px;">
             Cheers to ${birthday.dog_name}!<br>
             <strong>Game of Bones Team 🐾</strong>
@@ -110,4 +110,7 @@ export async function POST(req: NextRequest) {
     console.error('Birthday email error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to send email' },
-      { status: 500, headers: co
+      { status: 500, headers: corsHeaders(req) }
+    );
+  }
+}
