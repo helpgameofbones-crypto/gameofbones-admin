@@ -1,11 +1,18 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { resend } from '@/app/lib/emailClient'
+import nodemailer from 'nodemailer'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -52,14 +59,14 @@ export async function GET(req: NextRequest) {
 
     if (!survey) continue
 
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
       to: order.customer_email,
-      subject: `How was your experience with Game of Bones? ðŸ¾`,
+      subject: `How was your experience with Game of Bones? 🐾`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1a1008;padding:24px;text-align:center">
-            <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
+            <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
           </div>
           <div style="background:#f9f6f2;padding:32px;text-align:center">
             <h2 style="color:#1a1008;margin:0 0 8px">How likely are you to recommend us?</h2>
@@ -88,7 +95,7 @@ export async function GET(req: NextRequest) {
             </p>
           </div>
           <div style="background:#1a1008;padding:16px;text-align:center">
-            <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">Game of Bones Â· gameofbones.in</p>
+            <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">Game of Bones · gameofbones.in</p>
           </div>
         </div>
       `

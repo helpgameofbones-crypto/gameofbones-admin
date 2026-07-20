@@ -13,12 +13,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [range, setRange]     = useState('30')
   const [tab, setTab]         = useState('overview')
-
-  // Meta Ads spend — populated nightly by the /api/meta-ads-sync cron into
-  // the `ad_spend` table (platform = 'meta'). Empty until campaigns exist.
-  const [metaAds, setMetaAds] = useState<any[]>([])
   
-  // Google Analytics data
   const [gaData, setGaData] = useState({
     activeUsers: 0,
     sessions: 0,
@@ -35,9 +30,8 @@ export default function AnalyticsPage() {
     returningUsers: 0
   })
 
-  useEffect(() => { fetchData(); fetchMetaAds() }, [range])
+  useEffect(() => { fetchData() }, [range])
 
-  // Fetch GA data
   useEffect(() => {
     async function fetchGA() {
       try {
@@ -104,13 +98,11 @@ export default function AnalyticsPage() {
   async function fetchData() {
     setLoading(true)
     
-    // Fetch all orders (no date filter for test data to work)
     const { data } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
 
-    // Filter by date range client-side for flexibility
     const now = new Date()
     const rangeMs = parseInt(range) * 24 * 60 * 60 * 1000
     const cutoff = new Date(now.getTime() - rangeMs)
@@ -124,23 +116,6 @@ export default function AnalyticsPage() {
     setLoading(false)
   }
 
-  async function fetchMetaAds() {
-    const { data } = await supabase
-      .from('ad_spend')
-      .select('*')
-      .eq('platform', 'meta')
-      .order('date', { ascending: false })
-
-    const now = new Date()
-    const rangeMs = parseInt(range) * 24 * 60 * 60 * 1000
-    const cutoff = new Date(now.getTime() - rangeMs)
-
-    const filtered = (data || []).filter(a => new Date(a.date) >= cutoff)
-    setMetaAds(filtered)
-  }
-
-  // — Calculations —
-
   const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0)
   const totalOrders     = orders.length
   const avgOrderValue   = totalOrders ? Math.round(totalRevenue / totalOrders) : 0
@@ -151,7 +126,6 @@ export default function AnalyticsPage() {
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length
   const rtoRate         = totalOrders ? Math.round((rtoOrders / totalOrders) * 100) : 0
 
-  // Revenue by category
   const categoryRevenue: Record<string, number> = {}
   orders.forEach(o => {
     if (o.items && Array.isArray(o.items)) {
@@ -165,7 +139,6 @@ export default function AnalyticsPage() {
   const topCategories = Object.entries(categoryRevenue)
     .sort((a, b) => b[1] - a[1])
 
-  // State-wise orders
   const stateOrders: Record<string, number> = {}
   orders.forEach(o => {
     const state = o.shipping_address?.state || 'Unknown'
@@ -175,7 +148,6 @@ export default function AnalyticsPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
 
-  // RTO by state
   const stateRTO: Record<string, { total: number; rto: number }> = {}
   orders.forEach(o => {
     const state = o.shipping_address?.state || 'Unknown'
@@ -193,7 +165,6 @@ export default function AnalyticsPage() {
     .sort((a, b) => b.rate - a.rate)
     .slice(0, 10)
 
-  // Peak hours
   const hourCounts: Record<number, number> = {}
   orders.forEach(o => {
     const hour = new Date(o.created_at).getHours()
@@ -207,7 +178,6 @@ export default function AnalyticsPage() {
       count
     }))
 
-  // Coupon usage
   const couponUsage: Record<string, { count: number; discount: number }> = {}
   orders.forEach(o => {
     if (o.coupon_code) {
@@ -220,14 +190,12 @@ export default function AnalyticsPage() {
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 5)
 
-  // Monthly revenue trend
   const monthlyRevenue: Record<string, number> = {}
   orders.forEach(o => {
     const month = new Date(o.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
     monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (o.grand_total || o.total_amount || 0)
   })
 
-  // AOV trend by week
   const weeklyAOV: Record<string, { revenue: number; orders: number }> = {}
   orders.forEach(o => {
     const date = new Date(o.created_at)
@@ -239,24 +207,12 @@ export default function AnalyticsPage() {
     weeklyAOV[key].orders++
   })
 
-  // P&L estimate (assuming 40% cost of goods)
   const estimatedCOGS   = totalRevenue * 0.4
   const estimatedProfit = totalRevenue - estimatedCOGS
   const profitMargin    = totalRevenue ? Math.round((estimatedProfit / totalRevenue) * 100) : 0
 
   const maxCatRevenue = topCategories[0]?.[1] || 1
   const maxStateOrders = topStates[0]?.[1] || 1
-
-  // Meta Ads performance (from ad_spend, synced nightly by /api/meta-ads-sync)
-  const metaSpend       = metaAds.reduce((s, a) => s + (a.amount || 0), 0)
-  const metaImpressions = metaAds.reduce((s, a) => s + (a.impressions || 0), 0)
-  const metaClicks      = metaAds.reduce((s, a) => s + (a.clicks || 0), 0)
-  const metaOrdersAttr  = metaAds.reduce((s, a) => s + (a.orders_attributed || 0), 0)
-  const metaRevenueAttr = metaAds.reduce((s, a) => s + (a.revenue_attributed || 0), 0)
-  const metaROAS        = metaSpend > 0 ? metaRevenueAttr / metaSpend : 0
-  const metaCTR         = metaImpressions > 0 ? (metaClicks / metaImpressions) * 100 : 0
-  const metaCPC         = metaClicks > 0 ? metaSpend / metaClicks : 0
-  const metaCAC         = metaOrdersAttr > 0 ? metaSpend / metaOrdersAttr : 0
 
   const navLinks = [
     { label: 'Dashboard',  href: '/dashboard' },
@@ -277,7 +233,7 @@ export default function AnalyticsPage() {
       <div className="text-white px-6 py-4 flex items-center justify-between"
         style={{ background: '#1a1008' }}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🦴</span>
+          <span className="text-2xl"></span>
           <div>
             <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
@@ -307,7 +263,6 @@ export default function AnalyticsPage() {
           </select>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -322,15 +277,14 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        {/* — OVERVIEW TAB — */}
         {tab === 'overview' && (
           <div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',     value: '₹' + totalRevenue.toLocaleString('en-IN'), icon: '💰', color: '#10b981' },
-                { label: 'Total Orders',      value: totalOrders,                                  icon: '📦', color: '#3b82f6' },
-                { label: 'Avg Order Value',   value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '📊', color: '#8b5cf6' },
-                { label: 'RTO Rate',          value: rtoRate + '%',                                icon: '↩️', color: '#ef4444' },
+                { label: 'Total Revenue',     value: '₹' + totalRevenue.toLocaleString('en-IN'), icon: '', color: '#10b981' },
+                { label: 'Total Orders',      value: totalOrders,                                  icon: '', color: '#3b82f6' },
+                { label: 'Avg Order Value',   value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '', color: '#8b5cf6' },
+                { label: 'RTO Rate',          value: rtoRate + '%',                                icon: '', color: '#ef4444' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -342,44 +296,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* Meta Ads Performance */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold" style={{ color: '#111827' }}>Meta Ads Performance</h3>
-                <a href="/marketing" className="text-xs font-medium" style={{ color: '#3b82f6' }}>Manage in Marketing →</a>
-              </div>
-              {loading ? (
-                <div style={{ color: '#2a1f1a', fontSize: 14 }}>Loading...</div>
-              ) : metaAds.length === 0 ? (
-                <div style={{ color: '#2a1f1a', fontSize: 14 }}>
-                  No Meta ad spend in this range yet. Once campaigns are running, spend and results sync here automatically every night — nothing more to set up.
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                    {[
-                      { label: 'Ad Spend',           value: '₹' + metaSpend.toLocaleString('en-IN'),        color: '#ef4444' },
-                      { label: 'Revenue Attributed',  value: '₹' + metaRevenueAttr.toLocaleString('en-IN'), color: '#10b981' },
-                      { label: 'ROAS',                value: metaROAS.toFixed(2) + 'x',                     color: metaROAS >= 2 ? '#10b981' : '#ef4444' },
-                      { label: 'Orders from Ads',     value: metaOrdersAttr,                                color: '#3b82f6' },
-                      { label: 'Cost per Order',      value: metaCAC > 0 ? '₹' + Math.round(metaCAC).toLocaleString('en-IN') : '—', color: '#8b5cf6' },
-                    ].map(card => (
-                      <div key={card.label} className="rounded-lg p-4" style={{ background: '#f9fafb' }}>
-                        <div className="text-xl font-bold" style={{ color: card.color }}>{card.value}</div>
-                        <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-xs" style={{ color: '#6b7280' }}>
-                    <div>{metaImpressions.toLocaleString('en-IN')} impressions</div>
-                    <div>{metaClicks.toLocaleString('en-IN')} clicks · {metaCTR.toFixed(2)}% CTR</div>
-                    <div>₹{metaCPC.toFixed(2)} avg. CPC</div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* GA KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: 'Visitors (30d)',     value: gaData.activeUsers,               icon: '👥', color: '#06b6d4' },
@@ -397,7 +313,6 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* GA engagement KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {[
                 {
@@ -434,7 +349,6 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-6">
-              {/* COD vs Prepaid */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>COD vs Prepaid</h3>
                 <div className="space-y-3">
@@ -459,7 +373,6 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Peak hours */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Peak Order Hours</h3>
                 {loading ? (
@@ -476,7 +389,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Traffic Sources */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Traffic Sources (Last 30 Days)</h3>
               {trafficSources.length === 0 ? (
@@ -494,7 +406,6 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Top Pages & Landing Pages */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Top Pages (Last 30 Days)</h3>
@@ -535,7 +446,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Coupon usage */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Coupon Usage</h3>
               {topCoupons.length === 0 ? (
@@ -567,7 +477,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* — CATEGORIES TAB — */}
         {tab === 'categories' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -601,7 +510,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* — GEOGRAPHY TAB — */}
         {tab === 'geography' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
@@ -666,7 +574,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* GA website visitors by city */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>
                 Website Visitors by City (Last 30 Days, from Google Analytics)
@@ -698,14 +605,13 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* — OPERATIONS TAB — */}
         {tab === 'operations' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Delivered Orders', value: deliveredOrders, icon: '✅', color: '#10b981' },
-                { label: 'RTO Orders',        value: rtoOrders,       icon: '⚠️', color: '#ef4444' },
-                { label: 'RTO Rate',          value: rtoRate + '%',   icon: '📉', color: '#f59e0b' },
+                { label: 'Delivered Orders', value: deliveredOrders, icon: '', color: '#10b981' },
+                { label: 'RTO Orders',        value: rtoOrders,       icon: '', color: '#ef4444' },
+                { label: 'RTO Rate',          value: rtoRate + '%',   icon: '', color: '#f59e0b' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>
@@ -718,7 +624,7 @@ export default function AnalyticsPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>Repeat Purchase Rate</h3>
               <div className="text-center py-8" style={{ color: '#2a1f1a' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}></div>
                 <div style={{ fontSize: 14 }}>
                   Repeat purchase data will appear here once you have multiple orders from the same customers
                 </div>
@@ -727,14 +633,13 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* — P&L TAB — */}
         {tab === 'pnl' && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',    value: '₹' + totalRevenue.toLocaleString('en-IN'),    icon: '💰', color: '#10b981' },
-                { label: 'Est. COGS (40%)',  value: '₹' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: '📤', color: '#ef4444' },
-                { label: 'Est. Gross Profit', value: '₹' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: '📈', color: '#3b82f6' },
+                { label: 'Total Revenue',    value: '₹' + totalRevenue.toLocaleString('en-IN'),    icon: '', color: '#10b981' },
+                { label: 'Est. COGS (40%)',  value: '₹' + Math.round(estimatedCOGS).toLocaleString('en-IN'), icon: '', color: '#ef4444' },
+                { label: 'Est. Gross Profit', value: '₹' + Math.round(estimatedProfit).toLocaleString('en-IN'), icon: '', color: '#3b82f6' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                   <div className="text-2xl mb-2">{card.icon}</div>

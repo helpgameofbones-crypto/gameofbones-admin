@@ -9,6 +9,12 @@ const supabase = createClient(
 );
 
 const SUPABASE_FN_URL = 'https://syuostlqzzinigqwjzap.supabase.co/functions/v1';
+// NOTE: the Delhivery API token used to be hardcoded here and called directly
+// from the browser (track.delhivery.com) — a live third-party credential
+// visible to anyone opening devtools on the admin panel. Tracking now goes
+// through the existing server-side /api/delhivery route (action: 'track'),
+// which already reads the token from DELHIVERY_API_TOKEN server-side and is
+// gated by requireAdmin, same as shipment creation elsewhere in this repo.
 
 export default function DelhiverySyncPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -44,11 +50,6 @@ export default function DelhiverySyncPage() {
     setSyncing(false);
   }
 
-  // Routed through the server-side /api/delhivery route instead of calling
-  // track.delhivery.com directly from the browser — that used to require a
-  // hardcoded DELHIVERY_TOKEN constant shipped in this page's client bundle,
-  // visible to anyone via view-source. The server route reads the token from
-  // process.env.DELHIVERY_API_TOKEN and is itself gated by requireAdmin().
   async function trackSingle(awb: string) {
     setTrackResult(null);
     try {
@@ -58,6 +59,10 @@ export default function DelhiverySyncPage() {
         body: JSON.stringify({ action: 'track', orderData: { awb } })
       });
       const data = await res.json();
+      if (!res.ok || data.error) {
+        setTrackResult({ error: data.error || 'Failed to fetch tracking data' });
+        return;
+      }
       setTrackResult(data?.tracking?.ShipmentData?.[0]?.Shipment || { error: 'No data found' });
     } catch (e: any) {
       setTrackResult({ error: e.message });
@@ -85,6 +90,7 @@ export default function DelhiverySyncPage() {
         </button>
       </div>
 
+      {/* Sync result */}
       {syncResult && (
         <div style={{ background: syncResult.error ? '#fef2f2' : '#f0fdf4', border: `1px solid ${syncResult.error ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
           {syncResult.error ? (
@@ -102,6 +108,7 @@ export default function DelhiverySyncPage() {
         </div>
       )}
 
+      {/* Quick stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{orders.length}</div>
@@ -121,6 +128,7 @@ export default function DelhiverySyncPage() {
         </div>
       </div>
 
+      {/* Manual AWB tracker */}
       <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 24 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Track Individual AWB</h3>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -157,6 +165,7 @@ export default function DelhiverySyncPage() {
         )}
       </div>
 
+      {/* Orders with AWB table */}
       {loading ? <p>Loading...</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>

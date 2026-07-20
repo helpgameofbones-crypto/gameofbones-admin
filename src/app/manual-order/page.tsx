@@ -23,6 +23,8 @@ export default function ManualOrderPage() {
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isGift, setIsGift] = useState(false);
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
+  const [discountValue, setDiscountValue] = useState<number>(0);
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -63,7 +65,15 @@ export default function ManualOrderPage() {
     setSelectedItems(updated);
   };
 
-  const totalAmount = isGift ? 0 : selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // When gifting, the order is recorded at ₹0 — no payment ever changes hands.
+  const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountAmount = isGift
+    ? 0
+    : Math.min(
+        subtotal,
+        Math.max(0, discountType === 'percent' ? subtotal * (discountValue / 100) : discountValue)
+      );
+  const totalAmount = isGift ? 0 : Math.max(0, subtotal - discountAmount);
 
   function toggleGift(checked: boolean) {
     setIsGift(checked);
@@ -97,6 +107,10 @@ export default function ManualOrderPage() {
           quantity: i.quantity,
           price: isGift ? 0 : (i.price || 0)
         })),
+        subtotal: isGift ? 0 : subtotal,
+        discountType: isGift ? null : discountType,
+        discountValue: isGift ? 0 : discountValue,
+        discountAmount: isGift ? 0 : discountAmount,
         total: totalAmount,
         paymentMethod: isGift ? 'gift' : formData.paymentMethod,
         transactionId: isGift ? '' : formData.transactionId,
@@ -116,6 +130,8 @@ export default function ManualOrderPage() {
         setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '' });
         setSelectedItems([]);
         setIsGift(false);
+        setDiscountType('percent');
+        setDiscountValue(0);
       } else {
         alert('Error: ' + (result.error || 'Unknown error'));
       }
@@ -178,6 +194,36 @@ export default function ManualOrderPage() {
             <input type="text" value={formData.transactionId} disabled={isGift} onChange={(e) => setFormData({...formData, transactionId: e.target.value})} placeholder={isGift ? 'Not applicable for gifts' : 'UPI ref, card last 4 digits, etc'} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
+          <div style={{ marginBottom: '16px', opacity: isGift ? 0.5 : 1 }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Discount (Optional)</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+              <select
+                value={discountType}
+                disabled={isGift}
+                onChange={(e) => setDiscountType(e.target.value as 'percent' | 'amount')}
+                style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }}
+              >
+                <option value="percent">% Off</option>
+                <option value="amount">₹ Off</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={discountValue || ''}
+                disabled={isGift}
+                onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                placeholder={discountType === 'percent' ? 'e.g. 10' : 'e.g. 100'}
+                style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }}
+              />
+            </div>
+            {!isGift && discountAmount > 0 && (
+              <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '6px' }}>
+                Discount applied: -₹{discountAmount.toFixed(2)}
+              </p>
+            )}
+          </div>
+
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Notes {isGift && '(e.g. Instagram handle, campaign name)'}</label>
             <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder={isGift ? '@influencer_handle, campaign name, etc' : 'Event name, referral source, etc'} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', minHeight: '80px', fontFamily: 'inherit', color: '#1a1008' }} />
@@ -213,6 +259,16 @@ export default function ManualOrderPage() {
             )}
 
             <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
+              {!isGift && discountAmount > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#3a3028', marginBottom: '4px' }}>
+                    <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '8px' }}>
+                    <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
               <p style={{ fontSize: '28px', fontWeight: '700', color: isGift ? '#16a34a' : '#c8973a', margin: 0 }}>
                 {isGift ? '₹0 (Gift)' : totalAmount.toFixed(2)}

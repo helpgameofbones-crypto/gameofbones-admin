@@ -1,11 +1,18 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { resend } from '@/app/lib/emailClient'
+import nodemailer from 'nodemailer'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+})
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -56,19 +63,19 @@ export async function GET(req: NextRequest) {
       .map((i: any) => i.name)
       .join(', ')
 
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
       to: customer.email,
-      subject: `Your pup is waiting for their treats! ðŸ¾`,
+      subject: `Your pup is waiting for their treats! 🐾`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1a1008;padding:24px;text-align:center">
-            <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
+            <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
           </div>
 
           <div style="background:#f9f6f2;padding:32px">
             <div style="text-align:center;margin-bottom:24px">
-              <div style="font-size:48px;margin-bottom:12px">ðŸ¦´</div>
+              <div style="font-size:48px;margin-bottom:12px">🦴</div>
               <h2 style="color:#1a1008;margin:0 0 8px">
                 Hi ${customer.name}! Time for a restock?
               </h2>
@@ -90,25 +97,25 @@ export async function GET(req: NextRequest) {
 
             <div style="background:white;border-radius:12px;padding:20px;margin-bottom:24px;border-left:4px solid #c8973a">
               <p style="margin:0;font-size:14px;color:#374151;line-height:1.6">
-                Single-ingredient, preservative-free treats â€” exactly what your dog deserves.
-                Fresh stock ready to ship! ðŸš€
+                Single-ingredient, preservative-free treats — exactly what your dog deserves.
+                Fresh stock ready to ship! 🚀
               </p>
             </div>
 
             <div style="text-align:center">
               <a href="https://gameofbones.in"
                 style="background:#c8973a;color:#1a1008;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;display:inline-block;margin-bottom:12px">
-                Reorder Now â†’
+                Reorder Now →
               </a>
               <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">
-                Free shipping on orders above â‚¹599
+                Free shipping on orders above ₹599
               </p>
             </div>
           </div>
 
           <div style="background:#1a1008;padding:16px;text-align:center">
             <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">
-              Game of Bones Â· gameofbones.in Â· You're receiving this because you ordered from us
+              Game of Bones · gameofbones.in · You're receiving this because you ordered from us
             </p>
           </div>
         </div>

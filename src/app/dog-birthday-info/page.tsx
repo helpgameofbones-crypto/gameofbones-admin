@@ -1,14 +1,14 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 interface Birthday {
   id: string;
-  owner_name: string;
+  customer_name: string;
   dog_name: string;
   birthday: string;
-  phone: string;
-  email: string;
+  customer_phone: string;
+  customer_email: string;
   discount_percent: number;
   last_discount_sent: string | null;
 }
@@ -44,10 +44,10 @@ export default function DogBirthdayPage() {
   };
 
   const filtered = birthdays.filter(b =>
-    !search || 
-    b.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+    !search ||
+    b.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
     b.dog_name?.toLowerCase().includes(search.toLowerCase()) ||
-    b.phone?.includes(search)
+    b.customer_phone?.includes(search)
   );
 
   const upcoming = filtered.filter(b => new Date(b.birthday) >= new Date());
@@ -76,10 +76,10 @@ export default function DogBirthdayPage() {
           <div style={{ display: 'grid', gap: '12px' }}>
             {upcoming.map(b => (
               <div key={b.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.customer_name}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
-                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>PHONE</p><p style={{ color: '#1a1008' }}>{b.phone}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>PHONE</p><p style={{ color: '#1a1008' }}>{b.customer_phone}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
               </div>
             ))}
@@ -95,7 +95,7 @@ export default function DogBirthdayPage() {
           <div style={{ display: 'grid', gap: '12px' }}>
             {past.map(b => (
               <div key={b.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', opacity: '0.6', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.owner_name}</p></div>
+                <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>OWNER</p><p style={{ color: '#1a1008' }}>{b.customer_name}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DOG</p><p style={{ color: '#1a1008' }}>{b.dog_name}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>BIRTHDAY</p><p style={{ color: '#1a1008' }}>{new Date(b.birthday).toLocaleDateString()}</p></div>
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>EMAIL SENT</p><p style={{ color: '#1a1008' }}>{b.last_discount_sent ? new Date(b.last_discount_sent).toLocaleDateString() : 'Pending'}</p></div>

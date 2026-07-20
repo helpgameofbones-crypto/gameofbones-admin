@@ -10,6 +10,8 @@ interface EmailCapture {
   device_id: string | null;
   created_at: string;
   status: string;
+  prize: string | null;
+  coupon_code: string | null;
 }
 
 export default function EmailCaptures() {
@@ -63,10 +65,12 @@ export default function EmailCaptures() {
   };
 
   const downloadCSV = () => {
-    const headers = ['Email', 'Source', 'Date', 'Device ID'];
+    const headers = ['Email', 'Source', 'Prize Won', 'Coupon Code', 'Date', 'Device ID'];
     const rows = emails.map(e => [
       e.email,
       e.source || 'unknown',
+      e.prize || '',
+      e.coupon_code || '',
       new Date(e.created_at).toLocaleDateString(),
       e.device_id || 'N/A'
     ]);
@@ -124,8 +128,10 @@ export default function EmailCaptures() {
             style={styles.select}
           >
             <option value="all">All Sources</option>
-            <option value="exit-intent">Exit-Intent Popup</option>
+            <option value="spin_wheel">Spin Wheel</option>
             <option value="newsletter">Newsletter</option>
+            <option value="dog_birthday">Dog Birthday Club</option>
+            <option value="exit-intent">Exit-Intent Popup</option>
           </select>
 
           <button
@@ -158,6 +164,7 @@ export default function EmailCaptures() {
               <tr style={styles.headerRow}>
                 <th style={styles.th}>Email</th>
                 <th style={styles.th}>Source</th>
+                <th style={styles.th}>Prize Won</th>
                 <th style={styles.th}>Date</th>
                 <th style={styles.th}>Device</th>
                 <th style={styles.th}>Action</th>
@@ -175,6 +182,18 @@ export default function EmailCaptures() {
                     <span style={styles.badge}>
                       {email.source || 'unknown'}
                     </span>
+                  </td>
+                  <td style={styles.td}>
+                    {email.prize ? (
+                      <>
+                        <span style={styles.prizeLabel}>{email.prize}</span>
+                        {email.coupon_code && (
+                          <><br /><code style={styles.code}>{email.coupon_code}</code></>
+                        )}
+                      </>
+                    ) : (
+                      <span style={styles.time}>—</span>
+                    )}
                   </td>
                   <td style={styles.td}>
                     {new Date(email.created_at).toLocaleDateString()}
@@ -333,6 +352,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '2px 6px',
     borderRadius: '3px',
     fontFamily: 'monospace'
+  },
+  prizeLabel: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#1a1008'
   },
   time: {
     fontSize: '11px',

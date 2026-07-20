@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       formData.append('format', 'json')
       formData.append('data', JSON.stringify(payload))
 
-      const res = await fetch(`${DELHIVERY_BASE}/api/cmu/create.json`, {
+      const res = await fetch(`${DELHIVERY_BASE}/api/cno/create/`, {
         method: 'POST',
         headers: {
           'Authorization': `Token ${DELHIVERY_TOKEN}`,

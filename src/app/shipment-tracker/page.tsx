@@ -1,13 +1,42 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
 );
 
-const DELHIVERY_TOKEN = '590d454727ba1419777966ef591787d330b5cc30';
+// NOTE: a hardcoded Delhivery API token used to live here and was called
+// directly from the browser — a live third-party credential visible to
+// anyone opening devtools. Tracking now goes through the existing
+// server-side /api/delhivery route (action: 'track'), same fix already
+// applied to delhivery-sync/page.tsx.
+
+// orders.customer_phone is stored XOR+base64 "encrypted" by the website's
+// encryptData() — displaying/searching it raw showed ciphertext instead of
+// a real phone number and made phone search silently never match anything.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
+function decryptData(encrypted: string): string {
+  if (!encrypted) return '';
+  try {
+    const binary = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+    }
+    return result;
+  } catch {
+    return encrypted;
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return '';
+  if (/^\+?\d{10,13}$/.test(raw)) return raw;
+  const dec = decryptData(raw);
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
@@ -32,7 +61,7 @@ export default function ShipmentTrackerPage() {
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) { console.error(error); setLoading(false); return; }
-    setOrders(data || []);
+    setOrders((data || []).map(o => ({ ...o, customer_phone: decryptPhone(o.customer_phone) })));
     setLoading(false);
   }
 
@@ -40,11 +69,17 @@ export default function ShipmentTrackerPage() {
     setTrackingLoading(true);
     setTrackingDetail(null);
     try {
-      const res = await fetch(`https://track.delhivery.com/api/v1/packages/json/?waybill=${awb}`, {
-        headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
+      const res = await authedFetch('/api/delhivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'track', orderData: { awb } })
       });
       const data = await res.json();
-      const shipment = data?.ShipmentData?.[0]?.Shipment;
+      if (!res.ok || data.error) {
+        setTrackingDetail({ error: data.error || 'Failed to fetch tracking data' });
+        return;
+      }
+      const shipment = data?.tracking?.ShipmentData?.[0]?.Shipment;
       setTrackingDetail(shipment || { error: 'No tracking data found for this AWB' });
     } catch (e: any) {
       setTrackingDetail({ error: e.message });

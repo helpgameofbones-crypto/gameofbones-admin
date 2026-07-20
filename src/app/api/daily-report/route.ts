@@ -1,11 +1,12 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { resend } from '@/app/lib/emailClient'
+import { Resend } from 'resend'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET(req: NextRequest) {
   // Security check - only allow from Vercel cron
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   const prepaidOrders = orderList.filter(o => o.payment_method !== 'cod').length
 
   // Top products
-  // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty` â€”
+  // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty` —
   // reading the wrong keys silently produced "undefined" product names and NaN counts.
   const productCounts: Record<string, number> = {}
   orderList.forEach(o => {
@@ -65,12 +66,12 @@ export async function GET(req: NextRequest) {
   await resend.emails.send({
     from: 'onboarding@resend.dev',
     to: 'helpgameofbones@gmail.com',
-    subject: `ðŸ“Š Daily Report â€” ${orderList.length} orders â€” â‚¹${totalRevenue.toLocaleString('en-IN')}`,
+    subject: `📊 Daily Report — ${orderList.length} orders — ₹${totalRevenue.toLocaleString('en-IN')}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a1008;padding:24px;text-align:center">
-          <h1 style="color:#c8973a;margin:0">ðŸ¾ Game of Bones</h1>
-          <p style="color:rgba(255,255,255,0.5);margin:4px 0 0;font-size:14px">Daily Report â€” ${dateStr}</p>
+          <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
+          <p style="color:rgba(255,255,255,0.5);margin:4px 0 0;font-size:14px">Daily Report — ${dateStr}</p>
         </div>
 
         <div style="background:#f9f6f2;padding:24px">
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest) {
           <!-- Revenue highlight -->
           <div style="background:white;border-radius:12px;padding:24px;margin-bottom:16px;text-align:center;border-top:4px solid #c8973a">
             <div style="font-size:12px;color:#6b7280;margin-bottom:4px">TOTAL REVENUE TODAY</div>
-            <div style="font-size:42px;font-weight:bold;color:#1a1008">â‚¹${totalRevenue.toLocaleString('en-IN')}</div>
+            <div style="font-size:42px;font-weight:bold;color:#1a1008">₹${totalRevenue.toLocaleString('en-IN')}</div>
             <div style="font-size:14px;color:#6b7280;margin-top:4px">${orderList.length} orders placed</div>
           </div>
 
@@ -135,28 +136,28 @@ export async function GET(req: NextRequest) {
                   <span style="color:#6b7280;margin-left:8px">${o.customer_name}</span>
                 </div>
                 <div>
-                  <span style="font-weight:bold">â‚¹${o.grand_total}</span>
+                  <span style="font-weight:bold">₹${o.grand_total}</span>
                   <span style="margin-left:8px;padding:2px 6px;border-radius:10px;font-size:11px;background:${o.payment_method === 'cod' ? '#fef3c7' : '#dcfce7'};color:${o.payment_method === 'cod' ? '#92400e' : '#166534'}">${o.payment_method?.toUpperCase()}</span>
                 </div>
               </div>
             `).join('')}
           </div>` : `
           <div style="background:white;border-radius:12px;padding:32px;text-align:center;margin-bottom:16px">
-            <div style="font-size:32px;margin-bottom:8px">ðŸ˜´</div>
+            <div style="font-size:32px;margin-bottom:8px">😴</div>
             <div style="color:#6b7280;font-size:14px">No orders today. Tomorrow will be better!</div>
           </div>`}
 
           <div style="text-align:center">
             <a href="https://gameofbones-admin.vercel.app/dashboard"
               style="background:#1a1008;color:white;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block">
-              Open Admin Panel â†’
+              Open Admin Panel →
             </a>
           </div>
         </div>
 
         <div style="background:#1a1008;padding:16px;text-align:center">
           <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">
-            Game of Bones Â· This report is sent every day at 9 PM
+            Game of Bones · This report is sent every day at 9 PM
           </p>
         </div>
       </div>
