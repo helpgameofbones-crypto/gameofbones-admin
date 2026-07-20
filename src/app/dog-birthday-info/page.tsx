@@ -102,4 +102,9 @@ export default function DogBirthdayPage() {
                 <div><p style={{ fontSize: '11px', color: '#3a3028', fontWeight: '600', marginBottom: '4px' }}>DISCOUNT</p><p style={{ color: '#c8973a', fontWeight: '600' }}>{b.discount_percent}%</p></div>
               </div>
             ))}
-          <
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
