@@ -198,4 +198,19 @@ export default function DelhiverySyncPage() {
                   </span>
                 </td>
                 <td style={{ padding: 12, fontSize: 12, color: o.estimated_delivery ? '#16a34a' : '#9ca3af' }}>
-                  {o.estimated_delivery
+                  {o.estimated_delivery || (o.delivered_at ? `Delivered ${new Date(o.delivered_at).toLocaleDateString('en-IN')}` : '—')}
+                </td>
+                <td style={{ padding: 12, textAlign: 'center' }}>
+                  <button onClick={() => { setTrackAwb(o.delhivery_awb); trackSingle(o.delhivery_awb); }}
+                    style={{ background: 'none', border: '1px solid #e5e7eb', padding: '4px 12px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                    Track
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
