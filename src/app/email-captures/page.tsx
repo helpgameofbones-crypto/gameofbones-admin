@@ -350,4 +350,52 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#7a6a5a',
     backgroundColor: '#f5e8c8',
     padding: '2px 6px',
-    borderRadius: '3
+    borderRadius: '3px',
+    fontFamily: 'monospace'
+  },
+  prizeLabel: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#1a1008'
+  },
+  time: {
+    fontSize: '11px',
+    color: '#7a6a5a'
+  },
+  deleteButton: {
+    padding: '6px 10px',
+    backgroundColor: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '600',
+    transition: 'background 0.2s',
+    fontFamily: "'Jost', sans-serif"
+  },
+  error: {
+    padding: '16px',
+    marginBottom: '20px',
+    backgroundColor: '#fee2e2',
+    border: '1px solid #ef4444',
+    color: '#991b1b',
+    borderRadius: '4px',
+    fontSize: '14px'
+  },
+  loading: {
+    textAlign: 'center',
+    color: '#7a6a5a',
+    fontSize: '16px',
+    padding: '40px'
+  },
+  noData: {
+    textAlign: 'center',
+    color: '#7a6a5a',
+    fontSize: '16px',
+    padding: '40px',
+    backgroundColor: '#fff',
+    borderRadius: '4px',
+    border: '1px solid #ede5d8'
+  }
+};
