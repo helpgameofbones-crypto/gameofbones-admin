@@ -14,21 +14,31 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-// Cron job: runs every hour, sends email to abandoned carts from 1-2 hours ago
+// Cron job: originally ran every hour and swept a tight 1-2h window, but
+// Vercel's Hobby plan only allows crons to run once per day (anything more
+// frequent fails at deploy time -- see vercel.json). Now runs once daily and
+// sweeps a full rolling ~25h window instead, so a cart abandoned at any point
+// since the previous run still gets caught. The old hourly version relied on
+// each cart falling into its narrow window exactly once as the *only* guard
+// against duplicate emails; that's no longer safe with a wider window (a
+// cart sitting abandoned for several days would otherwise re-match every
+// day), so this also checks/sets followup_sent_at as an explicit dedup flag.
 export async function GET(req: NextRequest) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
-  const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000)
+  const windowStart = new Date(Date.now() - 25 * 60 * 60 * 1000) // 25h ago
+  const oneHourAgo  = new Date(Date.now() - 1 * 60 * 60 * 1000)  // still give an
+    // active shopper at least 1h before following up, same buffer as before
 
   const { data: carts } = await supabase
     .from('abandoned_carts')
     .select('*')
     .eq('recovered', false)
+    .is('followup_sent_at', null)
     .not('customer_email', 'is', null)
-    .gte('abandoned_at', twoHoursAgo.toISOString())
+    .gte('abandoned_at', windowStart.toISOString())
     .lt('abandoned_at', oneHourAgo.toISOString())
 
   let sent = 0
@@ -54,13 +64,13 @@ export async function GET(req: NextRequest) {
       <span>Total</span><span style="color:#c8973a">Rs.${cart.total?.toLocaleString('en-IN')}</span>
     </div>
     <div style="text-align:center;margin-top:24px">
-      <a href="https://gameofbones-website.vercel.app/?cart=recover&phone=${cart.customer_phone}" 
+      <a href="https://gameofbones-website.vercel.app/?cart=recover&phone=${cart.customer_phone}"
          style="display:inline-block;background:#c8973a;color:#1a1008;padding:14px 36px;font-weight:700;font-size:13px;text-decoration:none;border-radius:2px;letter-spacing:.1em">
         COMPLETE MY ORDER →
       </a>
     </div>
     <p style="font-size:12px;color:#8a7a6a;text-align:center;margin-top:20px">
-      Use code <strong>SAVE50</strong> for Rs.30 off if you complete your order in the next 24 hours!
+      Use code <strong>SAVE50</strong> for Rs.50 off if you complete your order in the next 24 hours!
     </p>
   </div>
   <div style="background:#1a1008;padding:16px;text-align:center;border-radius:0 0 8px 8px">
@@ -71,4 +81,19 @@ export async function GET(req: NextRequest) {
     await transporter.sendMail({
       from: process.env.GMAIL_USER,
       to: cart.customer_email,
-      subject: `${cart.customer_name?.split(' ')[0] || 'Hey'}, your dog tre
+      subject: `${cart.customer_name?.split(' ')[0] || 'Hey'}, your dog treats are waiting! 🐾`,
+      html,
+    })
+
+    // Mark sent immediately so a second cron run (retry, or the query
+    // matching the same row twice due to clock drift) never double-emails.
+    await supabase
+      .from('abandoned_carts')
+      .update({ followup_sent_at: new Date().toISOString() })
+      .eq('id', cart.id)
+
+    sent++
+  }
+
+  return NextResponse.json({ sent })
+}
