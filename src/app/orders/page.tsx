@@ -551,4 +551,48 @@ export default function OrdersPage() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1008' }}>Total Charged</span>
                   <span style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>₹{(selected.grand_total || selected.total_amount || 0).toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Payment: {(selected.payment_method || 'onli
+                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Payment: {(selected.payment_method || 'online').toUpperCase()}</div>
+                {parseOrderNoteLines(selected.notes, selected.coupon_code).customerNoteLines.map((line, i) => (
+                  <div key={i} style={{ fontSize: 12, color: '#374151', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e5e7eb' }}>
+                    <span style={{ fontWeight: 700 }}>Note: </span>{line}
+                  </div>
+                ))}
+              </div>
+
+              {selected.transaction_id && (
+                <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bbf7d0' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#16a34a' }}>Razorpay Transaction ID</div>
+                  <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>{selected.transaction_id}</div>
+                </div>
+              )}
+
+              {selected.delhivery_awb && (
+                <div style={{ background: '#f0f9ff', padding: 12, borderRadius: 6, marginBottom: 12, border: '1px solid #bae6fd' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#0284c7' }}>Delhivery AWB</div>
+                  <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{selected.delhivery_awb}</div>
+                  <a href={`https://www.delhivery.com/track/package/${selected.delhivery_awb}`} target="_blank" rel="noopener"
+                    style={{ fontSize: 12, color: '#0284c7', fontWeight: 600 }}>Track on Delhivery →</a>
+                </div>
+              )}
+
+              {selected.shipping_address && (
+                <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
+                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+                    {typeof selected.shipping_address === 'string' ? selected.shipping_address :
+                      [selected.shipping_address.street, selected.shipping_address.city, selected.shipping_address.state, selected.shipping_address.pincode].filter(Boolean).join(', ')}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={() => deleteOrder(selected.id, selected.ref)} disabled={deleteBusy}
+                style={{ width: '100%', padding: '10px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: deleteBusy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                {deleteBusy ? 'Deleting...' : '🗑 Delete This Order'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
