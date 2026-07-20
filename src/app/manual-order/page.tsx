@@ -243,4 +243,44 @@ export default function ManualOrderPage() {
           </div>
 
           <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
-          
+            <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Order Items ({selectedItems.length})</h2>
+            {selectedItems.length === 0 ? (
+              <p style={{ color: '#3a3028', fontSize: '14px' }}>No items selected</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
+                {selectedItems.map((item, i) => (
+                  <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
+                    <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>{isGift ? 'FREE' : item.price}</p></div>
+                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px', color: '#1a1008' }} />
+                    <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
+              {!isGift && discountAmount > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#3a3028', marginBottom: '4px' }}>
+                    <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '8px' }}>
+                    <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
+              <p style={{ fontSize: '28px', fontWeight: '700', color: isGift ? '#16a34a' : '#c8973a', margin: 0 }}>
+                {isGift ? '₹0 (Gift)' : totalAmount.toFixed(2)}
+              </p>
+            </div>
+
+            <button onClick={handleCreateOrder} disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#999' : (isGift ? '#16a34a' : '#1a1008'), color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>
+              {loading ? 'Creating...' : (isGift ? '🎁 Create Gift Order' : 'Create Order')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
