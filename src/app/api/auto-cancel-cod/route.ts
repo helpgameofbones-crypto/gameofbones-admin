@@ -75,4 +75,38 @@ export async function GET(req: NextRequest) {
     if (decryptedEmail) {
       // Wrapped in try/catch so one bad send doesn't stop the rest of the
       // batch from being cancelled — cancellation above already happened
-      // reg
+      // regardless of whether the email succeeds.
+      try {
+      await transporter.sendMail({
+        from: process.env.GMAIL_USER,
+        to: decryptedEmail,
+        subject: `Your order ${order.ref} has been cancelled`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:#1a1008;padding:24px;text-align:center">
+              <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
+            </div>
+            <div style="background:#f9f6f2;padding:32px">
+              <h2 style="color:#1a1008">Order Cancelled</h2>
+              <p style="color:#6b7280">Hi ${order.customer_name},</p>
+              <p style="color:#6b7280">Your order <strong>${order.ref}</strong> has been cancelled as we were unable to confirm your COD order within 48 hours.</p>
+              <p style="color:#6b7280">If you still want to order, please place a new order at gameofbones.in</p>
+              <div style="text-align:center;margin-top:24px">
+                <a href="https://gameofbones.in" style="background:#c8973a;color:#1a1008;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold">
+                  Order Again →
+                </a>
+              </div>
+            </div>
+          </div>
+        `
+      })
+      } catch (e) {
+        console.error('Auto-cancel email failed for', order.ref, e)
+      }
+    }
+
+    cancelled++
+  }
+
+  return NextResponse.json({ ok: true, cancelled })
+}
