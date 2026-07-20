@@ -648,4 +648,28 @@ export default function CustomerIntelligencePage() {
                   if (c.total_orders === 0) return false
                   const lastOrder = orders.filter(o => o.customer_phone === c.phone)
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-                  if (!lastOrder)
+                  if (!lastOrder) return false
+                  const daysSince = (Date.now() - new Date(lastOrder.created_at).getTime()) / 86400000
+                  return daysSince > 60
+                }).slice(0, 6).map(c => (
+                  <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50">
+                    <div>
+                      <div className="text-sm font-medium" style={{ color: '#111827' }}>{c.name}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{c.total_orders} orders  {c.total_spent}</div>
+                    </div>
+                    <a href={`https://wa.me/91${c.phone}?text=Hi ${c.name}! We miss you at Game of Bones  Come back for a special offer!`}
+                      target="_blank" rel="noreferrer"
+                      className="text-xs px-2 py-1 rounded font-medium text-white"
+                      style={{ background: '#25d366', textDecoration: 'none' }}>
+                      WhatsApp
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
