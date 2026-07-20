@@ -202,3 +202,13 @@ export default function CouponsPage() {
                 {coupon.usagepercustomer ? `${coupon.usagepercustomer}× per customer` : 'Unlimited per customer'}
               </p>
             </div>
+            <div><p style={{ color: '#1a1008', margin: 0 }}>{usageCounts[coupon.code] ?? 0} / {coupon.max_uses || '∞ (no overall cap)'}</p></div>
+            <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.valid_until ? new Date(coupon.valid_until).toLocaleDateString() : 'No expiry'}</p></div>
+            <div><p style={{ color: coupon.is_active ? '#2a7c6f' : '#c0392b', margin: 0 }}>{coupon.is_active ? 'Active' : 'Inactive'}</p></div>
+            <div><button onClick={() => handleToggleCoupon(coupon.id, !coupon.is_active)} style={{ padding: '6px 12px', background: coupon.is_active ? '#c0392b' : '#2a7c6f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', width: '100%' }}>{coupon.is_active ? 'Deactivate' : 'Activate'}</button></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
