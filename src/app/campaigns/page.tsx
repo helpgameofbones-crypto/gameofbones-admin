@@ -8,6 +8,31 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// orders.customer_phone may be XOR+base64 encrypted while customers.phone is
+// plain text — decrypt before comparing (see care-library-drip/route.ts for
+// the same pattern), otherwise "Inactive" segment detection silently misses
+// every real checkout order and wrongly flags active customers as inactive.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = atob(encrypted)
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+
 const LOGO = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg'
 
 const CAMPAIGNS = [
@@ -249,7 +274,7 @@ export default function CampaignsPage() {
       case 'inactive': {
         const d = new Date(Date.now() - 60 * 86400000)
         return customers.filter(c => {
-          const last = orders.filter(o => o.customer_phone === c.phone)
+          const last = orders.filter(o => decryptPhone(o.customer_phone) === c.phone)
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
           return last && new Date(last.created_at) < d
         })

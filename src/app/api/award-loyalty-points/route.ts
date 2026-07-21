@@ -28,8 +28,8 @@ function decryptPhone(raw: string): string {
   return /^\+?\d{10,13}$/.test(dec) ? dec : raw
 }
 
-const POINTS_PER_RS10 = 1
-const POINTS_EXPIRY_DAYS = 30
+const RS_PER_POINT = 10
+const POINTS_EXPIRY_DAYS = 60
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      const pointsEarned = Math.floor((order.grand_total || 0) / 10) * POINTS_PER_RS10
+      const pointsEarned = Math.floor((order.grand_total || 0) / RS_PER_POINT)
 
       if (pointsEarned <= 0) {
         await supabase.from('orders').update({ points_awarded: true }).eq('id', order.id)

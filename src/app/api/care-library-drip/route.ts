@@ -19,6 +19,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+function decryptData(encrypted: string): string {
+  if (!encrypted) return ''
+  try {
+    const binary = Buffer.from(encrypted, 'base64').toString('binary')
+    let result = ''
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
+    }
+    return result
+  } catch {
+    return encrypted
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return ''
+  if (/^\+?\d{10,13}$/.test(raw)) return raw
+  const dec = decryptData(raw)
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
+}
+
 const SITE = 'https://gameofbones.in'
 const CARE_LIBRARY_LINKS = [
   { label: 'Feeding & Health Log', url: `${SITE}/feeding-health-log.html`, blurb: 'A weekly log to track any community dogs you feed — health, behavior, follow-ups.' },
@@ -54,12 +75,15 @@ export async function GET(req: NextRequest) {
   const results: any[] = []
 
   for (const order of orders || []) {
-    // customers.email/phone are stored in plain text (unlike orders.customer_phone,
-    // which may be XOR+base64 encrypted), so look the customer up by phone here.
+    // customers.phone is stored in plain text, but orders.customer_phone may be
+    // XOR+base64 encrypted (see decryptPhone above) — comparing the encrypted
+    // value directly against the plaintext customers.phone column would never
+    // match for any order placed through the real checkout, so decrypt first.
+    const decryptedPhone = decryptPhone(order.customer_phone || '')
     const { data: customer } = await supabase
       .from('customers')
       .select('name, email, phone, dog_name')
-      .eq('phone', order.customer_phone)
+      .eq('phone', decryptedPhone)
       .maybeSingle()
 
     if (!customer?.email) {

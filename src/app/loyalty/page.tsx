@@ -50,10 +50,10 @@ export default function LoyaltyPage() {
     if (!selected || !pointsAmount) return
     setAddingPoints(true)
     const newPoints = (selected.loyalty_points || 0) + parseInt(pointsAmount)
-    // Same 30-day expiry window used by the automatic on-delivery credit —
+    // Same 60-day expiry window used by the automatic on-delivery credit —
     // see api/award-loyalty-points/route.ts for the caveat that this is a
     // single running expiry, not a per-batch ledger.
-    const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString()
+    const expiresAt = new Date(Date.now() + 60 * 86400000).toISOString()
     await supabase.from('customers')
       .update({ loyalty_points: newPoints, loyalty_points_expire_at: expiresAt })
       .eq('id', selected.id)

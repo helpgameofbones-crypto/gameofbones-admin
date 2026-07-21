@@ -7,6 +7,27 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
+function decryptData(encrypted: string): string {
+  if (!encrypted) return '';
+  try {
+    const binary = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < binary.length; i++) {
+      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+    }
+    return result;
+  } catch {
+    return encrypted;
+  }
+}
+function decryptPhone(raw: string): string {
+  if (!raw) return '';
+  if (/^\+?\d{10,13}$/.test(raw)) return raw;
+  const dec = decryptData(raw);
+  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
+}
+
 export default function GamificationPage() {
   const [tab, setTab]             = useState('leaderboard')
   const [customers, setCustomers] = useState<any[]>([])
@@ -140,7 +161,10 @@ export default function GamificationPage() {
     const currentMonth = new Date().toISOString().slice(0, 7)
 
     for (const customer of customers) {
-      const custOrders = orders.filter(o => o.customer_phone === customer.phone)
+      // orders.customer_phone may be XOR+base64 encrypted while customers.phone is
+      // plain text — decrypt before comparing, otherwise this only ever matches
+      // manual orders (which store phone in plain text) and misses real checkout orders.
+      const custOrders = orders.filter(o => decryptPhone(o.customer_phone) === customer.phone)
       if (custOrders.length === 0) continue
 
       const orderMonths = [...new Set(custOrders.map(o => o.created_at.slice(0, 7)))]
