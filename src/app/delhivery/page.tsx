@@ -1,12 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabaseBrowserClient';
 import { authedFetch } from '@/app/lib/authedFetch'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 // Same XOR/base64 scheme as the website's encryptData() — customer_phone is
 // stored encrypted, so it must be decrypted before it's shown on screen.
