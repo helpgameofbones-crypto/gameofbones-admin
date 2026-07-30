@@ -13,6 +13,50 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Mirrors the reversible XOR obfuscation used in the storefront (index.html,
+// ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'). customer_email,
+// customer_phone and shipping_address.street are stored run through this on
+// newer orders; older orders may still have plaintext values, so callers
+// below fall back to the raw value when the decrypted result doesn't look
+// like real data.
+const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
+
+function decryptData(encrypted: string): string {
+  try {
+    if (!encrypted) return ''
+    const decoded = Buffer.from(encrypted, 'base64').toString('binary')
+    let result = ''
+    for (let i = 0; i < decoded.length; i++) {
+      result += String.fromCharCode(
+        decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
+      )
+    }
+    return result
+  } catch (e) {
+    return encrypted
+  }
+}
+
+// customer_email: try decrypting; use the decrypted value only if it looks
+// like an email. Handles both encrypted (new) and plaintext (old) orders.
+function resolveEmail(raw: string | null | undefined): string {
+  if (!raw) return ''
+  if (raw.includes('@')) return raw
+  const decrypted = decryptData(raw)
+  if (decrypted.includes('@')) return decrypted
+  return ''
+}
+
+// shipping_address.street: try decrypting; fall back to the raw value if the
+// result contains control/non-printable characters (a sign decryption was
+// run on an already-plaintext string).
+function resolveAddressField(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const decrypted = decryptData(raw)
+  const looksGarbled = /[\x00-\x08\x0e-\x1f]/.test(decrypted)
+  return looksGarbled ? raw : decrypted
+}
+
 function escapeHtml(s: any) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
@@ -40,14 +84,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404, headers })
     }
 
-    const toEmail = dbOrder.customer_email || 'hello@gameofbones.in'
+    const resolvedEmail = resolveEmail(dbOrder.customer_email)
+    const toEmail = resolvedEmail || order.customer_email || 'hello@gameofbones.in'
 
     const itemsHtml = (dbOrder.items || []).map((item: any) =>
       `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${escapeHtml(item.name)}${item.size ? ' - ' + escapeHtml(item.size) : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(item.price * item.qty).toLocaleString('en-IN')}</td></tr>`
     ).join('')
 
+    const shippingAddr = dbOrder.shipping_address || {}
+    const streetPlain = resolveAddressField(shippingAddr.street || shippingAddr.line1)
     const addressStr = dbOrder.shipping_address ?
-      [dbOrder.shipping_address.line1, dbOrder.shipping_address.line2, dbOrder.shipping_address.city, dbOrder.shipping_address.state, dbOrder.shipping_address.pincode]
+      [streetPlain, shippingAddr.line2, shippingAddr.city, shippingAddr.state, shippingAddr.pincode]
         .filter(Boolean).map(escapeHtml).join(', ') : ''
 
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
