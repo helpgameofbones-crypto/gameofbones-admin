@@ -1,11 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase } from '@/app/lib/supabaseBrowserClient';
 
 const PERSONS = [
   { key: 'anjan',    label: 'Anjan',        color: '#3b82f6', bg: '#dbeafe', dark: '#1e40af' },
