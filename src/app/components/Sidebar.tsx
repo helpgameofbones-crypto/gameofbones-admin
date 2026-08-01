@@ -34,6 +34,7 @@ const SECTIONS = [
   ]},
   { title: 'CUSTOMERS', color: '#ec4899', items: [
     { name: 'All Customers', href: '/customers', icon: '👥', desc: 'Name, orders, lifetime value, contact info' },
+    { name: 'Gamification', href: '/gamification', icon: '🎮', desc: 'Loyalty leaderboard, rewards, milestones, spin-wheel results' },
     { name: 'Dog Birthday Club', href: '/dog-birthday-club', icon: '🎂', desc: 'Pet birthdays captured from website popup' },
     { name: 'Reorder Alerts', href: '/reorder-alert', icon: '🔔', desc: 'Customers likely running low on treats' },
     { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: "Recover carts that didn't convert" },
