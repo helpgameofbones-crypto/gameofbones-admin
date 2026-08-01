@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       sendMetaCapiPurchaseEvent(dbOrder, resolvedEmail, resolvedPhone, req).catch(() => {})
 
       const itemsHtml = (dbOrder.items || []).map((item: any) =>
-              `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${escapeHtml(item.name)}${item.size ? ' - ' + escapeHtml(item.size) : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${(item.price * item.qty).toLocaleString('en-IN')}</td></tr>`
+              `<tr><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;font-size:14px;color:#1a1008">${escapeHtml(item.name || item.product_name || 'Item')}${(item.size || item.pack_label) ? ' - ' + escapeHtml(item.size || item.pack_label) : ''}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:center">${item.qty ?? item.quantity ?? 1}</td><td style="padding:10px 16px;border-bottom:1px solid #f0ebe3;text-align:right">Rs.${((item.price ?? item.pack_price ?? 0) * (item.qty ?? item.quantity ?? 1)).toLocaleString('en-IN')}</td></tr>`
                                                       ).join('')
 
       const shippingAddr = dbOrder.shipping_address || {}
