@@ -58,7 +58,7 @@ function parseItems(items: any): string[] {
     return items.map((it: any) => {
       if (typeof it === 'string') return it;
       if (it.name) return `${it.name}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`;
-      if (it.product_name) return `${it.product_name}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
+      if (it.product_name) return `${it.product_name}${it.pack_label ? ' (' + it.pack_label + ')' : ''}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
       if (it.product) return it.product;
       return JSON.stringify(it);
     });
