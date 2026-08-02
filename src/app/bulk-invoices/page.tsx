@@ -1,12 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { Download, FileText, Calendar, Loader } from 'lucide-react'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 // FIX: this page previously had no decryption at all, so any order with
 // encrypted PII (the ones that actually came through the live checkout)
