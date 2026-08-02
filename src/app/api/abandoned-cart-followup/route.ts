@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
         <span style="font-weight:600">Rs.${(i.price * i.qty).toLocaleString('en-IN')}</span>
       </div>`
     ).join('')
-
+    const couponCode = cart.coupon_code || 'SAVE50'
+        const couponLabel = cart.coupon_code ? '10% off' : 'Rs.50 off'
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
 <div style="max-width:600px;margin:0 auto;padding:24px 16px">
   <div style="background:#1a1008;padding:20px 28px;border-radius:8px 8px 0 0;text-align:center">
@@ -70,11 +71,10 @@ export async function GET(req: NextRequest) {
       </a>
     </div>
     <p style="font-size:12px;color:#8a7a6a;text-align:center;margin-top:20px">
-      Use code <strong>SAVE50</strong> for Rs.50 off if you complete your order in the next 24 hours!
+            Use code <strong>${couponCode}</strong> for ${couponLabel} if you complete your order in the next 24 hours!
     </p>
   </div>
-  <div style="background:#1a1008;padding:16px;text-align:center;border-radius:0 0 8px 8px">
-    <p style="font-size:11px;color:rgba(255,255,255,.4);margin:0">Game of Bones · Made in Kalyan, Maharashtra</p>
+            <p style="font-size:11px;color:rgba(255,255,255,.4);margin:0">Game of Bones · Made in Kalyan, Maharashtra</p>
   </div>
 </div></body></html>`
 
