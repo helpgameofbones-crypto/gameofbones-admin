@@ -1,12 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { Calendar, Truck, Clock, Search, CheckCircle } from 'lucide-react'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const ZONE_DAYS: Record<string, { min: number; max: number }> = {
   metro: { min: 1, max: 2 },
