@@ -1,12 +1,7 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { Plus, X, Shield, Eye, Edit, Trash2, User } from 'lucide-react'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const ROLES = {
   admin: { label: 'Admin', color: 'bg-red-100 text-red-700', description: 'Full access to everything', icon: '' },
