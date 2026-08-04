@@ -29,7 +29,7 @@ export default function ManualOrderPage() {
         address: '',
         city: '',
         state: '',
-        pincode: ''
+        pincode: '',
     notes: ''
   });
 
