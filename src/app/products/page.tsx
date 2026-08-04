@@ -46,7 +46,7 @@ export default function ProductsPage() {
     setEditing({ ...editing, sizes });
   }
 
-asynasync function compressImage(file: File): Promise<Blob> {
+async function compressImage(file: File): Promise<Blob> {
     const MAX_DIM = 1600;
     const QUALITY = 0.85;
     const bitmap = await createImageBitmap(file);
