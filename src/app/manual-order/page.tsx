@@ -130,7 +130,7 @@ export default function ManualOrderPage() {
 
       if (result.success) {
         alert(isGift ? 'Gift order created — recorded at ₹0, no payment taken.' : 'Order created successfully!');
-        setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: ', address: '', city: '', state: '', pincode: ''' });
+        setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '', address: '', city: '', state: '', pincode: '' });
         setSelectedItems([]);
         setIsGift(false);
         setDiscountType('percent');
