@@ -26,6 +26,10 @@ export default function ManualOrderPage() {
     customerPhone: '',
     paymentMethod: 'cash',
     transactionId: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: ''
     notes: ''
   });
 
@@ -109,7 +113,11 @@ export default function ManualOrderPage() {
         total: totalAmount,
         paymentMethod: isGift ? 'gift' : formData.paymentMethod,
         transactionId: isGift ? '' : formData.transactionId,
-        notes: notesWithGiftTag
+        notes: notesWithGiftTag,
+            address: (formData.address || formData.city || formData.state || formData.pincode) ? formData.address : undefined,
+            city: (formData.address || formData.city || formData.state || formData.pincode) ? formData.city : undefined,
+            state: (formData.address || formData.city || formData.state || formData.pincode) ? formData.state : undefined,
+            pincode: (formData.address || formData.city || formData.state || formData.pincode) ? formData.pincode : undefined
       };
 
       const response = await authedFetch('/api/manual-order', {
@@ -122,7 +130,7 @@ export default function ManualOrderPage() {
 
       if (result.success) {
         alert(isGift ? 'Gift order created — recorded at ₹0, no payment taken.' : 'Order created successfully!');
-        setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '' });
+        setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: ', address: '', city: '', state: '', pincode: ''' });
         setSelectedItems([]);
         setIsGift(false);
         setDiscountType('percent');
@@ -160,6 +168,16 @@ export default function ManualOrderPage() {
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '8px', textTransform: 'uppercase' }}>Email (Optional)</label>
             <input type="email" value={formData.customerEmail} onChange={(e) => setFormData({...formData, customerEmail: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
+
+                <div style={{ marginBottom: '16px', padding: '14px', background: '#faf6f0', border: '1px solid #ede5d8', borderRadius: '4px' }}>
+                              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '10px', textTransform: 'uppercase' }}>Shipping Address (Optional)</label>
+                              <input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="Address / street" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008', marginBottom: '8px' }} />
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                                              <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} placeholder="City" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+                                              <input type="text" value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} placeholder="State" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+                              </div>
+                              <input type="text" value={formData.pincode} onChange={(e) => setFormData({...formData, pincode: e.target.value})} placeholder="Pincode" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+                </div>
 
           <div style={{ marginTop: '20px', padding: '14px', background: isGift ? '#fef3e2' : '#faf6f0', border: isGift ? '1.5px solid #c8973a' : '1px solid #ede5d8', borderRadius: '4px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
