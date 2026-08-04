@@ -46,24 +46,55 @@ export default function ProductsPage() {
     setEditing({ ...editing, sizes });
   }
 
-  async function uploadFile(file: File, type: 'image' | 'video', slotIdx: number) {
-    setUploading(true);
-    const ext = file.name.split('.').pop();
-    const name = `${editing.id}/${type}-${slotIdx}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('product-images').upload(name, file, { contentType: file.type, upsert: true });
-    setUploading(false);
-    if (error) { alert('Upload failed: ' + error.message); return; }
-    const url = STORAGE_URL + name;
-    if (type === 'image') {
-      const imgs = [...(editing.images || [])];
-      imgs[slotIdx] = url;
-      setEditing({ ...editing, images: imgs, ...(slotIdx === 0 ? { image_url: url } : {}) });
-    } else {
-      const vids = [...(editing.videos || [])];
-      vids[slotIdx] = url;
-      setEditing({ ...editing, videos: vids });
+asynasync function compressImage(file: File): Promise<Blob> {
+    const MAX_DIM = 1600;
+    const QUALITY = 0.85;
+    const bitmap = await createImageBitmap(file);
+    let width = bitmap.width;
+    let height = bitmap.height;
+    if (Math.max(width, height) > MAX_DIM) {
+          const ratio = MAX_DIM / Math.max(width, height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
     }
-  }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', QUALITY));
+    return blob.size < file.size ? blob : file;
+}
+
+    async function uploadFile(file: File, type: 'image' | 'video', slotIdx: number) {
+          setUploading(true);
+          let uploadBlob: Blob = file;
+          let ext = file.name.split('.').pop();
+          if (type === 'image') {
+                  try {
+                            uploadBlob = await compressImage(file);
+                            if (uploadBlob !== file) ext = 'jpg';
+                  } catch (e) {
+                            console.error('Image compression failed, uploading original:', e);
+                  }
+          }
+          const name = `${editing.id}/${type}-${slotIdx}-${Date.now()}.${ext}`;
+          const { error } = await supabase.storage.from('product-images').upload(name, uploadBlob, { contentType: type === 'image' ? 'image/jpeg' : file.type, upsert: true });
+          setUploading(false);
+          if (error) { alert('Upload failed: ' + error.message); return; }
+          const url = STORAGE_URL + name;
+          if (type === 'image') {
+                  const imgs = [...(editing.images || [])];
+                  imgs[slotIdx] = url;
+                  setEditing({ ...editing, images: imgs, ...(slotIdx === 0 ? { image_url: url } : {}) });
+          } else {
+                  const vids = [...(editing.videos || [])];
+                  vids[slotIdx] = url;
+                  setEditing({ ...editing, videos: vids });
+          }
+    }
 
   async function save() {
     if (!editing) return;
