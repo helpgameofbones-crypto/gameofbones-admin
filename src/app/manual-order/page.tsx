@@ -26,12 +26,17 @@ export default function ManualOrderPage() {
     customerPhone: '',
     paymentMethod: 'cash',
     transactionId: '',
-        address: '',
-        city: '',
-        state: '',
-        pincode: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
     notes: ''
   });
+
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [awb, setAwb] = useState<string | null>(null);
+  const [awbLoading, setAwbLoading] = useState(false);
+  const [awbError, setAwbError] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -64,7 +69,6 @@ export default function ManualOrderPage() {
     setSelectedItems(updated);
   };
 
-  // When gifting, the order is recorded at ₹0 — no payment ever changes hands.
   const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountAmount = isGift
     ? 0
@@ -73,6 +77,18 @@ export default function ManualOrderPage() {
         Math.max(0, discountType === 'percent' ? subtotal * (discountValue / 100) : discountValue)
       );
   const totalAmount = isGift ? 0 : Math.max(0, subtotal - discountAmount);
+
+  const hasCompleteAddress =
+    formData.address.trim() !== '' &&
+    formData.city.trim() !== '' &&
+    formData.state.trim() !== '' &&
+    /^\d{6}$/.test(formData.pincode.trim());
+
+  const hasAnyAddress =
+    formData.address.trim() !== '' ||
+    formData.city.trim() !== '' ||
+    formData.state.trim() !== '' ||
+    formData.pincode.trim() !== '';
 
   function toggleGift(checked: boolean) {
     setIsGift(checked);
@@ -114,10 +130,10 @@ export default function ManualOrderPage() {
         paymentMethod: isGift ? 'gift' : formData.paymentMethod,
         transactionId: isGift ? '' : formData.transactionId,
         notes: notesWithGiftTag,
-            address: (formData.address || formData.city || formData.state || formData.pincode) ? formData.address : undefined,
-            city: (formData.address || formData.city || formData.state || formData.pincode) ? formData.city : undefined,
-            state: (formData.address || formData.city || formData.state || formData.pincode) ? formData.state : undefined,
-            pincode: (formData.address || formData.city || formData.state || formData.pincode) ? formData.pincode : undefined
+        address: hasAnyAddress ? formData.address : undefined,
+        city: hasAnyAddress ? formData.city : undefined,
+        state: hasAnyAddress ? formData.state : undefined,
+        pincode: hasAnyAddress ? formData.pincode : undefined
       };
 
       const response = await authedFetch('/api/manual-order', {
@@ -129,12 +145,10 @@ export default function ManualOrderPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert(isGift ? 'Gift order created — recorded at ₹0, no payment taken.' : 'Order created successfully!');
-        setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '', address: '', city: '', state: '', pincode: '' });
-        setSelectedItems([]);
-        setIsGift(false);
-        setDiscountType('percent');
-        setDiscountValue(0);
+        const newOrder = result.data?.[0] || null;
+        setCreatedOrder(newOrder);
+        setAwb(newOrder?.delhivery_awb || null);
+        setAwbError('');
       } else {
         alert('Error: ' + (result.error || 'Unknown error'));
       }
@@ -145,6 +159,43 @@ export default function ManualOrderPage() {
       setLoading(false);
     }
   };
+
+  async function handleGenerateAWB() {
+    if (!createdOrder) return;
+    setAwbLoading(true);
+    setAwbError('');
+    try {
+      const res = await authedFetch('/api/delhivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_shipment',
+          orderId: createdOrder.id,
+          orderData: createdOrder
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAwb(data.awb);
+      } else {
+        setAwbError(data.error || 'Failed to generate AWB');
+      }
+    } catch (e) {
+      setAwbError('Network error — please try again');
+    }
+    setAwbLoading(false);
+  }
+
+  function startNewOrder() {
+    setCreatedOrder(null);
+    setAwb(null);
+    setAwbError('');
+    setFormData({ customerName: '', customerEmail: '', customerPhone: '', paymentMethod: 'cash', transactionId: '', notes: '', address: '', city: '', state: '', pincode: '' });
+    setSelectedItems([]);
+    setIsGift(false);
+    setDiscountType('percent');
+    setDiscountValue(0);
+  }
 
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
@@ -169,15 +220,20 @@ export default function ManualOrderPage() {
             <input type="email" value={formData.customerEmail} onChange={(e) => setFormData({...formData, customerEmail: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
           </div>
 
-                <div style={{ marginBottom: '16px', padding: '14px', background: '#faf6f0', border: '1px solid #ede5d8', borderRadius: '4px' }}>
-                              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '10px', textTransform: 'uppercase' }}>Shipping Address (Optional)</label>
-                              <input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="Address / street" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008', marginBottom: '8px' }} />
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                                              <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} placeholder="City" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
-                                              <input type="text" value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} placeholder="State" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
-                              </div>
-                              <input type="text" value={formData.pincode} onChange={(e) => setFormData({...formData, pincode: e.target.value})} placeholder="Pincode" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
-                </div>
+          <div style={{ marginBottom: '16px', padding: '14px', background: '#faf6f0', border: '1px solid #ede5d8', borderRadius: '4px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#2a1f1a', marginBottom: '10px', textTransform: 'uppercase' }}>Shipping Address (Optional)</label>
+            <input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="Address / street" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008', marginBottom: '8px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+              <input type="text" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} placeholder="City" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+              <input type="text" value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} placeholder="State" style={{ padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+            </div>
+            <input type="text" inputMode="numeric" maxLength={6} value={formData.pincode} onChange={(e) => setFormData({...formData, pincode: e.target.value.replace(/\D/g, '')})} placeholder="Pincode" style={{ width: '100%', padding: '10px', border: '1px solid #ede5d8', fontSize: '14px', color: '#1a1008' }} />
+            {hasAnyAddress && !hasCompleteAddress && (
+              <p style={{ fontSize: '12px', color: '#c8973a', marginTop: '8px' }}>
+                Fill in address, city, state and a 6-digit pincode to enable AWB generation after this order is created.
+              </p>
+            )}
+          </div>
 
           <div style={{ marginTop: '20px', padding: '14px', background: isGift ? '#fef3e2' : '#faf6f0', border: isGift ? '1.5px solid #c8973a' : '1px solid #ede5d8', borderRadius: '4px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
@@ -244,54 +300,88 @@ export default function ManualOrderPage() {
         </div>
 
         <div>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Add Products</h2>
-            <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-              {products.map(p => (
-                <button key={p.id} onClick={() => addItem(p.id)} style={{ padding: '12px', background: '#faf6f0', border: '1px solid #ede5d8', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1a1008' }}>
-                  {p.name} - {p.price}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Order Items ({selectedItems.length})</h2>
-            {selectedItems.length === 0 ? (
-              <p style={{ color: '#3a3028', fontSize: '14px' }}>No items selected</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
-                {selectedItems.map((item, i) => (
-                  <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
-                    <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>{isGift ? 'FREE' : item.price}</p></div>
-                    <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px', color: '#1a1008' }} />
-                    <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
-                  </div>
-                ))}
+          {createdOrder ? (
+            <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a', marginBottom: '4px' }}>✓ Order Created</div>
+                <div style={{ fontSize: '22px', fontWeight: '700', color: '#1a1008' }}>{createdOrder.ref}</div>
               </div>
-            )}
 
-            <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
-              {!isGift && discountAmount > 0 && (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#3a3028', marginBottom: '4px' }}>
-                    <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '8px' }}>
-                    <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
-                  </div>
-                </>
+              {awb ? (
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '4px', padding: '14px', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: '#0284c7', marginBottom: '4px' }}>Delhivery AWB</div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '16px', color: '#1a1008' }}>{awb}</div>
+                  <a href={`https://www.delhivery.com/track/package/${awb}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#0284c7', fontWeight: '600' }}>Track on Delhivery →</a>
+                </div>
+              ) : hasCompleteAddress ? (
+                <div style={{ marginBottom: '20px' }}>
+                  <button onClick={handleGenerateAWB} disabled={awbLoading} style={{ width: '100%', padding: '12px', background: awbLoading ? '#999' : '#c8973a', color: '#fff', border: 'none', cursor: awbLoading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>
+                    {awbLoading ? 'Generating AWB...' : '📦 Create AWB via Delhivery'}
+                  </button>
+                  {awbError && <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '8px' }}>{awbError}</p>}
+                </div>
+              ) : (
+                <div style={{ background: '#fef3e2', border: '1px solid #fcd9a0', borderRadius: '4px', padding: '12px', marginBottom: '20px', fontSize: '12px', color: '#92400e' }}>
+                  No complete shipping address was entered for this order, so no Delhivery AWB was generated. You can add one later from the Delhivery page if this order needs to ship.
+                </div>
               )}
-              <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
-              <p style={{ fontSize: '28px', fontWeight: '700', color: isGift ? '#16a34a' : '#c8973a', margin: 0 }}>
-                {isGift ? '₹0 (Gift)' : totalAmount.toFixed(2)}
-              </p>
-            </div>
 
-            <button onClick={handleCreateOrder} disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#999' : (isGift ? '#16a34a' : '#1a1008'), color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>
-              {loading ? 'Creating...' : (isGift ? '🎁 Create Gift Order' : 'Create Order')}
-            </button>
-          </div>
+              <button onClick={startNewOrder} style={{ width: '100%', padding: '12px', background: '#1a1008', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+                + New Order
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Add Products</h2>
+                <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                  {products.map(p => (
+                    <button key={p.id} onClick={() => addItem(p.id)} style={{ padding: '12px', background: '#faf6f0', border: '1px solid #ede5d8', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1a1008' }}>
+                      {p.name} - {p.price}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: '#fff', padding: '24px', borderRadius: '4px', border: '1px solid #ede5d8' }}>
+                <h2 style={{ fontSize: '18px', marginBottom: '16px', color: '#1a1008' }}>Order Items ({selectedItems.length})</h2>
+                {selectedItems.length === 0 ? (
+                  <p style={{ color: '#3a3028', fontSize: '14px' }}>No items selected</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '8px', marginBottom: '16px' }}>
+                    {selectedItems.map((item, i) => (
+                      <div key={i} style={{ padding: '12px', background: '#faf6f0', display: 'grid', gridTemplateColumns: '1fr 80px 50px', gap: '8px', alignItems: 'center', fontSize: '13px' }}>
+                        <div><p style={{ fontWeight: '600', margin: 0, color: '#1a1008' }}>{item.name}</p><p style={{ color: '#3a3028', margin: '4px 0 0 0' }}>{isGift ? 'FREE' : item.price}</p></div>
+                        <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(i, parseInt(e.target.value) || 1)} style={{ padding: '6px', border: '1px solid #ede5d8', fontSize: '13px', color: '#1a1008' }} />
+                        <button onClick={() => removeItem(i)} style={{ padding: '6px', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Remove</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ borderTop: '2px solid #ede5d8', paddingTop: '16px', marginBottom: '16px' }}>
+                  {!isGift && discountAmount > 0 && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#3a3028', marginBottom: '4px' }}>
+                        <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '8px' }}>
+                        <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                  <p style={{ fontSize: '12px', color: '#2a1f1a', fontWeight: '600', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Total</p>
+                  <p style={{ fontSize: '28px', fontWeight: '700', color: isGift ? '#16a34a' : '#c8973a', margin: 0 }}>
+                    {isGift ? '₹0 (Gift)' : totalAmount.toFixed(2)}
+                  </p>
+                </div>
+
+                <button onClick={handleCreateOrder} disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#999' : (isGift ? '#16a34a' : '#1a1008'), color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600' }}>
+                  {loading ? 'Creating...' : (isGift ? '🎁 Create Gift Order' : 'Create Order')}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
