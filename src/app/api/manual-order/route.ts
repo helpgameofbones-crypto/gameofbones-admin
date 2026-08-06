@@ -26,7 +26,11 @@ export async function POST(req: NextRequest) {
       discountAmount,
       paymentMethod,
       transactionId,
-      notes
+      notes,
+      address,
+      city,
+      state,
+      pincode
     } = body;
 
     // Ensure items have all required fields
@@ -63,6 +67,23 @@ export async function POST(req: NextRequest) {
       insertData.coupon_code = discountType === 'percent' ? `MANUAL_${discountValue}PCT` : `MANUAL_${discountValue}OFF`;
     }
     if (notes) insertData.notes = notes;
+
+    // The manual-order form sends flat address/city/state/pincode fields —
+    // this was previously silently dropped here (never destructured above),
+    // so any address someone typed into the form never actually got saved
+    // and the order had no way to generate a Delhivery AWB. Store it under
+    // shipping_address.street/city/state/pincode, the same shape the
+    // website checkout and the Delhivery page already read. Only set the
+    // column when something was actually typed in, so orders with no
+    // shipping info don't get an empty-but-present shipping_address blob.
+    if (address || city || state || pincode) {
+      insertData.shipping_address = {
+        street: address || '',
+        city: city || '',
+        state: state || '',
+        pincode: pincode || ''
+      };
+    }
 
     insertData.status = 'confirmed';
 
