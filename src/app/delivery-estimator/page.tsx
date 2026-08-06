@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/app/lib/supabaseBrowserClient'
-
-const DELHIVERY_TOKEN = '590d454727ba1419777966ef591787d330b5cc30';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 interface OrderETA {
   id: number; ref: string; customer_name: string; customer_phone: string;
@@ -14,6 +13,7 @@ export default function DeliveryEstimatorPage() {
   const [orders, setOrders] = useState<OrderETA[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
+  const [fetchMsg, setFetchMsg] = useState('');
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -24,88 +24,116 @@ export default function DeliveryEstimatorPage() {
       .not('delhivery_awb', 'is', null)
       .not('status', 'in', '(delivered,cancelled,returned)')
       .order('created_at', { ascending: false });
-    setOrders((data || []).map((o: any) => ({ ...o, delhiveryETA: null, daysRemaining: null })));
+    setOrders((data || []).map((o: any) => ({ ...o, delhiveryETA: o.estimated_delivery || null, daysRemaining: null })));
     setLoading(false);
   }
 
+  // Tracking used to hit track.delhivery.com directly from the browser with
+  // a hardcoded API token, which silently failed on every request (stale
+  // token, and a live credential exposed in client-side code). This now
+  // goes through the server-side /api/delhivery route (action: 'track'),
+  // same fix already applied to shipment-tracker/page.tsx and
+  // delhivery-sync/page.tsx.
   async function fetchETAs() {
     setFetching(true);
+    setFetchMsg('');
     const updated = [...orders];
+    let failed = 0;
     for (const order of updated) {
       if (!order.delhivery_awb) continue;
       try {
-        const res = await fetch(`https://track.delhivery.com/api/v1/packages/json/?waybill=${order.delhivery_awb}`, {
-          headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
+        const res = await authedFetch('/api/delhivery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'track', orderData: { awb: order.delhivery_awb } })
         });
         const data = await res.json();
-        const shipment = data?.ShipmentData?.[0]?.Shipment;
-        if (shipment?.ExpectedDeliveryDate) {
+        const shipment = data?.tracking?.ShipmentData?.[0]?.Shipment;
+        if (!res.ok || data.error || !shipment) { failed++; continue; }
+        if (shipment.ExpectedDeliveryDate) {
           order.delhiveryETA = shipment.ExpectedDeliveryDate;
           const eta = new Date(shipment.ExpectedDeliveryDate);
           const now = new Date();
           order.daysRemaining = Math.ceil((eta.getTime() - now.getTime()) / 86400000);
-          // Also update in Supabase
           await supabase.from('orders').update({ estimated_delivery: shipment.ExpectedDeliveryDate }).eq('id', order.id);
+        } else {
+          failed++;
         }
-      } catch (e) { /* skip */ }
+      } catch (e) {
+        failed++;
+      }
     }
     setOrders(updated);
     setFetching(false);
+    if (failed > 0) {
+      setFetchMsg(`Could not fetch an ETA for ${failed} of ${updated.length} shipment(s) -- Delhivery may not have tracking data yet for very recent AWBs.`);
+    }
   }
 
-  const overdue = orders.filter(o => o.daysRemaining !== null && o.daysRemaining < 0);
-  const dueToday = orders.filter(o => o.daysRemaining === 0);
-  const upcoming = orders.filter(o => o.daysRemaining !== null && o.daysRemaining > 0);
+  const now = new Date();
+  const inTransit = orders.filter(o => o.daysRemaining !== null && o.daysRemaining > 0).length;
+  const overdue = orders.filter(o => o.daysRemaining !== null && o.daysRemaining < 0).length;
+  const dueToday = orders.filter(o => o.daysRemaining === 0).length;
+  const onTrack = orders.filter(o => o.daysRemaining !== null && o.daysRemaining >= 0).length;
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Delivery Estimator</h1>
-          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>Estimated delivery dates from Delhivery</p>
-        </div>
-        <button onClick={fetchETAs} disabled={fetching}
-          style={{ padding: '10px 20px', background: fetching ? '#9ca3af' : '#1a1008', color: '#fff', border: 'none', borderRadius: 6, cursor: fetching ? 'wait' : 'pointer', fontWeight: 700 }}>
-          {fetching ? '⏳ Fetching ETAs...' : '📅 Fetch All ETAs'}
+        <h1 style={{ fontSize: 24, fontWeight: 800 }}>Delivery Estimator</h1>
+        <button
+          onClick={fetchETAs}
+          disabled={fetching || loading || orders.length === 0}
+          style={{ padding: '10px 20px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: fetching ? 'default' : 'pointer', opacity: fetching ? 0.6 : 1 }}
+        >
+          {fetching ? 'Fetching...' : 'Fetch All ETAs'}
         </button>
       </div>
 
-      {/* Summary cards */}
+      {fetchMsg && (
+        <div style={{ marginBottom: 16, padding: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: 13 }}>
+          {fetchMsg}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{orders.length}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>In Transit</div>
+        <div style={{ padding: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+          <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>IN TRANSIT</div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>{inTransit}</div>
         </div>
-        <div style={{ background: overdue.length > 0 ? '#fef2f2' : '#fff', border: `1px solid ${overdue.length > 0 ? '#fecaca' : '#e5e7eb'}`, borderRadius: 8, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#ef4444' }}>{overdue.length}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Overdue</div>
+        <div style={{ padding: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+          <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>OVERDUE</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444' }}>{overdue}</div>
         </div>
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#f59e0b' }}>{dueToday.length}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Due Today</div>
+        <div style={{ padding: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+          <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>DUE TODAY</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#f59e0b' }}>{dueToday}</div>
         </div>
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{upcoming.length}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>On Track</div>
+        <div style={{ padding: 16, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+          <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>ON TRACK</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{onTrack}</div>
         </div>
       </div>
 
-      {loading ? <p>Loading...</p> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Loading orders...</div>
+      ) : orders.length === 0 ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>No active shipments with an AWB found.</div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <thead>
-            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Order</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Customer</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>AWB</th>
-              <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Ordered</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Est. Delivery</th>
-              <th style={{ padding: '10px 12px', textAlign: 'center' }}>Days Left</th>
+            <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>REF</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>CUSTOMER</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>AWB</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>STATUS</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>ORDERED</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280' }}>EST. DELIVERY</th>
+              <th style={{ padding: 12, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>DAYS</th>
             </tr>
           </thead>
           <tbody>
             {orders.map(o => {
-              const eta = o.delhiveryETA || o.estimated_delivery;
+              const eta = o.delhiveryETA;
               const isOverdue = o.daysRemaining !== null && o.daysRemaining < 0;
               return (
                 <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6', background: isOverdue ? '#fef2f2' : '' }}>
