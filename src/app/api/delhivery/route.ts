@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'track') {
       const { awb } = orderData
-      const res = await fetch(`${DELHIVERY_BASE}/api/v1/packages/json/?waybill=${awb}&verbose=true`, {
+      const res = await fetch(`${DELHIVERY_BASE}/api/v1/packages/json/?waybill=${awb}&verbose=1`, {
         headers: { 'Authorization': `Token ${DELHIVERY_TOKEN}` }
       })
       const rawText = await res.text()
