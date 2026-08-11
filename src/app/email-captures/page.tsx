@@ -6,6 +6,8 @@ import { authedFetch } from '@/app/lib/authedFetch';
 interface EmailCapture {
   id: number;
   email: string;
+  name: string | null;
+  phone: string | null;
   source: string;
   device_id: string | null;
   created_at: string;
@@ -65,8 +67,10 @@ export default function EmailCaptures() {
   };
 
   const downloadCSV = () => {
-    const headers = ['Email', 'Source', 'Prize Won', 'Coupon Code', 'Date', 'Device ID'];
+    const headers = ['Name', 'Phone', 'Email', 'Source', 'Prize Won', 'Coupon Code', 'Date', 'Device ID'];
     const rows = emails.map(e => [
+      e.name || '',
+      e.phone || '',
       e.email,
       e.source || 'unknown',
       e.prize || '',
@@ -162,6 +166,8 @@ export default function EmailCaptures() {
           <table style={styles.table}>
             <thead>
               <tr style={styles.headerRow}>
+                <th style={styles.th}>Name</th>
+                <th style={styles.th}>Phone</th>
                 <th style={styles.th}>Email</th>
                 <th style={styles.th}>Source</th>
                 <th style={styles.th}>Prize Won</th>
@@ -173,6 +179,12 @@ export default function EmailCaptures() {
             <tbody>
               {filteredEmails.map((email, idx) => (
                 <tr key={email.id} style={idx % 2 === 0 ? styles.rowEven : styles.rowOdd}>
+                  <td style={styles.td}>
+                    {email.name || '—'}
+                  </td>
+                  <td style={styles.td}>
+                    {email.phone || '—'}
+                  </td>
                   <td style={styles.td}>
                     <a href={`mailto:${email.email}`} style={styles.link}>
                       {email.email}
