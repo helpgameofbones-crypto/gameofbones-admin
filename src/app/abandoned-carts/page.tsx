@@ -111,7 +111,7 @@ export default function AbandonedCartsPage() {
                     )}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#374151', maxWidth: 260 }}>
-                    {items.length > 0 ? items.slice(0, 3).join(', ') + (items.length > 3 ? ` +${items.length - 3} more` : '') : '—'}
+                    {items.length > 0 ? items.join(', ') : '—'}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>₹{parseFloat(c.total || 0).toLocaleString('en-IN')}</td>
                   <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: 12 }}>{new Date(c.abandoned_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
