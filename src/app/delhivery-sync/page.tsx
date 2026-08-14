@@ -24,7 +24,7 @@ export default function DelhiverySyncPage() {
   async function fetchOrders() {
     setLoading(true);
     const { data } = await supabase.from('orders')
-      .select('id,ref,status,delhivery_awb,customer_name,customer_phone,estimated_delivery,delivered_at,created_at')
+      .select('id,ref,status,delhivery_awb,customer_name,customer_phone,estimated_delivery,delivered_at,created_at,delivery_cost')
       .not('delhivery_awb', 'is', null)
       .order('created_at', { ascending: false }).limit(100);
     setOrders(data || []);
@@ -169,7 +169,7 @@ export default function DelhiverySyncPage() {
               <th style={{ padding: '10px 12px', textAlign: 'left' }}>Customer</th>
               <th style={{ padding: '10px 12px', textAlign: 'left' }}>AWB</th>
               <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Est. Delivery</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left' }}>Est. Delivery</th><th style={{ padding: '10px 12px', textAlign: 'right' }}>Delivery Cost</th>
               <th style={{ padding: '10px 12px', textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
@@ -193,7 +193,7 @@ export default function DelhiverySyncPage() {
                   </span>
                 </td>
                 <td style={{ padding: 12, fontSize: 12, color: o.estimated_delivery ? '#16a34a' : '#9ca3af' }}>
-                  {o.estimated_delivery || (o.delivered_at ? `Delivered ${new Date(o.delivered_at).toLocaleDateString('en-IN')}` : '—')}
+                  {o.estimated_delivery || (o.delivered_at ? `Delivered ${new Date(o.delivered_at).toLocaleDateString('en-IN')}` : '—')}</td><td style={{ padding: 12, fontSize: 12, textAlign: 'right', color: o.delivery_cost ? '#374151' : '#9ca3af', fontWeight: 600 }}>{o.delivery_cost ? `₹${Number(o.delivery_cost).toFixed(2)}` : '—'}
                 </td>
                 <td style={{ padding: 12, textAlign: 'center' }}>
                   <button onClick={() => { setTrackAwb(o.delhivery_awb); trackSingle(o.delhivery_awb); }}
