@@ -10,7 +10,7 @@ const SUPABASE_FN_URL = 'https://syuostlqzzinigqwjzap.supabase.co/functions/v1';
 // through the existing server-side /api/delhivery route (action: 'track'),
 // which already reads the token from DELHIVERY_API_TOKEN server-side and is
 // gated by requireAdmin, same as shipment creation elsewhere in this repo.
-// deploy-trigger: force rebuild after stalled webhook
+// deploy-trigger: force rebuild after stalled webhook (retry after Git reconnect)
 
 export default function DelhiverySyncPage() {
   const [orders, setOrders] = useState<any[]>([]);
