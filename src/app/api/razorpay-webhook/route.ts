@@ -88,16 +88,16 @@ export async function POST(req: NextRequest) {
                 const addressNote = payment.notes?.address || ''
                       const customerNoteName = payment.notes?.customer_name || ''
                       const amountRupees = (payment.amount || 0) / 100
-                      const contact = payment.contact ? String(payment.contact).replace(/^\+?91/, '') : ''
+                      const contact = payment.contact ? String(payment.contact).replace(/^\+?91/, '') : ''; let recoveredItems: any[] = []; let recoveredSubtotal: number | null = null; if (contact) { const windowStart = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); const { data: cartMatches } = await supabase.from('abandoned_carts').select('items, total, abandoned_at').eq('customer_phone', contact).gte('abandoned_at', windowStart).order('abandoned_at', { ascending: false }).limit(1); if (cartMatches && cartMatches.length > 0 && Array.isArray(cartMatches[0].items) && cartMatches[0].items.length > 0) { recoveredItems = cartMatches[0].items; recoveredSubtotal = Number(cartMatches[0].total) || null; } } const itemsRecovered = recoveredItems.length > 0; const subtotalRupees = recoveredSubtotal ?? amountRupees; const discountRupees = itemsRecovered ? Math.max(0, subtotalRupees - amountRupees) : 0;
                       await supabase.from('orders').insert({
                                   ref: orderId || ('RZP-' + payment.id),
                                   customer_name: customerNoteName || null,
                                   customer_email: payment.email ? encryptData(payment.email) : null,
                                   customer_phone: contact ? encryptData(contact) : null,
                                   shipping_address: { street: encryptData(addressNote), city: '', state: '', pincode: '' },
-                                  items: [],
-                                  subtotal: amountRupees,
-                                  discount: 0,
+                                  items: recoveredItems,
+                                  subtotal: subtotalRupees,
+                                  discount: discountRupees,
                                   shipping: 0,
                                   packaging: 0,
                                   grand_total: amountRupees,
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
                                   payment_status: 'paid',
                                   transaction_id: payment.id,
                                   status: 'placed',
-                                  notes: '⚠️ AUTO-RECOVERED from Razorpay webhook — the client-side order save never completed after payment (even after retrying). Item details unavailable here; verify with the customer (phone/email above, or Razorpay payment ' + payment.id + ') before shipping.',
+                                  notes: itemsRecovered ? '⚠️ AUTO-RECOVERED from Razorpay webhook — the client-side order save never completed after payment. Items were recovered from a matching abandoned-cart record (phone match, within 3h); please double-check against the customer before shipping.' : '⚠️ AUTO-RECOVERED from Razorpay webhook — the client-side order save never completed after payment (even after retrying). Item details unavailable here (no matching abandoned-cart record found); verify with the customer (phone/email above, or Razorpay payment ' + payment.id + ') before shipping.',
                                   created_at: new Date().toISOString()
                       })
             }
