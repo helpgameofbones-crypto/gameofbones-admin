@@ -76,12 +76,12 @@ let credited = 0
           await supabase.from('customers').update({
                   loyalty_points: (referrer.loyalty_points || 0) + REFERRAL_POINTS,
                   loyalty_points_expire_at: expiresAt,
-          }).eq('id', referrer.id)
+          }).eq('id', referrer.id); await supabase.from('loyalty_ledger').insert({ customer_id: referrer.id, customer_name: referrer.name, customer_phone: referrer.phone, type: 'referral', points: REFERRAL_POINTS, balance_after: (referrer.loyalty_points || 0) + REFERRAL_POINTS, order_ref: order.ref, description: `Referral bonus for referring ${referred.name} (order ${order.ref})` })
 
           await supabase.from('customers').update({
                   loyalty_points: (referred.loyalty_points || 0) + REFERRAL_POINTS,
                   loyalty_points_expire_at: expiresAt,
-          }).eq('id', referred.id)
+          }).eq('id', referred.id); await supabase.from('loyalty_ledger').insert({ customer_id: referred.id, customer_name: referred.name, customer_phone: referred.phone, type: 'referral', points: REFERRAL_POINTS, balance_after: (referred.loyalty_points || 0) + REFERRAL_POINTS, order_ref: order.ref, description: `Referral bonus for using ${referrer.name}'s code on order ${order.ref}` })
 
           await supabase.from('referrals').insert({
                   referrer_phone: referrer.phone,
