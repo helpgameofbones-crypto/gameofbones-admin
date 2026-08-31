@@ -15,7 +15,7 @@ export default function LoyaltyPage() {
   const [pointsReason, setPointsReason] = useState('')
   const [search, setSearch]       = useState('')
 
-  useEffect(() => { fetchCustomers() }, [])
+  useEffect(() => { fetchCustomers() }, []); const [ledger, setLedger] = useState<any[]>([]); const [loadingLedger, setLoadingLedger] = useState(false); async function fetchLedger(customerId: string) { setLoadingLedger(true); const { data } = await supabase.from('loyalty_ledger').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }); setLedger(data || []); setLoadingLedger(false) }
 
   async function fetchCustomers() {
     const { data } = await supabase
@@ -200,7 +200,7 @@ export default function LoyaltyPage() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => {
-                        setSelected(customer)
+                        setSelected(customer); fetchLedger(customer.id)
                         setDogProfile({
                           dog_name:        customer.dog_name || '',
                           dog_breed:       customer.dog_breed || '',
@@ -277,7 +277,7 @@ export default function LoyaltyPage() {
                 </div>
               </div>
 
-              {/* Dog Profile */}
+              {/* History */}<div><div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>Points History</div><div className="space-y-2 max-h-48 overflow-y-auto">{loadingLedger ? <div className="text-xs" style={{ color: '#2a1f1a' }}>Loading...</div> : ledger.length === 0 ? <div className="text-xs" style={{ color: '#2a1f1a' }}>No transactions yet</div> : ledger.map((entry) => (<div key={entry.id} className="flex items-center justify-between text-xs border-b border-gray-50 py-1.5"><div><div style={{ color: '#111827' }}>{entry.description || entry.type}</div><div style={{ color: '#2a1f1a' }}>{new Date(entry.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{entry.order_ref ? ' · ' + entry.order_ref : ''}</div></div><div className="font-bold" style={{ color: entry.points >= 0 ? '#10b981' : '#ef4444' }}>{entry.points >= 0 ? '+' : ''}{entry.points}</div></div>))}</div></div>{/* Dog Profile */}
               <div>
                 <div className="text-xs font-semibold uppercase mb-3" style={{ color: '#1a1008' }}>
                   Dog Profile
