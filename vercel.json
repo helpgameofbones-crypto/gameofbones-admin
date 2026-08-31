@@ -15,6 +15,7 @@
     { "path": "/api/abandoned-cart-followup", "schedule": "0 13 * * *" },
     { "path": "/api/meta-ads-sync",        "schedule": "0 10 * * *" },
             { "path": "/api/delhivery-sync",   "schedule": "0 14 * * *" },
-      { "path": "/api/award-referral-points", "schedule": "0 14 * * *" }
+      { "path": "/api/award-referral-points", "schedule": "0 14 * * *" },
+    { "path": "/api/deduct-loyalty-points", "schedule": "0 13 * * *" }
   ]
 }
