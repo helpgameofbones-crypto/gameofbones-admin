@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       await supabase.from('customers').update({
         loyalty_points: newBalance,
         loyalty_points_expire_at: expiresAt.toISOString(),
-      }).eq('id', customer.id)
+      }).eq('id', customer.id); await supabase.from('loyalty_ledger').insert({ customer_id: customer.id, customer_name: customer.name, customer_phone: customer.phone, type: 'earned', points: pointsEarned, balance_after: newBalance, order_ref: order.ref, description: `Earned on delivery of order ${order.ref}` })
 
       await supabase.from('orders').update({ points_awarded: true }).eq('id', order.id)
 
