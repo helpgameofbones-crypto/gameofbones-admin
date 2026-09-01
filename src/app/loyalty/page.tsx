@@ -232,7 +232,7 @@ export default function LoyaltyPage() {
                 <div className="text-sm" style={{ color: '#2a1f1a' }}>{selected.phone}</div>
               </div>
               <button onClick={() => setSelected(null)}
-                className="text-2xl font-light" style={{ color: '#2a1f1a' }}></button>
+                className="text-2xl font-light" style={{ color: '#2a1f1a' }}>×</button>
             </div>
 
             <div className="p-6 space-y-6">
