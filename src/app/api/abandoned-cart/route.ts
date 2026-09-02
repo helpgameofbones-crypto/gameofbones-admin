@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
+import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,8 +50,15 @@ async function generateCoupon(): Promise<string | null> {
 export async function POST(req: NextRequest) {
     const headers = corsHeaders(req)
     try {
+      const originError = rejectUnexpectedOrigin(req)
+      if (originError) return originError
+      const limitError = rateLimit(req, 'abandoned-cart', 3, 60 * 60 * 1000)
+      if (limitError) return limitError
           const { phone, email, name, items, total } = await req.json()
-          if (!phone || !items?.length) {
+          const normalizedPhone = cleanText(phone, 20).replace(/^\+?91/, '')
+          const normalizedEmail = cleanText(email, 254)
+          const normalizedName = cleanText(name, 100)
+          if (!/^\d{10}$/.test(normalizedPhone) || !Array.isArray(items) || items.length < 1 || items.length > 25 || !Number.isFinite(Number(total)) || Number(total) < 1 || Number(total) > 100000) {
                   return NextResponse.json({ ok: true }, { headers })
           }
 
@@ -60,7 +68,7 @@ export async function POST(req: NextRequest) {
       const { data: existingCart } = await supabase
             .from('abandoned_carts')
             .select('coupon_code')
-            .eq('customer_phone', phone)
+            .eq('customer_phone', normalizedPhone)
             .limit(1)
 
       let couponCode: string | null = (existingCart && existingCart[0] && existingCart[0].coupon_code) || null
@@ -69,10 +77,10 @@ export async function POST(req: NextRequest) {
           }
 
       await supabase.from('abandoned_carts').upsert({
-              customer_phone: phone,
-              customer_email: email || null,
-              customer_name: name || null,
-              items, total,
+              customer_phone: normalizedPhone,
+              customer_email: normalizedEmail || null,
+              customer_name: normalizedName || null,
+              items: items.slice(0, 25), total: Number(total),
               abandoned_at: new Date().toISOString(),
               recovered: false,
               coupon_code: couponCode,
