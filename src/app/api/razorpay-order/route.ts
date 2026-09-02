@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
 import { corsHeaders } from '@/app/lib/cors'
+import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -14,8 +15,12 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
+    const originError = rejectUnexpectedOrigin(req)
+    if (originError) return originError
+    const limitError = rateLimit(req, 'razorpay-order', 5, 10 * 60 * 1000)
+    if (limitError) return limitError
     const { amount, currency = 'INR', receipt, notes } = await req.json()
-    if (!amount || amount < 100) {
+    if (!Number.isInteger(amount) || amount < 100 || amount > 10_000_000 || currency !== 'INR') {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400, headers })
     }
     const order = await razorpay.orders.create({
