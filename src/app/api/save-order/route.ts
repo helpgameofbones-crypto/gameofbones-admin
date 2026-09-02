@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
+import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,6 +28,10 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
+    const originError = rejectUnexpectedOrigin(req)
+    if (originError) return originError
+    const limitError = rateLimit(req, 'save-order', 5, 10 * 60 * 1000)
+    if (limitError) return limitError
     const order = await req.json()
 
     if (!order.ref || !order.customer_phone) {
@@ -40,6 +45,16 @@ export async function POST(req: NextRequest) {
     }
     if (!isValidItems(order.items)) {
       return NextResponse.json({ error: 'Invalid items: must be an array of 1-50 items each with name, price, quantity' }, { status: 400, headers })
+    }
+    if (![order.total_amount, order.shipping, order.discount, order.grand_total].every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0) || order.grand_total < 1 || order.grand_total > 100000) {
+      return NextResponse.json({ error: 'Invalid order totals' }, { status: 400, headers })
+    }
+    if (!['cod', 'razorpay'].includes(order.payment_method)) {
+      return NextResponse.json({ error: 'Invalid payment method' }, { status: 400, headers })
+    }
+    const { data: existing } = await supabase.from('orders').select('id').eq('ref', order.ref).limit(1)
+    if (existing?.length) {
+      return NextResponse.json({ error: 'Order reference already exists' }, { status: 409, headers })
     }
 
     const insertData: Record<string, any> = {
