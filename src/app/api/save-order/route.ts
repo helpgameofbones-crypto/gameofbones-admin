@@ -26,6 +26,16 @@ export async function POST(req: NextRequest) {
     ? await supabase.from('orders').update(updateData).eq('ref', order.ref).select()
     : await supabase.from('orders').insert([insertData]).select()
   if (error) return NextResponse.json({ error:error.message }, { status:400, headers })
+  const orderId = data?.[0]?.id
+  if (orderId && typeof order.referrer_code === 'string' && order.referrer_code) {
+    const { data: referrers } = await supabase.from('customers').select('phone').eq('referral_code', order.referrer_code).limit(1)
+    const referrerPhone = normalizePhoneForHash(referrers?.[0]?.phone)
+    const referredPhone = normalizePhoneForHash(phone)
+    if (referrerPhone && referredPhone && referrerPhone !== referredPhone) {
+      const { data: credited } = await supabase.from('referrals').select('id').eq('order_id', orderId).limit(1)
+      if (!credited?.length) await supabase.from('referrals').insert({ referrer_phone: referrerPhone, referred_phone: referredPhone, order_id: orderId, points_awarded: 300 })
+    }
+  }
   fetch('https://gameofbones-admin.vercel.app/api/order-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order})}).catch(() => undefined)
   return NextResponse.json({ success:true, order:data }, { status:201, headers })
  } catch (e: unknown) { return NextResponse.json({ error:e instanceof Error ? e.message : 'Unable to save order' }, { status:500, headers }) }
