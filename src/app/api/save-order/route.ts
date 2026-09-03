@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
       if (!credited?.length) await supabase.from('referrals').insert({ referrer_phone: referrerPhone, referred_phone: referredPhone, order_id: orderId, points_awarded: 300 })
     }
   }
-  fetch('https://gameofbones-admin.vercel.app/api/order-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order})}).catch(() => undefined)
   return NextResponse.json({ success:true, order:data }, { status:201, headers })
  } catch (e: unknown) { return NextResponse.json({ error:e instanceof Error ? e.message : 'Unable to save order' }, { status:500, headers }) }
 }
