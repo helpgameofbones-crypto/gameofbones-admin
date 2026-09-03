@@ -1,7 +1,8 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
 const ENVELOPE_PREFIX = 'gob:v1:'
-const LEGACY_XOR_KEY = 'gameofbones_secure_key_2025'
+const LEGACY_XOR_KEYS = ['gameofbones_secure_key_2025', 'gob_secret_2024_gameofbones_in_kalyan']
+const LEGACY_WRITE_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
 
 function encryptionKey(): Buffer {
   const encoded = process.env.GOB_DATA_ENCRYPTION_KEY
@@ -16,19 +17,36 @@ function isLegacyCiphertext(value: string): boolean {
   return value.length >= 8 && value.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(value)
 }
 
+function xor(value: Buffer, key: string): string {
+  return Array.from(value, (byte, index) => String.fromCharCode(byte ^ key.charCodeAt(index % key.length))).join('')
+}
+
 function decryptLegacyXor(value: string): string {
   if (!isLegacyCiphertext(value)) return value
 
   try {
     const bytes = Buffer.from(value, 'base64')
-    const decoded = Array.from(bytes, (byte, index) =>
-      String.fromCharCode(byte ^ LEGACY_XOR_KEY.charCodeAt(index % LEGACY_XOR_KEY.length))
-    ).join('')
-
-    return /^[\x20-\x7E\r\n\t]+$/.test(decoded) ? decoded : value
+    for (const key of LEGACY_XOR_KEYS) {
+      const decoded = xor(bytes, key)
+      if (/^[\x20-\x7E\r\n\t]+$/.test(decoded)) return decoded
+    }
+    return value
   } catch {
     return value
   }
+}
+
+export function protectLegacyPii(value: string): string {
+  if (!value) return ''
+  const bytes = Buffer.from(value, 'utf8')
+  return Buffer.from(Array.from(bytes, (byte, index) => byte ^ LEGACY_WRITE_KEY.charCodeAt(index % LEGACY_WRITE_KEY.length))).toString('base64')
+}
+
+export function protectLegacyPiiValue(value: unknown): unknown {
+  if (typeof value === 'string') return protectLegacyPii(value)
+  if (Array.isArray(value)) return value.map(protectLegacyPiiValue)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, protectLegacyPiiValue(item)]))
+  return value
 }
 
 export function revealLegacyPii(value: unknown): string {
