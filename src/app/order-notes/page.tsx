@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Search, Plus, Send, FileText } from 'lucide-react'
 
 export default function OrderNotesPage() {
@@ -15,26 +15,19 @@ export default function OrderNotesPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_phone, status, created_at, grand_total, total_amount, order_notes')
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
+    const response = await authedFetch('/api/admin/order-notes')
+    const payload = await response.json().catch(() => ({}))
+    setOrders(response.ok ? payload.orders || [] : [])
     setLoading(false)
   }
 
   async function addNote(orderId: string) {
     if (!newNote.trim()) return
     setAdding(true)
-    const order = orders.find(o => o.id === orderId)
-    const existing = order?.order_notes || []
-    const note = {
-      text: newNote.trim(),
-      timestamp: new Date().toISOString(),
-      author: 'Admin',
-    }
-    const updated = [...existing, note]
-    await supabase.from('orders').update({ order_notes: updated }).eq('id', orderId)
+    const response = await authedFetch('/api/admin/order-notes', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId, text: newNote.trim() }) })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) { setAdding(false); return }
+    const updated = payload.notes || []
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_notes: updated } : o))
     setSelected((prev: any) => prev?.id === orderId ? { ...prev, order_notes: updated } : prev)
     setNewNote('')

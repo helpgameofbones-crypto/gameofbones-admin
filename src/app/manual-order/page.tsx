@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch';
 
 interface Product {
@@ -44,9 +43,10 @@ export default function ManualOrderPage() {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase.from('products').select('*');
-      if (error) throw error;
-      setProducts((data as Product[]) || []);
+      const response = await authedFetch('/api/admin/products');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Unable to load products');
+      setProducts((data.products as Product[]) || []);
     } catch (error) {
       console.error('Error fetching products:', error);
     }

@@ -1,9 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch';
 
-const SUPABASE_FN_URL = 'https://syuostlqzzinigqwjzap.supabase.co/functions/v1';
 // NOTE: the Delhivery API token used to be hardcoded here and called directly
 // from the browser (track.delhivery.com) — a live third-party credential
 // visible to anyone opening devtools on the admin panel. Tracking now goes
@@ -24,11 +22,9 @@ export default function DelhiverySyncPage() {
 
   async function fetchOrders() {
     setLoading(true);
-    const { data } = await supabase.from('orders')
-      .select('id,ref,status,delhivery_awb,customer_name,customer_phone,estimated_delivery,delivered_at,created_at,delivery_cost')
-      .not('delhivery_awb', 'is', null)
-      .order('created_at', { ascending: false }).limit(100);
-    setOrders(data || []);
+    const res = await authedFetch('/api/admin/fulfillment');
+    const data = await res.json().catch(() => ({}));
+    setOrders(res.ok ? data.orders || [] : []);
     setLoading(false);
   }
 
@@ -36,7 +32,7 @@ export default function DelhiverySyncPage() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch(`${SUPABASE_FN_URL}/sync-delhivery-status`, { method: 'POST' });
+      const res = await authedFetch('/api/admin/fulfillment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'sync' }) });
       const data = await res.json();
       setSyncResult(data);
       fetchOrders();
