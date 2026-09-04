@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function HourAnalysisPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -11,9 +11,7 @@ export default function HourAnalysisPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase.from('orders').select('created_at, grand_total, total_amount, status').neq('status', 'cancelled')
-    setOrders(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/reports?report=hours'); const data = await response.json(); setOrders(response.ok && Array.isArray(data.orders) ? data.orders : []) } finally { setLoading(false) }
   }
 
   const hourData = Array.from({ length: 24 }, (_, hour) => {

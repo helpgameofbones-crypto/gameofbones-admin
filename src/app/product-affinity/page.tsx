@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { TrendingUp, RefreshCw, ArrowRight } from 'lucide-react'
 
 export default function ProductAffinityPage() {
@@ -12,12 +12,7 @@ export default function ProductAffinityPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('id, items')
-      .neq('status', 'cancelled')
-    setOrders(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/reports?report=affinity'); const data = await response.json(); setOrders(response.ok && Array.isArray(data.orders) ? data.orders : []) } finally { setLoading(false) }
   }
 
   // Build affinity pairs

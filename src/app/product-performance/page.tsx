@@ -1,11 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://syuostlqzzinigqwjzap.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW9zdGxxenppbmlncXdqemFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA3MzIsImV4cCI6MjA4OTQyNjczMn0.BKf4EF2QhNcW_u1SVVbtiGdlnzdthiptlVcNk3gP2KU'
-);
+import { authedFetch } from '@/app/lib/authedFetch';
 
 interface ProductPerf {
   name: string; category: string; totalOrders: number; totalRevenue: number;
@@ -21,10 +16,10 @@ export default function ProductPerformancePage() {
 
   async function fetchPerformance() {
     setLoading(true);
-    const { data: orders } = await supabase.from('orders').select('items,grand_total,total_amount,status,created_at').neq('status', 'cancelled');
-    const { data: dbProducts } = await supabase.from('products').select('name,category,is_active');
-
-    if (!orders) { setLoading(false); return; }
+    const response = await authedFetch('/api/admin/reports?report=performance');
+    const data = await response.json();
+    const orders = response.ok && Array.isArray(data.orders) ? data.orders : [];
+    const dbProducts = response.ok && Array.isArray(data.products) ? data.products : [];
 
     const map = new Map<string, ProductPerf>();
     orders.forEach((o: any) => {

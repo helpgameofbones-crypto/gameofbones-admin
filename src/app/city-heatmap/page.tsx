@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { MapPin, TrendingUp, RefreshCw } from 'lucide-react'
 
 
@@ -14,12 +14,7 @@ export default function CityHeatmapPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('shipping_address, grand_total, total_amount, status, payment_method, created_at')
-      .neq('status', 'cancelled')
-    setOrders(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/reports?report=locations'); const data = await response.json(); setOrders(response.ok && Array.isArray(data.orders) ? data.orders : []) } finally { setLoading(false) }
   }
 
   function getAddress(addr: any) {

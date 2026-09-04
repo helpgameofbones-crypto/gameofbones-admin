@@ -1,6 +1,6 @@
 'use client'
   import { useState, useEffect } from 'react'
-    import { supabase } from '@/app/lib/supabaseBrowserClient'
+    import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function CohortAnalysisPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -11,13 +11,7 @@ export default function CohortAnalysisPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: ords }, { data: custs }] = await Promise.all([
-      supabase.from('orders').select('id, customer_phone, customer_name, grand_total, total_amount, created_at, status').neq('status', 'cancelled'),
-      supabase.from('customers').select('id, phone, created_at'),
-    ])
-    setOrders(ords || [])
-    setCustomers(custs || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/reports?report=cohorts'); const data = await response.json(); setOrders(response.ok && Array.isArray(data.orders) ? data.orders : []); setCustomers(response.ok && Array.isArray(data.customers) ? data.customers : []) } finally { setLoading(false) }
   }
 
   function getMonth(dateStr: string) {
