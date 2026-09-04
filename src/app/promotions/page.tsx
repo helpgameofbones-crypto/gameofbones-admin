@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function PromotionsPage() {
   const [tab, setTab]             = useState('flashsale')
@@ -31,13 +31,7 @@ export default function PromotionsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [p, b] = await Promise.all([
-      supabase.from('products').select('*, product_sizes(*)').eq('is_active', true).order('name'),
-      supabase.from('product_bundles').select('*').order('created_at', { ascending: false }),
-    ])
-    setProducts(p.data || [])
-    setBundles(b.data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/promotions'); const data = await response.json(); setProducts(response.ok && Array.isArray(data.products) ? data.products : []); setBundles(response.ok && Array.isArray(data.bundles) ? data.bundles : []) } finally { setLoading(false) }
   }
 
   async function scheduleFlashSale() {
@@ -49,32 +43,17 @@ export default function PromotionsPage() {
     const start = new Date(`${flashSale.startDate}T${flashSale.startTime || '00:00'}:00`)
     const end   = new Date(`${flashSale.endDate}T${flashSale.endTime || '23:59'}:00`)
 
-    await supabase.from('products').update({
-      flash_sale_price: parseFloat(flashSale.salePrice),
-      flash_sale_start: start.toISOString(),
-      flash_sale_end:   end.toISOString(),
-    }).eq('id', flashSale.productId)
-
-    await supabase.from('activity_log').insert({
-      action:      'flash sale scheduled',
-      entity_type: 'product',
-      entity_id:   flashSale.productId,
-      details:     `${flashSale.salePrice} from ${flashSale.startDate} to ${flashSale.endDate}`,
-    })
+    const response = await authedFetch('/api/admin/promotions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'flash-sale', productId: flashSale.productId, salePrice: flashSale.salePrice, start: start.toISOString(), end: end.toISOString() }) })
 
     setSaving(false)
-    setMsg(' Flash sale scheduled!')
+    if (!response.ok) { setMsg('Unable to schedule flash sale.'); return }; setMsg(' Flash sale scheduled!')
     setFlashSale({ productId:'', salePrice:'', startDate:'', startTime:'', endDate:'', endTime:'' })
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
 
   async function cancelFlashSale(productId: string) {
-    await supabase.from('products').update({
-      flash_sale_price: null,
-      flash_sale_start: null,
-      flash_sale_end:   null,
-    }).eq('id', productId)
+    const response = await authedFetch('/api/admin/promotions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel-flash-sale', productId }) }); if (!response.ok) return
     fetchData()
   }
 
@@ -84,28 +63,16 @@ export default function PromotionsPage() {
       return
     }
     setSaving(true)
-    const originalPrice = newBundle.items.reduce((s, item) => {
-      const product = products.find(p => p.name === item.name)
-      return s + (product?.price || 0) * item.qty
-    }, 0)
-
-    await supabase.from('product_bundles').insert({
-      name:             newBundle.name,
-      description:      newBundle.description,
-      bundle_price:     parseFloat(newBundle.bundle_price),
-      original_price:   originalPrice,
-      discount_percent: originalPrice ? Math.round((1 - parseFloat(newBundle.bundle_price) / originalPrice) * 100) : 0,
-      items:            newBundle.items,
-      is_active:        true,
-    })
+    const response = await authedFetch('/api/admin/promotions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bundle', ...newBundle }) })
     setSaving(false)
+    if (!response.ok) { setMsg('Unable to create bundle.'); return }
     setShowAddBundle(false)
     setNewBundle({ name:'', description:'', bundle_price:'', items:[] })
     fetchData()
   }
 
   async function toggleBundle(id: string, current: boolean) {
-    await supabase.from('product_bundles').update({ is_active: !current }).eq('id', id)
+    const response = await authedFetch('/api/admin/promotions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bundle-status', id, is_active: !current }) }); if (!response.ok) return
     fetchData()
   }
 
