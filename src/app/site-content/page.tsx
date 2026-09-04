@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 // Only include sections that actually have a real spot on the storefront.
 // "Bestseller Section Image" was removed — the homepage never had a dedicated
@@ -16,31 +16,27 @@ export default function SiteContentPage() {
   const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => { fetchContent(); }, []);
-  async function fetchContent() { setLoading(true); const { data } = await supabase.from('site_content').select('*').order('section'); setContent(data || []); setLoading(false); }
+  async function fetchContent() { setLoading(true); const response = await authedFetch('/api/admin/content?resource=site'); const payload = await response.json().catch(() => ({})); setContent(response.ok ? payload.items || [] : []); setLoading(false); }
 
   function getContent(section: string) { return content.find(c => c.section === section); }
 
   async function uploadImage(section: string, file: File) {
     setUploading(section);
-    const name = `site/${section}-${Date.now()}.${file.name.split('.').pop()}`;
-    const { error } = await supabase.storage.from('product-images').upload(name, file, { contentType: file.type, upsert: true });
-    if (error) { alert('Upload failed: ' + error.message); setUploading(null); return; }
-    const url = `https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/${name}`;
+    const data = new FormData(); data.append('resource', 'site'); data.append('file', file);
+    const upload = await authedFetch('/api/admin/content', { method: 'POST', body: data });
+    const uploadPayload = await upload.json().catch(() => ({}));
+    if (!upload.ok) { alert('Upload failed: ' + (uploadPayload.error || 'Please try again.')); setUploading(null); return; }
+    const url = uploadPayload.url;
     const existing = getContent(section);
-    if (existing) {
-      const { error: updateErr } = await supabase.from('site_content').update({ image_url: url, is_active: true }).eq('id', existing.id);
-      if (updateErr) { alert('Save failed: ' + updateErr.message); setUploading(null); return; }
-    } else {
-      const { error: insertErr } = await supabase.from('site_content').insert({ section, image_url: url, title: section, is_active: true });
-      if (insertErr) { alert('Save failed: ' + insertErr.message); setUploading(null); return; }
-    }
+    const save = await authedFetch('/api/admin/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'site', id: existing?.id, section, image_url: url }) });
+    if (!save.ok) { alert('Save failed. Please try again.'); setUploading(null); return; }
     setUploading(null);
     fetchContent();
   }
 
   async function removeImage(section: string) {
     const existing = getContent(section);
-    if (existing) { await supabase.from('site_content').update({ image_url: null }).eq('id', existing.id); fetchContent(); }
+    if (existing) { await authedFetch('/api/admin/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'site', id: existing.id, section, image_url: null }) }); fetchContent(); }
   }
 
   return (

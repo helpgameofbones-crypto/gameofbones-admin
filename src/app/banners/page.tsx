@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function BannersPage() {
   const [banners, setBanners] = useState<any[]>([])
@@ -12,11 +12,9 @@ export default function BannersPage() {
   useEffect(() => { fetchBanners() }, [])
 
   async function fetchBanners() {
-    const { data } = await supabase
-      .from('banners')
-      .select('*')
-      .order('position', { ascending: true })
-    setBanners(data || [])
+    const response = await authedFetch('/api/admin/content?resource=banners')
+    const payload = await response.json().catch(() => ({}))
+    setBanners(response.ok ? payload.items || [] : [])
     setLoading(false)
   }
 
@@ -30,11 +28,8 @@ export default function BannersPage() {
       position:  Number(editing.position || 0),
       is_active: editing.is_active,
     }
-    if (editing.id) {
-      await supabase.from('banners').update(payload).eq('id', editing.id)
-    } else {
-      await supabase.from('banners').insert(payload)
-    }
+    const response = await authedFetch('/api/admin/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'banners', id: editing.id, ...payload }) })
+    if (!response.ok) { setSaving(false); setMsg('Unable to save banner.'); return }
     setMsg('Saved!')
     setSaving(false)
     fetchBanners()
@@ -42,13 +37,13 @@ export default function BannersPage() {
   }
 
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from('banners').update({ is_active: !current }).eq('id', id)
+    await authedFetch('/api/admin/content', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'banners', id, is_active: !current }) })
     fetchBanners()
   }
 
   async function deleteBanner(id: string) {
     if (!confirm('Delete this banner?')) return
-    await supabase.from('banners').delete().eq('id', id)
+    await authedFetch(`/api/admin/content?resource=banners&id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     fetchBanners()
   }
 

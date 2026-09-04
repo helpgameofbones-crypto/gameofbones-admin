@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 interface Blog {
   id: number; title: string; slug: string; category: string; excerpt: string;
@@ -19,20 +19,21 @@ export default function BlogsPage() {
 
   async function fetchBlogs() {
     setLoading(true);
-    const { data } = await supabase.from('blogs').select('*').order('created_at', { ascending: false });
-    setBlogs(data || []);
+    const response = await authedFetch('/api/admin/content?resource=blogs');
+    const payload = await response.json().catch(() => ({}));
+    setBlogs(response.ok ? payload.items || [] : []);
     setLoading(false);
   }
 
   async function handleImageUpload(file: File) {
     if (!file || file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return; }
     setUploading(true);
-    const ext = file.name.split('.').pop();
-    const fileName = `blog-${Date.now()}.${ext}`;
-    const { data, error } = await supabase.storage.from('product-images').upload(`blogs/${fileName}`, file, { contentType: file.type, upsert: true });
+    const data = new FormData(); data.append('resource', 'blogs'); data.append('file', file);
+    const response = await authedFetch('/api/admin/content', { method: 'POST', body: data });
     setUploading(false);
-    if (error) { alert('Upload failed: ' + error.message); return; }
-    const url = `https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/blogs/${fileName}`;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { alert('Upload failed: ' + (payload.error || 'Please try again.')); return; }
+    const url = payload.url;
     setEditing(prev => prev ? { ...prev, cover_image: url } : null);
   }
 
@@ -46,23 +47,19 @@ export default function BlogsPage() {
       tags: editing.tags || []
     };
 
-    if (editing.id) {
-      await supabase.from('blogs').update(payload).eq('id', editing.id);
-    } else {
-      await supabase.from('blogs').insert(payload);
-    }
+    await authedFetch('/api/admin/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'blogs', id: editing.id, ...payload }) });
     setEditing(null);
     fetchBlogs();
   }
 
   async function deleteBlog(id: number) {
     if (!confirm('Delete this blog post?')) return;
-    await supabase.from('blogs').delete().eq('id', id);
+    await authedFetch(`/api/admin/content?resource=blogs&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     fetchBlogs();
   }
 
   async function togglePublish(id: number, current: boolean) {
-    await supabase.from('blogs').update({ is_published: !current }).eq('id', id);
+    await authedFetch('/api/admin/content', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'blogs', id, is_published: !current }) });
     setBlogs(prev => prev.map(b => b.id === id ? { ...b, is_published: !current } : b));
   }
 

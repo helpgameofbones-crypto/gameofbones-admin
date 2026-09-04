@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function DogGalleryPage() {
   const [dogs, setDogs] = useState<any[]>([]);
@@ -10,28 +10,27 @@ export default function DogGalleryPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetchDogs(); }, []);
-  async function fetchDogs() { setLoading(true); const { data } = await supabase.from('dog_gallery').select('*').order('created_at', { ascending: false }); setDogs(data || []); setLoading(false); }
+  async function fetchDogs() { setLoading(true); const response = await authedFetch('/api/admin/content?resource=dogs'); const payload = await response.json().catch(() => ({})); setDogs(response.ok ? payload.items || [] : []); setLoading(false); }
 
   async function uploadMedia(file: File) {
     setUploading(true);
     const isVideo = file.type.startsWith('video');
-    const name = `dogs/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '')}`;
-    const { error } = await supabase.storage.from('product-images').upload(name, file, { contentType: file.type, upsert: true });
+    const data = new FormData(); data.append('resource', 'dogs'); data.append('file', file);
+    const response = await authedFetch('/api/admin/content', { method: 'POST', body: data });
     setUploading(false);
-    if (error) { alert('Upload failed: ' + error.message); return; }
-    const url = `https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/${name}`;
-    setEditing((prev: any) => prev ? { ...prev, media_url: url, media_type: isVideo ? 'video' : 'image' } : null);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { alert('Upload failed: ' + (payload.error || 'Please try again.')); return; }
+    setEditing((prev: any) => prev ? { ...prev, media_url: payload.url, media_type: payload.media_type || (isVideo ? 'video' : 'image') } : null);
   }
 
   async function save() {
     if (!editing?.media_url) { alert('Please upload a photo or video'); return; }
     const payload = { dog_name: editing.dog_name || '', breed: editing.breed || '', owner_name: editing.owner_name || '', location: editing.location || '', media_url: editing.media_url, media_type: editing.media_type || 'image', caption: editing.caption || '', is_featured: editing.is_featured ?? false, is_active: editing.is_active ?? true };
-    if (editing.id) { await supabase.from('dog_gallery').update(payload).eq('id', editing.id); }
-    else { await supabase.from('dog_gallery').insert(payload); }
+    await authedFetch('/api/admin/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'dogs', id: editing.id, ...payload }) });
     setEditing(null); fetchDogs();
   }
 
-  async function remove(id: number) { if (confirm('Delete?')) { await supabase.from('dog_gallery').delete().eq('id', id); fetchDogs(); } }
+  async function remove(id: number) { if (confirm('Delete?')) { await authedFetch(`/api/admin/content?resource=dogs&id=${encodeURIComponent(id)}`, { method: 'DELETE' }); fetchDogs(); } }
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
@@ -57,7 +56,7 @@ export default function DogGalleryPage() {
                 <div onClick={() => fileRef.current?.click()} style={{ border: '2px dashed #e5e7eb', borderRadius: 6, padding: '40px 20px', textAlign: 'center', cursor: 'pointer' }}>
                   <div style={{ fontSize: 32 }}>📷</div>
                   <div style={{ fontWeight: 600, marginTop: 8 }}>{uploading ? 'Uploading...' : 'Click to upload photo or video'}</div>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>JPG, PNG, WebP, MP4 · Max 50MB</div>
+                  <div style={{ fontSize: 12, color: '#9ca3af' }}>JPG, PNG, WebP, MP4 · Max 4MB for video</div>
                 </div>
               )}
               <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadMedia(e.target.files[0]); }} />
