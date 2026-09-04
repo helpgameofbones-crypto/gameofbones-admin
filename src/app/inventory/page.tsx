@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -9,24 +9,14 @@ export default function InventoryPage() {
   useEffect(() => { fetchInventory() }, [])
 
   async function fetchInventory() {
-    const { data: prods } = await supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true)
-      .order('stock', { ascending: true })
-
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('items, created_at')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .eq('status', 'delivered')
+    const response = await authedFetch('/api/admin/inventory')
+    const payload = response.ok ? await response.json() : { products: [], orders: [] }
+    const prods = payload.products
+    const orders = payload.orders
 
     // Order items are saved with `product_name`/`quantity` keys, not `name`/`qty`.
     const salesMap: Record<string, number> = {}
-    ;(orders || []).forEach(o => {
+    ;(orders || []).forEach((o: any) => {
       ;(o.items || []).forEach((item: any) => {
         const key = item.name ?? item.product_name
         if (!key) return
@@ -34,7 +24,7 @@ export default function InventoryPage() {
       })
     })
 
-    const enriched = (prods || []).map(p => {
+    const enriched = (prods || []).map((p: any) => {
       const monthlySales = salesMap[p.name] || 0
       const dailySales   = monthlySales / 30
       const daysLeft     = dailySales > 0 ? Math.round(p.stock / dailySales) : null
@@ -47,7 +37,7 @@ export default function InventoryPage() {
   }
 
   async function updateStock(id: string, stock: number) {
-    await supabase.from('products').update({ stock }).eq('id', id)
+    await authedFetch('/api/admin/inventory', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, stock }) })
     fetchInventory()
   }
 
