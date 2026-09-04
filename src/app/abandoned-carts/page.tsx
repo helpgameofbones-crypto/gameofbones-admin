@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 function parseItems(items: any) {
   if (!items) return []
@@ -18,14 +18,7 @@ export default function AbandonedCartsPage() {
 
   async function fetchCarts() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('abandoned_carts')
-      .select('*')
-      .order('abandoned_at', { ascending: false })
-      .limit(300)
-    if (error) { console.error(error); setLoading(false); return }
-    setCarts(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/retention?source=abandoned'); const data = await response.json(); setCarts(response.ok && Array.isArray(data.rows) ? data.rows : []) } finally { setLoading(false) }
   }
 
   const filtered = carts.filter(c => {

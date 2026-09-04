@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const FN_URL = 'https://syuostlqzzinigqwjzap.supabase.co/functions/v1';
 
@@ -15,9 +15,7 @@ export default function ReorderAlertsPage() {
 
   async function fetchAlerts() {
     setLoading(true);
-    const { data } = await supabase.from('reorder_alerts').select('*').order('days_since_last_order', { ascending: false });
-    setAlerts(data || []);
-    setLoading(false);
+    try { const response = await authedFetch('/api/admin/retention?source=reorder'); const data = await response.json(); setAlerts(response.ok && Array.isArray(data.rows) ? data.rows : []) } finally { setLoading(false) }
   }
 
   async function runScan() {
@@ -32,12 +30,12 @@ export default function ReorderAlertsPage() {
   }
 
   async function dismiss(id: number) {
-    await supabase.from('reorder_alerts').update({ alert_status: 'dismissed' }).eq('id', id);
+    const response = await authedFetch('/api/admin/retention', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'dismissed' }) }); if (!response.ok) return;
     setAlerts(prev => prev.map(a => a.id === id ? { ...a, alert_status: 'dismissed' } : a));
   }
 
   async function markSent(id: number) {
-    await supabase.from('reorder_alerts').update({ alert_status: 'sent' }).eq('id', id);
+    const response = await authedFetch('/api/admin/retention', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'sent' }) }); if (!response.ok) return;
     setAlerts(prev => prev.map(a => a.id === id ? { ...a, alert_status: 'sent' } : a));
   }
 
