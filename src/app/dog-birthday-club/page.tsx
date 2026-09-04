@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch';
 
 function getDayMonth(birthday: string): { day: number | null; month: number | null; year: number | null } {
@@ -24,10 +23,8 @@ export default function DogBirthdayClubPage() {
   
   async function fetchData() {
     setLoading(true);
-    const { data, error } = await supabase.from('dog_birthdays').select('*').order('created_at', { ascending: false });
-    if (error) { console.error(error); setLoading(false); return; }
-    setEntries(data || []);
-    setLoading(false);
+    try { const response = await authedFetch('/api/admin/birthdays'); const data = await response.json(); setEntries(response.ok && Array.isArray(data.birthdays) ? data.birthdays : []) }
+    finally { setLoading(false) }
   }
 
   async function sendBirthdayEmail(dogId: string, email: string, dogName: string) {

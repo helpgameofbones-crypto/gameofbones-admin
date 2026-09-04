@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 interface Birthday {
   id: string;
@@ -24,13 +24,10 @@ export default function DogBirthdayPage() {
 
   const fetchBirthdays = async () => {
     try {
-      const { data, error } = await supabase
-        .from('dog_birthdays')
-        .select('*')
-        .order('birthday', { ascending: true });
-
-      if (error) throw error;
-      setBirthdays((data || []) as Birthday[]);
+      const response = await authedFetch('/api/admin/birthdays');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to load birthdays');
+      setBirthdays((Array.isArray(data.birthdays) ? data.birthdays : []) as Birthday[]);
     } catch (error) {
       console.error('Error:', error);
     } finally {
