@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
 
 type Order = {
   id: string; ref?: string; created_at?: string; status?: string; payment_status?: string; payment_method?: string;
@@ -118,8 +117,9 @@ export default function DashboardPage() {
     let active = true;
     async function loadDashboard() {
       setLoading(true);
-      const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500);
-      if (active) { setOrders((data || []) as Order[]); setLoading(false); }
+      const response = await fetch('/api/admin/orders?limit=500', { credentials: 'same-origin' });
+      const payload = response.ok ? await response.json() : { orders: [] };
+      if (active) { setOrders((payload.orders || []) as Order[]); setLoading(false); }
     }
     void loadDashboard();
     return () => { active = false; };

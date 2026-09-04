@@ -39,10 +39,21 @@ export async function PATCH(request: NextRequest) {
   if (typeof updates.status === 'string' && statusValues.has(updates.status)) safeUpdates.status = updates.status
   if (typeof updates.delivered_at === 'string') safeUpdates.delivered_at = updates.delivered_at
   if (Array.isArray(updates.order_notes)) safeUpdates.order_notes = updates.order_notes.slice(-100)
+  if (updates.is_refunded === true) safeUpdates.is_refunded = true
+  if (typeof updates.refund_amount === 'number' && Number.isFinite(updates.refund_amount) && updates.refund_amount >= 0) safeUpdates.refund_amount = updates.refund_amount
+  if (typeof updates.refund_reason === 'string') safeUpdates.refund_reason = updates.refund_reason.slice(0, 500)
+  if (typeof updates.refunded_at === 'string') safeUpdates.refunded_at = updates.refunded_at
   if (!Object.keys(safeUpdates).length) return NextResponse.json({ error: 'No permitted order changes were supplied.' }, { status: 400 })
 
   const { error } = await database().from('orders').update(safeUpdates).in('id', ids)
   if (error) return NextResponse.json({ error: 'Unable to update order.' }, { status: 500 })
+  if (safeUpdates.is_refunded) {
+    await database().from('activity_log').insert({
+      action: 'refund processed', entity_type: 'order', entity_id: ids.join(','),
+      entity_name: ids.length === 1 ? ids[0] : `${ids.length} orders`,
+      details: `Refund of ₹${safeUpdates.refund_amount ?? 0} recorded through the protected admin API.`,
+    })
+  }
   return NextResponse.json({ ok: true })
 }
 

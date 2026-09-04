@@ -12,7 +12,7 @@ function authorised(request: NextRequest) {
 // This is deliberately an authenticated, repeatable batch job. It only adds the
 // AES-GCM fields and hashes; it never deletes the legacy columns. Those fields can
 // be retired separately after the migration report shows zero records remaining.
-export async function POST(request: NextRequest) {
+async function migrate(request: NextRequest) {
   if (!authorised(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const { data: rows, error } = await supabase.from('orders')
@@ -51,4 +51,14 @@ export async function POST(request: NextRequest) {
     console.error('Legacy PII migration failed', error)
     return NextResponse.json({ error: 'Unable to migrate historical customer data.' }, { status: 500 })
   }
+}
+
+// Vercel Cron invokes GET. POST remains available for an authenticated manual
+// run when an operator wants to migrate additional batches immediately.
+export async function GET(request: NextRequest) {
+  return migrate(request)
+}
+
+export async function POST(request: NextRequest) {
+  return migrate(request)
 }

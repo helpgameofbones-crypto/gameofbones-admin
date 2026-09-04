@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient';
 
 export default function FinancePage() {
   const [orders, setOrders]     = useState<any[]>([])
@@ -28,38 +27,22 @@ export default function FinancePage() {
     const from = new Date()
     from.setDate(from.getDate() - parseInt(range))
 
-    const { data: ordersData } = await supabase
-      .from('orders')
-      .select('*')
-      .gte('created_at', from.toISOString())
-      .order('created_at', { ascending: false })
-
-    const { data: productsData } = await supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true)
-
-    setOrders(ordersData || [])
-    setProducts(productsData || [])
+    const response = await fetch(`/api/admin/finance?from=${encodeURIComponent(from.toISOString())}`, { credentials: 'same-origin' })
+    const payload = response.ok ? await response.json() : { orders: [], products: [] }
+    setOrders(payload.orders || [])
+    setProducts(payload.products || [])
     setLoading(false)
   }
 
   async function saveRefund() {
     if (!refundOrder || !refundAmount) return
     setSavingRefund(true)
-    await supabase.from('orders').update({
-      is_refunded:   true,
-      refund_amount: parseFloat(refundAmount),
-      refund_reason: refundReason,
-      refunded_at:   new Date().toISOString(),
-    }).eq('id', refundOrder.id)
-
-    await supabase.from('activity_log').insert({
-      action:      'refund processed',
-      entity_type: 'order',
-      entity_id:   refundOrder.id,
-      entity_name: refundOrder.ref,
-      details:     `${refundAmount}  ${refundReason}`,
+    await fetch('/api/admin/orders', {
+      method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [refundOrder.id], updates: {
+        is_refunded: true, refund_amount: parseFloat(refundAmount), refund_reason: refundReason,
+        refunded_at: new Date().toISOString(),
+      } }),
     })
 
     setSavingRefund(false)
