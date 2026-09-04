@@ -2,78 +2,38 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import {
+  BarChart3, Boxes, ClipboardList, FileText, HeartHandshake, LayoutDashboard,
+  Megaphone, PackageCheck, Settings2, ShoppingCart, Truck, Users, WalletCards,
+} from 'lucide-react';
 
 const SECTIONS = [
-  { title: 'OVERVIEW', color: '#3b82f6', items: [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊', desc: "Today's sales, revenue, and pending orders" },
+  { title: 'START HERE', color: '#c8973a', items: [
+    { name: 'Today', href: '/dashboard', icon: LayoutDashboard, desc: "Today's work, exceptions and sales" },
+    { name: 'Insights', href: '/analytics', icon: BarChart3, desc: 'Demand, retention and performance signals' },
   ]},
-  { title: 'ORDERS', color: '#f59e0b', items: [
-    { name: 'All Orders', href: '/orders', icon: '📦', desc: 'View, filter, and manage all orders' },
-    { name: 'Manual Order', href: '/manual-order', icon: '➕', desc: 'Create an order by hand — phone/walk-in sales or free influencer sends' },
-    { name: 'Order Notes', href: '/order-notes', icon: '📝', desc: 'Internal notes on orders' },
-    { name: 'COD Tracker', href: '/cod-tracker', icon: '💵', desc: 'Cash on delivery order management' },
-    { name: 'Cancellations', href: '/cancellation-tracker', icon: '❌', desc: 'Track cancelled and returned orders' },
-    { name: 'Order Timeline', href: '/order-timeline', icon: '📋', desc: 'Visual status history of each order' },
-    { name: 'Duplicate Orders', href: '/duplicate-orders', icon: '⚠️', desc: 'Flag potential duplicate submissions' },
+  { title: 'WORKSPACE', color: '#f59e0b', items: [
+    { name: 'Orders', href: '/orders', icon: ShoppingCart, desc: 'One queue for customer and order work' },
+    { name: 'Fulfilment', href: '/delhivery', icon: Truck, desc: 'Dispatch, shipping and delivery operations' },
+    { name: 'Products', href: '/products', icon: PackageCheck, desc: 'Catalog, stock and product performance' },
+    { name: 'Customers', href: '/customers', icon: Users, desc: 'Profiles, loyalty and retention' },
   ]},
-  { title: 'SHIPPING', color: '#8b5cf6', items: [
-    { name: 'Delhivery', href: '/delhivery', icon: '📮', desc: 'Generate AWBs and create shipments for confirmed orders' },
-    { name: 'Delhivery Sync', href: '/delhivery-sync', icon: '🔄', desc: 'Auto-sync order status from Delhivery' },
-    { name: 'Delivery Estimator', href: '/delivery-estimator', icon: '📅', desc: 'Estimated delivery dates from Delhivery' },
-    { name: 'Shipment Tracker', href: '/shipment-tracker', icon: '🚚', desc: 'Track all shipments in one place' },
-    { name: 'RTO', href: '/rto', icon: '🚨', desc: 'Return-to-origin shipments and recovery' },
-    { name: 'Returns', href: '/returns', icon: '📥', desc: 'Customer return requests and refund status' },
-    { name: 'Refund Tracker', href: '/refund-tracker', icon: '↩️', desc: 'Track refund amounts and processing' },
-  ]},
-  { title: 'PRODUCTS', color: '#16a34a', items: [
-    { name: 'Product Catalog', href: '/products', icon: '🦴', desc: 'All products with prices, MRP, stock, and images' },
-    { name: 'Performance', href: '/product-performance', icon: '📈', desc: 'Sales, revenue, and ratings per product' },
-    { name: 'Inventory', href: '/inventory', icon: '📋', desc: 'Current stock levels and reorder alerts' },
-    { name: 'Affinity', href: '/product-affinity', icon: '🔗', desc: 'Which products are bought together' },
-    { name: 'Production', href: '/production', icon: '⚙️', desc: 'Batch records, yield tracking, and costs' },
-  ]},
-  { title: 'CUSTOMERS', color: '#ec4899', items: [
-    { name: 'All Customers', href: '/customers', icon: '👥', desc: 'Name, orders, lifetime value, contact info' },
-    { name: 'Gamification', href: '/gamification', icon: '🎮', desc: 'Loyalty leaderboard, rewards, milestones, spin-wheel results' },
-    { name: 'Dog Birthday Club', href: '/dog-birthday-club', icon: '🎂', desc: 'Pet birthdays captured from website popup' },
-    { name: 'Reorder Alerts', href: '/reorder-alert', icon: '🔔', desc: 'Customers likely running low on treats' },
-    { name: 'Abandoned Carts', href: '/abandoned-carts', icon: '🛒', desc: "Recover carts that didn't convert" },
-  ]},
-  { title: 'CONTENT', color: '#06b6d4', items: [
-    { name: 'Blogs', href: '/blogs', icon: '📝', desc: 'Create and manage blog articles' },
-    { name: 'Dog Gallery', href: '/dog-gallery', icon: '📷', desc: 'Customer dog photos & videos for homepage' },
-    { name: 'Strays We Feed', href: '/strays', icon: '🐕', desc: 'Manage stray dogs with multiple photos' },
-    { name: 'Site Content', href: '/site-content', icon: '🖼️', desc: 'Hero images, infographics, banners' },
-  ]},
-  { title: 'MARKETING', color: '#f97316', items: [
-    { name: 'Coupons', href: '/coupons', icon: '🏷️', desc: 'Manage discount codes and promotions' },
-    { name: 'Referrals', href: '/referrals', icon: '🤝', desc: 'Track referral signups and rewards' },
-    { name: 'Email Captures', href: '/email-captures', icon: '📧', desc: 'Emails collected from spin wheel & popups' },
-    { name: 'Influencers', href: '/influencers', icon: '🤳', desc: 'Track influencer collabs — barter or paid, and what was sent' },
-    { name: 'Campaigns', href: '/campaigns', icon: '📢', desc: 'Email and SMS campaign management' },
-    { name: 'Campaign Hub', href: '/campaigns-hub', icon: '🎨', desc: 'Multi-channel campaign planner' },
-    { name: 'Promotions', href: '/promotions', icon: '🎁', desc: 'Flash sales, bundles, and special offers' },
-  ]},
-  { title: 'ANALYTICS', color: '#6366f1', items: [
-    { name: 'Overview', href: '/analytics', icon: '📊', desc: 'Revenue trends, conversion rates, AOV' },
-    { name: 'City Heatmap', href: '/city-heatmap', icon: '🗺️', desc: 'Order volume by city and region' },
-    { name: 'Cohort Analysis', href: '/cohort-analysis', icon: '🎓', desc: 'Retention and repeat purchase by cohort' },
-    { name: 'Hour Analysis', href: '/hour-analysis', icon: '⏰', desc: 'Peak ordering times and day-of-week patterns' },
+  { title: 'GROWTH', color: '#f97316', items: [
+    { name: 'Marketing', href: '/campaigns-hub', icon: Megaphone, desc: 'Campaigns, offers and acquisition' },
+    { name: 'Content', href: '/site-content', icon: FileText, desc: 'Storefront, blogs and social proof' },
   ]},
   { title: 'FINANCE', color: '#84cc16', items: [
-    { name: 'Finance', href: '/finance', icon: '💰', desc: 'Revenue, margins, and P&L overview' },
-    { name: 'Expenses', href: '/expenses', icon: '💸', desc: 'Track business expenses by category' },
-    { name: 'Razorpay', href: '/razorpay', icon: '💳', desc: 'Payment settlements and transactions' },
-    { name: 'Invoices', href: '/invoices', icon: '🧾', desc: 'Generate and view individual invoices' },
-    { name: 'Bulk Invoices', href: '/bulk-invoices', icon: '📄', desc: 'Generate invoices for a date range' },
-    { name: 'Bulk Export', href: '/bulk-export', icon: '📤', desc: 'Export orders, customers, or products as CSV' },
+    { name: 'Finance', href: '/finance', icon: WalletCards, desc: 'Revenue, margin, payments and invoices' },
   ]},
-  { title: 'OPERATIONS', color: '#78716c', items: [
-    { name: 'Tasks', href: '/tasks', icon: '✅', desc: 'To-do list for the team' },
-    { name: 'Team Access', href: '/team-access', icon: '👤', desc: 'Manage team member roles and access' },
-    { name: 'Activity Log', href: '/activity', icon: '📋', desc: 'Log of all admin actions' },
-    { name: 'Audit Trail', href: '/audit-trail', icon: '🔍', desc: 'Detailed change history for orders' },
-    { name: 'Notifications', href: '/notifications', icon: '🔔', desc: 'System alerts and order notifications' },
+  { title: 'MORE TOOLS', color: '#78716c', collapsedByDefault: true, items: [
+    { name: 'Manual Order', href: '/manual-order', icon: ClipboardList, desc: 'Phone, walk-in and offline orders' },
+    { name: 'COD & Exceptions', href: '/cod-tracker', icon: ClipboardList, desc: 'COD, cancellations and duplicates' },
+    { name: 'Returns & RTO', href: '/returns', icon: Truck, desc: 'Returns, refunds and RTO recovery' },
+    { name: 'Inventory & Production', href: '/inventory', icon: Boxes, desc: 'Stock, batches and production work' },
+    { name: 'Loyalty & Recovery', href: '/gamification', icon: HeartHandshake, desc: 'Rewards, birthdays, carts and referrals' },
+    { name: 'Campaign tools', href: '/campaigns', icon: Megaphone, desc: 'Coupons, captures, influencers and promotions' },
+    { name: 'Detailed reports', href: '/cohort-analysis', icon: BarChart3, desc: 'Cohorts, city and hour analysis' },
+    { name: 'Admin & exports', href: '/tasks', icon: Settings2, desc: 'Tasks, team, audit trail and exports' },
   ]},
 ];
 
@@ -84,7 +44,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
-    Object.fromEntries(SECTIONS.map(s => [s.title, true]))
+    Object.fromEntries(SECTIONS.map(s => [s.title, !s.collapsedByDefault]))
   );
   const asideRef = useRef<HTMLElement>(null);
   const width = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
@@ -180,12 +140,15 @@ export default function Sidebar() {
 
               {openSections[section.title] && !collapsed && section.items.map(item => {
                 const isActive = pathname === item.href;
+                const Icon = item.icon;
                 return (
                   <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px 8px 28px', background: isActive ? 'rgba(200,151,58,.15)' : 'transparent', borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent', cursor: 'pointer', transition: 'background .15s' }}
                       onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,.04)'; }}
                       onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                      <span style={{ fontSize: 14, flexShrink: 0, width: 20, textAlign: 'center' }}>{item.icon}</span>
+                      <span style={{ display: 'flex', flexShrink: 0, width: 20, justifyContent: 'center', color: isActive ? '#e8c76d' : 'rgba(255,255,255,.58)' }}>
+                        <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+                      </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#c8973a' : 'rgba(255,255,255,.8)', lineHeight: 1.3 }}>{item.name}</div>
                         <div style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.desc}</div>
@@ -197,10 +160,11 @@ export default function Sidebar() {
 
               {collapsed && openSections[section.title] && section.items.map(item => {
                 const isActive = pathname === item.href;
+                const Icon = item.icon;
                 return (
                   <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={item.name}>
-                    <div style={{ padding: '6px 0', textAlign: 'center', fontSize: 16, background: isActive ? 'rgba(200,151,58,.15)' : 'transparent', borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent' }}>
-                      {item.icon}
+                    <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', color: isActive ? '#e8c76d' : 'rgba(255,255,255,.62)', background: isActive ? 'rgba(200,151,58,.15)' : 'transparent', borderLeft: isActive ? '3px solid #c8973a' : '3px solid transparent' }}>
+                      <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
                     </div>
                   </Link>
                 );

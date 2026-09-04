@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, type CSSProperties } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const LOGO_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg';
 
@@ -12,43 +12,6 @@ const COMPANY = {
   website: 'gameofbones.in',
 };
 
-// ── Decryption (same XOR cipher the storefront uses) ────────────────────
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    const binary = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return '';
-  if (/^\+?\d{10,13}$/.test(raw)) return raw;
-  const dec = decryptData(raw);
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
-}
-function decryptEmail(raw: string): string {
-  if (!raw) return '';
-  if (raw.includes('@')) return raw;
-  const dec = decryptData(raw);
-  return dec.includes('@') ? dec : raw;
-}
-function decryptAddressField(raw: string): string {
-  if (!raw) return '';
-  const dec = decryptData(raw);
-  const printable = dec.replace(/[\x20-\x7E]/g, '').length;
-  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec;
-}
 
 function parseItems(items: any): { name: string; sku: string; qty: number; price: number; mrp: number }[] {
   if (!items) return [];
@@ -72,7 +35,7 @@ function formatAddress(addr: any): string[] | null {
   if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
   if (typeof addr !== 'object') return null;
   const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || '';
-  const street = decryptAddressField(streetRaw);
+  const street = streetRaw;
   const parts = [street, addr.city, addr.state, addr.pincode].filter(Boolean);
   return parts.length ? parts : null;
 }
@@ -87,20 +50,15 @@ export default function InvoicesPage() {
 
   async function fetchAllOrders() {
     setLoadingList(true);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_phone, customer_email, grand_total, total_amount, created_at, status, items, shipping_address, subtotal, discount, shipping, coupon_code, notes, transaction_id, payment_method')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    setLoadingList(false);
-    if (error) { console.error(error); return; }
-    const decrypted = (data || []).map((o: any) => ({
-      ...o,
-      customer_phone: decryptPhone(o.customer_phone),
-      customer_email: decryptEmail(o.customer_email),
-    }));
-    setAllOrders(decrypted);
-    if (decrypted.length > 0) setOrder(decrypted[0]);
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=500');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load orders.');
+      const orders = Array.isArray(payload.orders) ? payload.orders : [];
+      setAllOrders(orders);
+      if (orders.length > 0) setOrder(orders[0]);
+    } catch (error) { console.error(error); alert(error instanceof Error ? error.message : 'Unable to load orders.'); }
+    finally { setLoadingList(false); }
   }
 
   const filteredOrders = allOrders.filter(o => {

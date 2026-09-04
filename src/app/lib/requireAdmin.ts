@@ -3,6 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function isAllowedAdmin(email: string | null | undefined): boolean {
+  const configured = process.env.ADMIN_EMAILS
+  if (!configured) return false
+  const allowed = configured.split(',').map(value => value.trim().toLowerCase()).filter(Boolean)
+  return Boolean(email && allowed.includes(email.toLowerCase()))
+}
+
+function forbidden() {
+  return NextResponse.json({ error: 'Admin access is required.' }, { status: 403 })
+}
+
 export async function requireAdmin(req: NextRequest): Promise<NextResponse | null> {
   const authHeader = req.headers.get('authorization')
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
@@ -13,7 +24,7 @@ export async function requireAdmin(req: NextRequest): Promise<NextResponse | nul
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
     const { data: { user } } = await supabase.auth.getUser(bearerToken)
-    if (user) return null
+    if (user && isAllowedAdmin(user.email)) return null
   }
 
   const supabase = createServerClient(
@@ -34,6 +45,8 @@ export async function requireAdmin(req: NextRequest): Promise<NextResponse | nul
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  if (!isAllowedAdmin(user.email)) return forbidden()
 
   return null
 }

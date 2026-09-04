@@ -1,50 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Download, FileText, Calendar, Loader } from 'lucide-react'
 
-// FIX: this page previously had no decryption at all, so any order with
-// encrypted PII (the ones that actually came through the live checkout)
-// showed raw base64/XOR ciphertext for phone/email, and the address's
-// street line was blank because it read `addr.line1`, a key that doesn't
-// exist in the saved shape (`street`, not `line1`). This mirrors the same
-// decrypt helpers already used in orders/page.tsx and invoices/page.tsx.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string) {
-  if (!encrypted) return ''
-  try {
-    const binary = atob(encrypted)
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string) {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
-function decryptEmail(raw: string) {
-  if (!raw) return ''
-  if (raw.includes('@')) return raw
-  const dec = decryptData(raw)
-  return dec.includes('@') ? dec : raw
-}
-function decryptAddressField(raw: string) {
-  if (!raw) return ''
-  const dec = decryptData(raw)
-  const junk = dec.replace(/[\x20-\x7E]/g, '').length
-  return junk / Math.max(dec.length, 1) > 0.3 ? raw : dec
-}
 
 export default function BulkInvoicesPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -59,31 +17,24 @@ export default function BulkInvoicesPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    let query = supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_email, customer_phone, shipping_address, items, grand_total, total_amount, discount, coupon_code, subtotal, notes, payment_method, status, created_at')
-      .gte('created_at', dateFrom + 'T00:00:00')
-      .lte('created_at', dateTo + 'T23:59:59')
-      .order('created_at', { ascending: false })
-
-    if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-    const { data } = await query
-    // Decrypt phone/email up front so both the list view and the generated
-    // invoice HTML show the real values instead of ciphertext.
-    const decrypted = (data || []).map((o: any) => ({
-      ...o,
-      customer_phone: decryptPhone(o.customer_phone),
-      customer_email: decryptEmail(o.customer_email),
-    }))
-    setOrders(decrypted)
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=500')
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Unable to load orders.')
+      const from = new Date(dateFrom + 'T00:00:00').getTime(), to = new Date(dateTo + 'T23:59:59').getTime()
+      setOrders((Array.isArray(payload.orders) ? payload.orders : []).filter((order: any) => {
+        const created = new Date(order.created_at).getTime()
+        return created >= from && created <= to && (statusFilter === 'all' || order.status === statusFilter)
+      }))
+    } catch (error) { alert(error instanceof Error ? error.message : 'Unable to load orders.') }
+    finally { setLoading(false) }
   }
 
   function generateInvoiceHTML(order: any) {
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
     let addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
     const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || ''
-    const street = decryptAddressField(streetRaw)
+    const street = streetRaw
     const subtotal = parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || i.qty || 1), 0)
     const discount = parseFloat(order.discount) || 0
     const total = order.grand_total || order.total_amount || 0

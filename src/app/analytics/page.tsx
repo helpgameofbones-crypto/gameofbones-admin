@@ -1,10 +1,48 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch'
 
+function InsightAction({ title, body, href, action }: { title: string; body: string; href: string; action: string }) {
+  return (
+    <div className="rounded-lg p-4" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)' }}>
+      <h2 className="font-bold text-sm" style={{ color: '#fffaf0' }}>{title}</h2>
+      <p className="text-xs leading-5 mt-2" style={{ color: 'rgba(255,250,240,0.72)' }}>{body}</p>
+      <Link href={href} className="inline-flex mt-3 text-xs font-bold underline underline-offset-4" style={{ color: '#f2ce77' }}>
+        {action} →
+      </Link>
+    </div>
+  )
+}
+
+type OrderItem = {
+  category?: string
+  product_name?: string
+  price?: number
+  pack_price?: number
+  qty?: number
+  quantity?: number
+}
+
+type AnalyticsOrder = {
+  created_at: string
+  grand_total?: number
+  total_amount?: number
+  payment_method?: string
+  status?: string
+  items?: OrderItem[]
+  shipping_address?: { state?: string }
+  coupon_code?: string
+  discount?: number
+}
+
+type TrafficSource = { source: string; sessions: number }
+type PageMetric = { path: string; title?: string; views?: number; sessions?: number }
+type GeoCity = { city: string; country: string; users: number }
+
 export default function AnalyticsPage() {
-  const [orders, setOrders]   = useState<any[]>([])
+  const [orders, setOrders]   = useState<AnalyticsOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [range, setRange]     = useState('30')
   const [tab, setTab]         = useState('overview')
@@ -15,17 +53,34 @@ export default function AnalyticsPage() {
     bounceRate: 0,
     conversions: 0
   })
-  const [trafficSources, setTrafficSources] = useState<any[]>([])
-  const [topPages, setTopPages] = useState<any[]>([])
-  const [landingPages, setLandingPages] = useState<any[]>([])
-  const [geoCities, setGeoCities] = useState<any[]>([])
+  const [trafficSources, setTrafficSources] = useState<TrafficSource[]>([])
+  const [topPages, setTopPages] = useState<PageMetric[]>([])
+  const [landingPages, setLandingPages] = useState<PageMetric[]>([])
+  const [geoCities, setGeoCities] = useState<GeoCity[]>([])
   const [engagement, setEngagement] = useState({
     avgEngagementSeconds: 0,
     newUsers: 0,
     returningUsers: 0
   })
 
-  useEffect(() => { fetchData() }, [range])
+  useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true)
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      const now = new Date()
+      const rangeMs = Number.parseInt(range, 10) * 24 * 60 * 60 * 1000
+      const cutoff = new Date(now.getTime() - rangeMs)
+      const filtered = ((data || []) as AnalyticsOrder[]).filter(order => new Date(order.created_at) >= cutoff)
+      setOrders(filtered)
+      setLoading(false)
+    }
+
+    fetchOrders()
+  }, [range])
 
   useEffect(() => {
     async function fetchGA() {
@@ -90,27 +145,6 @@ export default function AnalyticsPage() {
     fetchEngagement()
   }, [])
 
-  async function fetchData() {
-    setLoading(true)
-    
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    const now = new Date()
-    const rangeMs = parseInt(range) * 24 * 60 * 60 * 1000
-    const cutoff = new Date(now.getTime() - rangeMs)
-
-    const filtered = (data || []).filter(o => {
-      const orderDate = new Date(o.created_at)
-      return orderDate >= cutoff
-    })
-
-    setOrders(filtered)
-    setLoading(false)
-  }
-
   const totalRevenue    = orders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0)
   const totalOrders     = orders.length
   const avgOrderValue   = totalOrders ? Math.round(totalRevenue / totalOrders) : 0
@@ -124,7 +158,7 @@ export default function AnalyticsPage() {
   const categoryRevenue: Record<string, number> = {}
   orders.forEach(o => {
     if (o.items && Array.isArray(o.items)) {
-      o.items.forEach((item: any) => {
+      o.items.forEach((item) => {
         const cat = item.category || item.product_name || 'Other'
         const itemTotal = (item.price || item.pack_price || 0) * (item.qty || item.quantity || 1)
         categoryRevenue[cat] = (categoryRevenue[cat] || 0) + itemTotal
@@ -205,49 +239,32 @@ export default function AnalyticsPage() {
   const estimatedCOGS   = totalRevenue * 0.4
   const estimatedProfit = totalRevenue - estimatedCOGS
   const profitMargin    = totalRevenue ? Math.round((estimatedProfit / totalRevenue) * 100) : 0
+  const conversionRate = gaData.sessions ? (totalOrders / gaData.sessions) * 100 : 0
+  const revenuePerSession = gaData.sessions ? Math.round(totalRevenue / gaData.sessions) : 0
+  const returningVisitorRate = gaData.activeUsers
+    ? Math.round((engagement.returningUsers / gaData.activeUsers) * 100)
+    : 0
+  const topCategory = topCategories[0]
+  const topTrafficSource = trafficSources[0]
+  const rtoRisk = rtoRate >= 12
+  const codRisk = codPct >= 60
 
   const maxCatRevenue = topCategories[0]?.[1] || 1
   const maxStateOrders = topStates[0]?.[1] || 1
-
-  const navLinks = [
-    { label: 'Dashboard',  href: '/dashboard' },
-    { label: 'Orders',     href: '/orders' },
-    { label: 'Products',   href: '/products' },
-    { label: 'Customers',  href: '/customers' },
-    { label: 'Coupons',    href: '/coupons' },
-    { label: 'Banners',    href: '/banners' },
-    { label: 'Analytics',  href: '/analytics' },
-    { label: 'Inventory',  href: '/inventory' },
-    { label: 'RTO Risk',   href: '/rto' },
-  ]
 
   const tabs = ['overview', 'categories', 'geography', 'operations', 'pnl']
 
   return (
     <div className="min-h-screen" style={{ background: '#f9f6f2' }}>
-      <div className="text-white px-6 py-4 flex items-center justify-between"
-        style={{ background: '#1a1008' }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl"></span>
-          <div>
-            <div className="font-bold text-lg" style={{ color: '#c8973a' }}>Game of Bones</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Admin Panel</div>
-          </div>
-        </div>
-        <nav className="flex gap-1 flex-wrap">
-          {navLinks.map(item => (
-            <a key={item.href} href={item.href}
-              className="px-3 py-2 rounded text-sm hover:bg-white/10 transition-colors"
-              style={{ color: 'rgba(255,255,255,0.8)' }}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </div>
-
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: '#111827' }}>Analytics</h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: '#c8973a' }}>Decision dashboard</p>
+            <h1 className="text-3xl font-bold" style={{ color: '#1a1008' }}>Insights</h1>
+            <p className="text-sm mt-2 max-w-xl" style={{ color: '#6b5f55' }}>
+              Sales, demand and customer signals in one place — with a clear route to the work behind each number.
+            </p>
+          </div>
           <select value={range} onChange={e => setRange(e.target.value)}
             className="border border-gray-200 rounded-lg px-4 py-2 text-sm bg-white focus:outline-none"
             style={{ color: '#111827' }}>
@@ -274,22 +291,76 @@ export default function AnalyticsPage() {
 
         {tab === 'overview' && (
           <div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
               {[
-                { label: 'Total Revenue',     value: '₹' + totalRevenue.toLocaleString('en-IN'), icon: '', color: '#10b981' },
-                { label: 'Total Orders',      value: totalOrders,                                  icon: '', color: '#3b82f6' },
-                { label: 'Avg Order Value',   value: '₹' + avgOrderValue.toLocaleString('en-IN'), icon: '', color: '#8b5cf6' },
-                { label: 'RTO Rate',          value: rtoRate + '%',                                icon: '', color: '#ef4444' },
+                { label: 'Revenue', value: '₹' + totalRevenue.toLocaleString('en-IN'), detail: `${totalOrders} orders in selected period`, color: '#0f5132' },
+                { label: 'Conversion proxy', value: conversionRate.toFixed(1) + '%', detail: gaData.sessions ? `${gaData.sessions.toLocaleString('en-IN')} sessions` : 'Connect Analytics to calculate', color: '#4f46e5' },
+                { label: 'Average order value', value: '₹' + avgOrderValue.toLocaleString('en-IN'), detail: `₹${revenuePerSession.toLocaleString('en-IN')} revenue / session`, color: '#9a5b13' },
+                { label: 'Returning visitors', value: returningVisitorRate + '%', detail: `${engagement.returningUsers.toLocaleString('en-IN')} returning visitors`, color: '#9d174d' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                  <div className="text-2xl mb-2">{card.icon}</div>
                   <div className="text-2xl font-bold" style={{ color: card.color }}>
                     {loading ? '...' : card.value}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#1a1008' }}>{card.label}</div>
+                  <div className="text-xs font-semibold mt-2" style={{ color: '#1a1008' }}>{card.label}</div>
+                  <div className="text-xs mt-1" style={{ color: '#81766b' }}>{card.detail}</div>
                 </div>
               ))}
             </div>
+
+            <section className="grid gap-4 lg:grid-cols-3 mb-6" aria-label="Decision signals">
+              <div className="rounded-xl p-5 border lg:col-span-2" style={{ background: '#123b2f', borderColor: '#123b2f' }}>
+                <p className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: '#e8c76d' }}>What to act on</p>
+                <div className="grid gap-4 mt-4 md:grid-cols-3">
+                  <InsightAction
+                    title={topCategory ? `${topCategory[0]} is leading` : 'Awaiting product demand data'}
+                    body={topCategory ? `₹${topCategory[1].toLocaleString('en-IN')} attributed in this period.` : 'Orders with item details will surface the leading product here.'}
+                    href="/product-performance"
+                    action="Review product performance"
+                  />
+                  <InsightAction
+                    title={rtoRisk ? 'RTO needs attention' : 'RTO is within watch range'}
+                    body={rtoRisk ? `${rtoRate}% of selected orders are RTO. Review locations and confirmation flow.` : `${rtoRate}% RTO across the selected period.`}
+                    href="/rto"
+                    action="Open RTO watchlist"
+                  />
+                  <InsightAction
+                    title={codRisk ? 'COD is carrying most orders' : 'Payment mix is balanced'}
+                    body={`${codPct}% COD and ${100 - codPct}% prepaid. ${codRisk ? 'Use prepaid incentives where suitable.' : 'Keep monitoring the prepaid offer.'}`}
+                    href="/cod-tracker"
+                    action="Review payment mix"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl p-5 border" style={{ background: '#fff3c4', borderColor: '#e8c76d' }}>
+                <p className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: '#9a5b13' }}>Traffic quality</p>
+                <h2 className="mt-3 text-xl font-bold" style={{ color: '#1a1008' }}>
+                  {topTrafficSource ? topTrafficSource.source : 'Connect Google Analytics'}
+                </h2>
+                <p className="text-sm mt-2" style={{ color: '#625547' }}>
+                  {topTrafficSource ? `${topTrafficSource.sessions.toLocaleString('en-IN')} sessions from your leading source.` : 'Traffic and landing-page insight will appear here when Analytics returns data.'}
+                </p>
+                <Link href="/campaigns-hub" className="inline-flex mt-4 text-sm font-bold underline underline-offset-4" style={{ color: '#6f3e0b' }}>
+                  Plan a campaign →
+                </Link>
+              </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-8" aria-label="Insight workspaces">
+              {[
+                { label: 'Product demand', body: 'Best sellers, rating signals and product-level sales.', href: '/product-performance' },
+                { label: 'Retention', body: 'Cohorts, repeat purchase behaviour and customer value.', href: '/cohort-analysis' },
+                { label: 'Campaign impact', body: 'Source performance, offers and marketing activity.', href: '/campaigns-hub' },
+                { label: 'Margin & cash', body: 'Revenue, cost inputs, settlements and profitability.', href: '/finance' },
+              ].map(item => (
+                <Link key={item.href} href={item.href} className="block rounded-xl bg-white p-4 border border-gray-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all">
+                  <p className="font-bold text-sm" style={{ color: '#1a1008' }}>{item.label}</p>
+                  <p className="text-xs mt-2 leading-5" style={{ color: '#6b5f55' }}>{item.body}</p>
+                  <p className="text-xs mt-3 font-bold" style={{ color: '#b8721b' }}>Open report →</p>
+                </Link>
+              ))}
+            </section>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[

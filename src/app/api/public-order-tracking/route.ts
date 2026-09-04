@@ -15,7 +15,9 @@ export async function POST(req: NextRequest) {
     const limitError = rateLimit(req, 'public-order-tracking', 10, 60 * 60 * 1000); if (limitError) return limitError
     const ref = cleanText((await req.json()).ref, 40).toUpperCase()
     if (!REF_RE.test(ref)) return NextResponse.json({ found: false }, { headers })
-    const { data, error } = await supabase.from('orders').select('ref,status,items,grand_total,total_amount,delhivery_awb').eq('ref', ref).limit(1)
+    // Customers may use the order reference from their confirmation or the AWB
+    // from the dispatch message. Neither path exposes customer contact details.
+    const { data, error } = await supabase.from('orders').select('ref,status,items,grand_total,total_amount,delhivery_awb').or(`ref.eq.${ref},delhivery_awb.eq.${ref}`).limit(1)
     if (error) throw error
     const order = data?.[0]
     if (!order) return NextResponse.json({ found: false }, { headers })

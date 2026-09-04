@@ -1,48 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
-
-// Orders store phone/email encrypted with a simple XOR cipher. Grouping
-// customers MUST decrypt first — grouping on the raw encrypted string (or
-// stripping digits from it) silently breaks customer matching entirely,
-// which is why this page used to show gibberish and miscounted customers.
-//
-// FIX: these three functions were missing parameter type annotations
-// (`encrypted`, `raw`), which Next's strict TypeScript build rejects with
-// "implicitly has an 'any' type". That one error has been failing EVERY
-// deployment since this file was last touched — Vercel was silently
-// re-serving an old build the whole time, which is why none of the other
-// fixes (address, discount, notes, etc.) ever appeared live.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    const binary = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return '';
-  if (/^\+?\d{10,13}$/.test(raw)) return raw;
-  const dec = decryptData(raw);
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
-}
-function decryptEmail(raw: string): string {
-  if (!raw) return '';
-  if (raw.includes('@')) return raw;
-  const dec = decryptData(raw);
-  return dec.includes('@') ? dec : raw;
-}
+import { authedFetch } from '@/app/lib/authedFetch';
 
 type Customer = {
   phone: string;
@@ -67,36 +25,17 @@ export default function CustomersPage() {
 
   async function fetchCustomers() {
     setLoading(true);
-    const { data: orders } = await supabase
-      .from('orders').select('*').order('created_at', { ascending: false });
-    if (!orders) { setLoading(false); return; }
-
-    const map = new Map<string, Customer>();
-    orders.forEach((o: any) => {
-      const decryptedPhone = decryptPhone(o.customer_phone || '');
-      const phone = decryptedPhone.replace(/\D/g, '').slice(-10);
-      if (!phone) return;
-      const decryptedEmail = decryptEmail(o.customer_email || '');
-      if (!map.has(phone)) {
-        map.set(phone, {
-          phone, name: o.customer_name || '', email: decryptedEmail,
-          totalOrders: 0, totalValue: 0, lastOrderDate: o.created_at,
-          orders: [], couponsUsed: [], avgOrderValue: 0
-        });
-      }
-      const c = map.get(phone)!;
-      c.totalOrders++;
-      c.totalValue += o.grand_total || o.total_amount || 0;
-      if (!c.name && o.customer_name) c.name = o.customer_name;
-      if (!c.email && decryptedEmail) c.email = decryptedEmail;
-      if (o.coupon_code && !c.couponsUsed.includes(o.coupon_code)) c.couponsUsed.push(o.coupon_code);
-      c.orders.push(o);
-    });
-
-    const arr = Array.from(map.values());
-    arr.forEach(c => { c.avgOrderValue = c.totalOrders > 0 ? Math.round(c.totalValue / c.totalOrders) : 0; });
-    setCustomers(arr);
-    setLoading(false);
+    try {
+      const response = await authedFetch('/api/admin/customers');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load customers.');
+      setCustomers(Array.isArray(payload.customers) ? payload.customers : []);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Unable to load customers.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const sorted = [...customers]

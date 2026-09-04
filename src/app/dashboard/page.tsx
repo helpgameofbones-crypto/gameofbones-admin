@@ -1,8 +1,14 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/app/lib/supabaseBrowserClient';
 
-function RevenueChart({ data, days }: { data: { date: string; revenue: number; orders: number }[]; days: number }) {
+type Order = {
+  id: string; ref?: string; created_at?: string; status?: string; payment_status?: string; payment_method?: string;
+  customer_name?: string; customer_phone?: string; grand_total?: number; total_amount?: number;
+}
+
+function RevenueChart({ data }: { data: { date: string; revenue: number; orders: number }[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -104,31 +110,33 @@ function RevenueChart({ data, days }: { data: { date: string; revenue: number; o
 }
 
 export default function DashboardPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartDays, setChartDays] = useState(7);
 
-  useEffect(() => { fetchData(); }, []);
-
-  async function fetchData() {
-    setLoading(true);
-    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500);
-    setOrders(data || []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    let active = true;
+    async function loadDashboard() {
+      setLoading(true);
+      const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500);
+      if (active) { setOrders((data || []) as Order[]); setLoading(false); }
+    }
+    void loadDashboard();
+    return () => { active = false; };
+  }, []);
 
   const now = new Date();
   const today = now.toISOString().split('T')[0];
   const todayOrders = orders.filter(o => o.created_at?.startsWith(today));
   const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
   const monthAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
-  const weekOrders = orders.filter(o => o.created_at >= weekAgo && o.status !== 'cancelled');
-  const monthOrders = orders.filter(o => o.created_at >= monthAgo && o.status !== 'cancelled');
+  const weekOrders = orders.filter(o => Boolean(o.created_at && o.created_at >= weekAgo) && o.status !== 'cancelled');
+  const monthOrders = orders.filter(o => Boolean(o.created_at && o.created_at >= monthAgo) && o.status !== 'cancelled');
 
   const todayRevenue = todayOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
   const weekRevenue = weekOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
   const monthRevenue = monthOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
-  const pendingDispatch = orders.filter(o => ['placed', 'confirmed'].includes(o.status)).length;
+  const pendingDispatch = orders.filter(o => ['placed', 'confirmed'].includes(o.status || '')).length;
   const uniqueCustomers = new Set(orders.map(o => (o.customer_phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean)).size;
   const avgOrderValue = monthOrders.length > 0 ? Math.round(monthRevenue / monthOrders.length) : 0;
   const codCount = monthOrders.filter(o => o.payment_method === 'cod').length;
@@ -149,13 +157,31 @@ export default function DashboardPage() {
 
   // Status breakdown
   const statusCounts = orders.reduce((acc, o) => {
-    acc[o.status] = (acc[o.status] || 0) + 1;
+    const status = o.status || 'unknown'; acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
+  const attentionItems = [
+    { key: 'dispatch', label: 'Orders ready to dispatch', detail: 'Confirmed orders waiting for an AWB or handover.', count: pendingDispatch, href: '/delhivery', tone: '#a16207', background: '#fff7df' },
+    { key: 'cod', label: 'COD orders to confirm', detail: 'Confirm address and customer intent before dispatch.', count: orders.filter(o => o.payment_method === 'cod' && ['pending_cod', 'placed', 'confirmed'].includes(o.payment_status || o.status || '')).length, href: '/cod-tracker', tone: '#9a3412', background: '#fff0e8' },
+    { key: 'payment', label: 'Payment exceptions', detail: 'Failed or incomplete payments that need follow-up.', count: orders.filter(o => ['failed', 'pending_payment'].includes(o.payment_status || '')).length, href: '/orders', tone: '#b91c1c', background: '#fff0f0' },
+    { key: 'delivery', label: 'Delivery exceptions', detail: 'RTO, return, or delivery-failed orders need a decision.', count: orders.filter(o => ['rto', 'returned', 'delivery_failed'].includes(o.status || '')).length, href: '/rto', tone: '#7e22ce', background: '#f8f0ff' },
+  ].filter(item => item.count > 0);
+
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24 }}>Dashboard</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20 }}>
+        <div><p style={{ margin: '0 0 4px', color: '#8a5c22', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Operations overview</p><h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Today’s work</h1></div>
+        <Link href="/orders" style={{ color: '#1a1008', fontSize: 13, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 4 }}>Open all orders</Link>
+      </div>
+
+      <section aria-labelledby="attention-heading" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 24, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '15px 18px', borderBottom: attentionItems.length ? '1px solid #eee7db' : 'none' }}>
+          <div><h2 id="attention-heading" style={{ margin: 0, fontSize: 16 }}>Needs attention</h2><p style={{ margin: '3px 0 0', color: '#6b7280', fontSize: 12 }}>Work through these before moving to reporting.</p></div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 28, height: 28, borderRadius: 14, background: attentionItems.length ? '#1a1008' : '#eaf5ee', color: attentionItems.length ? '#fff' : '#17603a', fontWeight: 800, fontSize: 12 }}>{loading ? '…' : attentionItems.length}</span>
+        </div>
+        {loading ? <div style={{ padding: 18, color: '#6b7280', fontSize: 13 }}>Checking today’s operational queues…</div> : attentionItems.length ? <div>{attentionItems.map(item => <Link key={item.key} href={item.href} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', gap: 14, alignItems: 'center', padding: '14px 18px', textDecoration: 'none', color: '#1a1008', borderTop: '1px solid #f4efe7' }}><span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 99, background: item.tone }} /><span><strong style={{ display: 'block', fontSize: 13 }}>{item.label}</strong><span style={{ color: '#6b7280', fontSize: 12 }}>{item.detail}</span></span><span style={{ background: item.background, color: item.tone, borderRadius: 14, padding: '5px 9px', minWidth: 26, textAlign: 'center', fontSize: 12, fontWeight: 800 }}>{item.count} →</span></Link>)}</div> : <div style={{ padding: 18, color: '#17603a', fontSize: 13, fontWeight: 600 }}>All clear — no operational exceptions in the loaded order range.</div>}
+      </section>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
@@ -204,7 +230,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-        {!loading && <RevenueChart data={chartData} days={chartDays} />}
+        {!loading && <RevenueChart data={chartData} />}
       </div>
 
       {/* Status breakdown + Recent orders */}

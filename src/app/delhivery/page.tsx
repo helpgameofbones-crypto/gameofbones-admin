@@ -1,34 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient';
 import { authedFetch } from '@/app/lib/authedFetch'
-
-// Same XOR/base64 scheme as the website's encryptData() — customer_phone is
-// stored encrypted, so it must be decrypted before it's shown on screen.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = atob(encrypted)
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
 
 // Order items are saved with a `quantity` key, not `qty` — reading `.qty`
 // silently returns undefined and turns every weight sum into NaN.
@@ -53,18 +25,17 @@ export default function DelhiveryPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    let q = supabase.from('orders').select('*').order('created_at', { ascending: false })
-
-    if (tab === 'pending') {
-      q = q.in('status', ['confirmed', 'packed']).is('delhivery_awb', null)
-    } else if (tab === 'dispatched') {
-      q = q.not('delhivery_awb', 'is', null)
-    }
-
-    const { data } = await q.limit(100)
-    setOrders(data || [])
-    setSelectedIds(new Set())
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=500')
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Unable to load orders.')
+      const allOrders = Array.isArray(payload.orders) ? payload.orders : []
+      setOrders(allOrders.filter((order: any) => tab === 'pending'
+        ? ['confirmed', 'packed'].includes(order.status) && !order.delhivery_awb
+        : tab === 'dispatched' ? Boolean(order.delhivery_awb) : true))
+      setSelectedIds(new Set())
+    } catch (error) { setMsg(error instanceof Error ? error.message : 'Unable to load orders.') }
+    finally { setLoading(false) }
   }
 
   async function generateAWB(order: any) {
@@ -313,7 +284,7 @@ export default function DelhiveryPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{decryptPhone(order.customer_phone)}</div>
+                      <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone || '—'}</div>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#1a1008' }}>
                       {order.shipping_address?.city}, {order.shipping_address?.state}<br />

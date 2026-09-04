@@ -2,6 +2,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/app/lib/supabaseBrowserClient';
 const STORAGE_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/';
+const MAX_SOURCE_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_OPTIMIZED_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = new Set(['video/mp4', 'video/webm']);
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -11,6 +15,8 @@ export default function ProductsPage() {
   const [filter, setFilter] = useState('all');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [replacedStoragePaths, setReplacedStoragePaths] = useState<string[]>([]);
+  const [draftUploadPaths, setDraftUploadPaths] = useState<string[]>([]);
   const imgRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const vidRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
@@ -35,6 +41,20 @@ export default function ProductsPage() {
       weight_grams: s.weight_grams || 0,
     }));
     setEditing({ ...p, images: [...images], videos: [...videos], sizes });
+    setReplacedStoragePaths([]);
+    setDraftUploadPaths([]);
+  }
+
+  function discardEditing() {
+    // Uploads are intentionally deferred from cleanup until Save. If the editor
+    // is cancelled, remove only the newly-created draft files — never the live media.
+    if (draftUploadPaths.length) {
+      void supabase.storage.from('product-images').remove(draftUploadPaths)
+        .catch((error) => console.warn('Could not clean up draft media:', error.message));
+    }
+    setEditing(null);
+    setReplacedStoragePaths([]);
+    setDraftUploadPaths([]);
   }
 
   function updateSize(idx: number, field: string, value: string) {
@@ -68,7 +88,20 @@ async function compressImage(file: File): Promise<Blob> {
     return blob.size < file.size ? blob : file;
 }
 
+  function getManagedStoragePath(url?: string) {
+    if (!url?.startsWith(STORAGE_URL)) return null;
+    return decodeURIComponent(url.slice(STORAGE_URL.length));
+  }
+
     async function uploadFile(file: File, type: 'image' | 'video', slotIdx: number) {
+          if (type === 'image' && file.size > MAX_SOURCE_IMAGE_BYTES) {
+            alert('Choose an image smaller than 8 MB. It will be optimized before upload.');
+            return;
+          }
+          if (type === 'video' && (!ALLOWED_VIDEO_TYPES.has(file.type) || file.size > MAX_VIDEO_BYTES)) {
+            alert('Use an MP4 or WebM video smaller than 12 MB. This keeps the storefront fast and protects our storage allowance.');
+            return;
+          }
           setUploading(true);
           let uploadBlob: Blob = file;
           let ext = file.name.split('.').pop();
@@ -79,12 +112,25 @@ async function compressImage(file: File): Promise<Blob> {
                   } catch (e) {
                             console.error('Image compression failed, uploading original:', e);
                   }
+                  if (uploadBlob.size > MAX_OPTIMIZED_IMAGE_BYTES) {
+                            setUploading(false);
+                            alert('This image is still larger than 2 MB after optimization. Please resize or compress it, then try again.');
+                            return;
+                  }
           }
           const name = `${editing.id}/${type}-${slotIdx}-${Date.now()}.${ext}`;
           const { error } = await supabase.storage.from('product-images').upload(name, uploadBlob, { contentType: type === 'image' ? 'image/jpeg' : file.type, upsert: true });
           setUploading(false);
           if (error) { alert('Upload failed: ' + error.message); return; }
           const url = STORAGE_URL + name;
+          const previousUrl = type === 'image' ? editing.images?.[slotIdx] : editing.videos?.[slotIdx];
+          const previousPath = getManagedStoragePath(previousUrl);
+
+          // Delay cleanup until Save: cancelling an edit must leave live media intact.
+          if (previousPath && previousPath !== name) {
+            setReplacedStoragePaths((paths) => paths.includes(previousPath) ? paths : [...paths, previousPath]);
+          }
+          setDraftUploadPaths((paths) => [...paths, name]);
           if (type === 'image') {
                   const imgs = [...(editing.images || [])];
                   imgs[slotIdx] = url;
@@ -139,7 +185,13 @@ async function compressImage(file: File): Promise<Blob> {
       return;
     }
 
+    if (replacedStoragePaths.length) {
+      const { error: removalError } = await supabase.storage.from('product-images').remove(replacedStoragePaths);
+      if (removalError) console.warn('Product saved, but replaced media could not be removed:', removalError.message);
+    }
     setEditing(null);
+    setReplacedStoragePaths([]);
+    setDraftUploadPaths([]);
     fetchProducts();
   }
 
@@ -183,7 +235,7 @@ async function compressImage(file: File): Promise<Blob> {
 
       {editing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '40px 20px' }}
-          onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
+          onClick={e => { if (e.target === e.currentTarget) discardEditing(); }}>
           <div style={{ background: '#fff', borderRadius: 8, width: '100%', maxWidth: 750, padding: 28, height: 'fit-content' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
               {[0, 1, 2, 3].map(i => (
@@ -208,7 +260,7 @@ async function compressImage(file: File): Promise<Blob> {
                   {editing.videos?.[i] ? (
                     <video src={editing.videos[i]} style={{ width: '100%', maxHeight: 80, objectFit: 'cover', borderRadius: 4 }} />
                   ) : (
-                    <div style={{ color: '#9ca3af', fontSize: 12 }}>Add Video {i + 1}<br /><span style={{ fontSize: 10 }}>MP4, MOV, up to 50MB</span></div>
+                      <div style={{ color: '#9ca3af', fontSize: 12 }}>Add Video {i + 1}<br /><span style={{ fontSize: 10 }}>MP4 or WebM, up to 12MB</span></div>
                   )}
                   <input ref={vidRefs[i]} type="file" accept="video/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) uploadFile(e.target.files[0], 'video', i); }} />
                 </div>
@@ -278,7 +330,7 @@ async function compressImage(file: File): Promise<Blob> {
             )}
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setEditing(null)} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={discardEditing} style={{ padding: '12px 28px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={save} disabled={saving} style={{ padding: '12px 28px', background: saving ? '#9ca3af' : '#c8973a', color: '#fff', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer', fontWeight: 700, fontSize: 14 }}>
                 {saving ? 'Saving...' : 'Save Product'}
               </button>

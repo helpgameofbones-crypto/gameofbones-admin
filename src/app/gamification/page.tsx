@@ -1,27 +1,7 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/app/lib/supabaseBrowserClient'
-
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    const binary = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return '';
-  if (/^\+?\d{10,13}$/.test(raw)) return raw;
-  const dec = decryptData(raw);
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
-}
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function GamificationPage() {
   const [tab, setTab]             = useState('leaderboard')
@@ -41,15 +21,16 @@ export default function GamificationPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [cust, ords, rew, mil, str] = await Promise.all([
+    const [cust, ordersResponse, rew, mil, str] = await Promise.all([
       supabase.from('customers').select('*').order('total_spent', { ascending: false }),
-      supabase.from('orders').select('customer_phone, created_at, grand_total, status').order('created_at', { ascending: false }),
+      authedFetch('/api/admin/orders?limit=500'),
       supabase.from('rewards').select('*').order('created_at', { ascending: false }).limit(100),
       supabase.from('milestones').select('*').order('order_count'),
       supabase.from('streaks').select('*').order('current_streak', { ascending: false }),
     ])
     setCustomers(cust.data || [])
-    setOrders(ords.data || [])
+    const ordersPayload = await ordersResponse.json()
+    setOrders(ordersResponse.ok && Array.isArray(ordersPayload.orders) ? ordersPayload.orders : [])
     setRewards(rew.data || [])
     setMilestones(mil.data || [])
     setStreaks(str.data || [])
@@ -156,10 +137,7 @@ export default function GamificationPage() {
     const currentMonth = new Date().toISOString().slice(0, 7)
 
     for (const customer of customers) {
-      // orders.customer_phone may be XOR+base64 encrypted while customers.phone is
-      // plain text — decrypt before comparing, otherwise this only ever matches
-      // manual orders (which store phone in plain text) and misses real checkout orders.
-      const custOrders = orders.filter(o => decryptPhone(o.customer_phone) === customer.phone)
+      const custOrders = orders.filter(o => o.customer_phone === customer.phone)
       if (custOrders.length === 0) continue
 
       const orderMonths = [...new Set(custOrders.map(o => o.created_at.slice(0, 7)))]

@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
 import { authedFetch } from '@/app/lib/authedFetch';
 
 // NOTE: a hardcoded Delhivery API token used to live here and was called
@@ -8,30 +7,6 @@ import { authedFetch } from '@/app/lib/authedFetch';
 // anyone opening devtools. Tracking now goes through the existing
 // server-side /api/delhivery route (action: 'track'), same fix already
 // applied to delhivery-sync/page.tsx.
-
-// orders.customer_phone is stored XOR+base64 "encrypted" by the website's
-// encryptData() — displaying/searching it raw showed ciphertext instead of
-// a real phone number and made phone search silently never match anything.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    const binary = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return '';
-  if (/^\+?\d{10,13}$/.test(raw)) return raw;
-  const dec = decryptData(raw);
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
-}
 
 const STATUS_COLORS: Record<string, string> = {
   placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6',
@@ -50,14 +25,13 @@ export default function ShipmentTrackerPage() {
 
   async function fetchShipments() {
     setLoading(true);
-    const { data, error } = await supabase.from('orders')
-      .select('id,ref,status,delhivery_awb,customer_name,customer_phone,created_at,estimated_delivery,delivered_at')
-      .not('delhivery_awb', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(200);
-    if (error) { console.error(error); setLoading(false); return; }
-    setOrders((data || []).map(o => ({ ...o, customer_phone: decryptPhone(o.customer_phone) })));
-    setLoading(false);
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=500');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load shipments.');
+      setOrders((Array.isArray(payload.orders) ? payload.orders : []).filter((order: any) => order.delhivery_awb));
+    } catch (error) { console.error(error); alert(error instanceof Error ? error.message : 'Unable to load shipments.'); }
+    finally { setLoading(false); }
   }
 
   async function trackAwb(awb: string) {

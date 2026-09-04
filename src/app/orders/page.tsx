@@ -1,47 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
-
-// FIX: every function here now has explicit ": string" parameter types.
-// Next's strict TypeScript build fails the WHOLE deployment (for every page,
-// not just this one) if any function parameter has no inferrable type —
-// that's the exact error that's been silently breaking every deploy.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan';
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  try {
-    const binary = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return '';
-  if (/^\+?\d{10,13}$/.test(raw)) return raw;
-  const dec = decryptData(raw);
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw;
-}
-function decryptEmail(raw: string): string {
-  if (!raw) return '';
-  if (raw.includes('@')) return raw;
-  const dec = decryptData(raw);
-  return dec.includes('@') ? dec : raw;
-}
-function decryptAddressField(raw: string): string {
-  if (!raw) return '';
-  const dec = decryptData(raw);
-  const printable = dec.replace(/[\x20-\x7E]/g, '').length;
-  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec;
-}
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 
@@ -50,6 +9,25 @@ const STATUS_COLORS: Record<string, string> = {
   shipped: '#8b5cf6', out_for_delivery: '#06b6d4', delivered: '#16a34a',
   cancelled: '#ef4444', returned: '#dc2626'
 };
+
+type WorkspaceOrder = { status: string; payment_status?: string; payment_method?: string; delhivery_awb?: string | null };
+
+function orderNextAction(order: WorkspaceOrder) {
+  if (order.status === 'cancelled' || order.status === 'returned') return { title: 'No fulfilment action', detail: 'This order is closed. Review any refund or return activity.', href: '/returns', action: 'Open returns' };
+  if (order.payment_status === 'failed' || order.status === 'pending_payment') return { title: 'Resolve payment', detail: 'Payment has not been completed. Confirm the payment status before dispatch.', href: '/razorpay', action: 'Open payments' };
+  if (order.payment_method === 'cod' && order.payment_status === 'pending_cod') return { title: 'Confirm COD order', detail: 'Verify delivery details and customer intent before allocating stock.', href: '/cod-tracker', action: 'Open COD tracker' };
+  if (!order.delhivery_awb && ['placed', 'confirmed'].includes(order.status)) return { title: 'Create shipment', detail: 'Generate an AWB and hand this order to Delhivery.', href: '/delhivery', action: 'Create shipment' };
+  if (order.delhivery_awb && !['delivered'].includes(order.status)) return { title: 'Monitor delivery', detail: 'This shipment is in transit. Check carrier progress or flag an exception.', href: '/shipment-tracker', action: 'Open shipment tracker' };
+  return { title: 'Order completed', detail: 'Delivery is complete. Invite a review or prepare a repeat-order follow-up.', href: '/reorder-alert', action: 'Open reorder alerts' };
+}
+
+function OrderProgress({ status }: { status: string }) {
+  const steps = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered'];
+  const current = steps.indexOf(status);
+  return <div aria-label={`Fulfilment status: ${status}`} style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 3, marginTop: 12 }}>
+    {steps.map((step, index) => <div key={step}><div style={{ height: 5, borderRadius: 99, background: current >= index ? '#c8973a' : '#e9e1d4' }} /><span style={{ display: 'block', marginTop: 5, color: current === index ? '#1a1008' : '#84796c', fontWeight: current === index ? 700 : 500, fontSize: 9, lineHeight: 1.15, textTransform: 'uppercase', wordBreak: 'break-word' }}>{step.replaceAll('_', ' ')}</span></div>)}
+  </div>;
+}
 
 function parseItems(items: any): string[] {
   if (!items) return [];
@@ -94,26 +72,6 @@ function parseOrderNoteLines(notes: string | null | undefined, couponCode: strin
   }
 
   return { discountLines, chargeLines, customerNoteLines };
-}
-
-// FIX: some orders (older/seed data) store the street under `address` or
-// `line1` instead of `street`. Normalize onto `.street` regardless of which
-// key was used, and only run the XOR/base64 decrypt on whichever value we
-// find — this is what was showing as a blank or garbled address before.
-function decryptOrder(o: any) {
-  const dPhone = decryptPhone(o.customer_phone);
-  const dEmail = decryptEmail(o.customer_email);
-  let addr = o.shipping_address;
-  if (addr) {
-    if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { /* leave as-is */ } }
-    if (addr && typeof addr === 'object') {
-      const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1;
-      if (streetRaw) {
-        addr = { ...addr, street: decryptAddressField(streetRaw) };
-      }
-    }
-  }
-  return { ...o, customer_phone: dPhone, customer_email: dEmail, shipping_address: addr };
 }
 
 function StatusDropdown({ value, onChange }: { value: string; onChange: (s: string) => void }) {
@@ -167,10 +125,25 @@ export default function OrdersPage() {
 
   async function fetchOrders() {
     setLoading(true);
-    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
-    if (error) { console.error(error); setLoading(false); return; }
-    if (data) setOrders(data.map(decryptOrder));
-    setLoading(false);
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=200');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to load orders.');
+      setOrders(Array.isArray(payload.orders) ? payload.orders : []);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Unable to load orders.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveOrderUpdates(ids: string[], updates: Record<string, unknown>) {
+    const response = await authedFetch('/api/admin/orders', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, updates }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Unable to update order.');
   }
 
   async function updateStatus(id: string, newStatus: string) {
@@ -187,9 +160,11 @@ export default function OrdersPage() {
       const current = orders.find(o => o.id === id);
       if (!current?.delivered_at) updates.delivered_at = new Date().toISOString();
     }
-    await supabase.from('orders').update(updates).eq('id', id);
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
-    if (selected && selected.id === id) setSelected({ ...selected, ...updates });
+    try {
+      await saveOrderUpdates([id], updates);
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
+      if (selected && selected.id === id) setSelected({ ...selected, ...updates });
+    } catch (error) { alert(error instanceof Error ? error.message : 'Could not update this order.'); }
   }
 
   // NEW: add a note directly from the order detail panel, so nobody has to
@@ -201,23 +176,26 @@ export default function OrdersPage() {
     const existing = order?.order_notes || [];
     const note = { text: newNote.trim(), timestamp: new Date().toISOString(), author: 'Admin' };
     const updated = [...existing, note];
-    const { error } = await supabase.from('orders').update({ order_notes: updated }).eq('id', orderId);
-    setAddingNote(false);
-    if (error) { alert('Could not save note: ' + error.message); return; }
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_notes: updated } : o));
-    setSelected((prev: any) => (prev && prev.id === orderId) ? { ...prev, order_notes: updated } : prev);
-    setNewNote('');
+    try {
+      await saveOrderUpdates([orderId], { order_notes: updated });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_notes: updated } : o));
+      setSelected((prev: any) => (prev && prev.id === orderId) ? { ...prev, order_notes: updated } : prev);
+      setNewNote('');
+    } catch (error) { alert(error instanceof Error ? error.message : 'Could not save note.'); }
+    finally { setAddingNote(false); }
   }
 
   async function deleteOrder(id: string, ref: string) {
     if (!window.confirm(`Delete order ${ref}? This permanently removes it and cannot be undone.`)) return;
     setDeleteBusy(true);
-    const { error } = await supabase.from('orders').delete().eq('id', id);
-    setDeleteBusy(false);
-    if (error) { alert('Delete failed: ' + error.message); return; }
-    setOrders(prev => prev.filter(o => o.id !== id));
-    setCheckedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
-    if (selected && selected.id === id) setSelected(null);
+    try {
+      const response = await authedFetch('/api/admin/orders', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [id] }) });
+      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Delete failed.');
+      setOrders(prev => prev.filter(o => o.id !== id));
+      setCheckedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+      if (selected && selected.id === id) setSelected(null);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Delete failed.'); }
+    finally { setDeleteBusy(false); }
   }
 
   async function bulkDelete() {
@@ -225,12 +203,14 @@ export default function OrdersPage() {
     if (!window.confirm(`Delete ${checkedIds.size} order(s)? This permanently removes them and cannot be undone.`)) return;
     setBulkBusy(true);
     const ids = Array.from(checkedIds);
-    const { error } = await supabase.from('orders').delete().in('id', ids);
-    setBulkBusy(false);
-    if (error) { alert('Bulk delete failed: ' + error.message); return; }
-    setOrders(prev => prev.filter(o => !ids.includes(o.id)));
-    if (selected && ids.includes(selected.id)) setSelected(null);
-    clearSelection();
+    try {
+      const response = await authedFetch('/api/admin/orders', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Bulk delete failed.');
+      setOrders(prev => prev.filter(o => !ids.includes(o.id)));
+      if (selected && ids.includes(selected.id)) setSelected(null);
+      clearSelection();
+    } catch (error) { alert(error instanceof Error ? error.message : 'Bulk delete failed.'); }
+    finally { setBulkBusy(false); }
   }
 
   const filtered = orders.filter(o => {
@@ -279,11 +259,12 @@ export default function OrdersPage() {
     // Same delivered_at fix as updateStatus() above, applied to bulk actions too.
     const updates: Record<string, any> = { status: bulkStatus };
     if (bulkStatus === 'delivered') updates.delivered_at = new Date().toISOString();
-    const { error } = await supabase.from('orders').update(updates).in('id', ids);
-    setBulkBusy(false);
-    if (error) { alert('Bulk update failed: ' + error.message); return; }
-    setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, ...updates } : o));
-    clearSelection();
+    try {
+      await saveOrderUpdates(ids, updates);
+      setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, ...updates } : o));
+      clearSelection();
+    } catch (error) { alert(error instanceof Error ? error.message : 'Bulk update failed.'); }
+    finally { setBulkBusy(false); }
   }
 
   function bulkExportCsv() {
@@ -439,6 +420,11 @@ export default function OrdersPage() {
                 <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Order #{selected.ref}</h3>
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af' }}>✕</button>
               </div>
+
+              {(() => { const next = orderNextAction(selected); return <section aria-label="Order workspace" style={{ background: '#f8f1e4', border: '1px solid #ead7b4', borderRadius: 7, padding: 14, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}><div><div style={{ color: '#8a5c22', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Next action</div><strong style={{ color: '#1a1008', fontSize: 14 }}>{next.title}</strong></div><a href={next.href} style={{ background: '#1a1008', color: '#fff', textDecoration: 'none', borderRadius: 4, padding: '8px 10px', whiteSpace: 'nowrap', fontSize: 11, fontWeight: 800 }}>{next.action}</a></div>
+                <p style={{ color: '#6b5d4f', fontSize: 12, lineHeight: 1.45, margin: '8px 0 0' }}>{next.detail}</p><OrderProgress status={selected.status} />
+              </section>; })()}
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', letterSpacing: '.08em' }}>Status</label>

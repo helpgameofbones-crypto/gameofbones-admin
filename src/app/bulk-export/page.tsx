@@ -1,45 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
-
-// Same XOR/base64 scheme as the website's encryptData() — customer_phone and
-// shipping_address.street are stored encrypted.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = atob(encrypted)
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
-function decryptEmail(raw: string): string {
-  if (!raw) return ''
-  if (raw.includes('@')) return raw
-  const dec = decryptData(raw)
-  return dec.includes('@') ? dec : raw
-}
-function decryptAddressField(raw: string): string {
-  if (!raw) return ''
-  const dec = decryptData(raw)
-  const printable = dec.replace(/[\x20-\x7E]/g, '').length
-  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec
-}
+import { authedFetch } from '@/app/lib/authedFetch'
 
 // Order items are saved with a `quantity` key, not `qty`, and their label is
 // `product_name`, not `name` — reading the wrong keys silently produced
@@ -66,16 +27,16 @@ export default function BulkExportPage() {
     else if (filter === 'week') from.setDate(from.getDate() - 7)
     else if (filter === 'month') from.setDate(from.getDate() - 30)
 
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .gte('created_at', from.toISOString())
-      .not('status', 'in', '("delivered","rto","cancelled")')
-      .order('created_at', { ascending: false })
-
-    setOrders(data || [])
-    setSelected(new Set())
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/orders?limit=500')
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Unable to load orders.')
+      setOrders((Array.isArray(payload.orders) ? payload.orders : []).filter((order: any) =>
+        new Date(order.created_at) >= from && !['delivered', 'rto', 'cancelled'].includes(order.status)
+      ))
+      setSelected(new Set())
+    } catch (error) { alert(error instanceof Error ? error.message : 'Unable to load orders.') }
+    finally { setLoading(false) }
   }
 
   function toggleSelect(id: string) {
@@ -102,9 +63,9 @@ export default function BulkExportPage() {
         o.ref,
         new Date(o.created_at).toLocaleDateString('en-IN'),
         o.customer_name,
-        decryptPhone(o.customer_phone),
-        decryptEmail(o.customer_email) || '',
-        decryptAddressField(o.shipping_address?.street || o.shipping_address?.line1 || '') || '',
+        o.customer_phone || '',
+        o.customer_email || '',
+        o.shipping_address?.street || o.shipping_address?.line1 || '',
         o.shipping_address?.city || '',
         o.shipping_address?.state || '',
         o.shipping_address?.pincode || '',
@@ -133,8 +94,8 @@ export default function BulkExportPage() {
         const weight = (o.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0) / 1000
         return [
           o.customer_name,
-          decryptPhone(o.customer_phone),
-          decryptAddressField(o.shipping_address?.street || o.shipping_address?.line1 || ''),
+          o.customer_phone || '',
+          o.shipping_address?.street || o.shipping_address?.line1 || '',
           o.shipping_address?.city || '',
           o.shipping_address?.state || '',
           o.shipping_address?.pincode || '',
@@ -261,7 +222,7 @@ export default function BulkExportPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium" style={{ color: '#111827' }}>{order.customer_name}</div>
-                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{decryptPhone(order.customer_phone)}</div>
+                    <div className="text-xs" style={{ color: '#2a1f1a' }}>{order.customer_phone || '—'}</div>
                   </td>
                   <td className="px-4 py-3">
                     {(order.items || []).slice(0, 2).map((item: any, i: number) => (
