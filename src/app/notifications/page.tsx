@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Bell, Package, AlertTriangle, TrendingDown, RefreshCw, CheckCheck, ShoppingCart, Users, X } from 'lucide-react'
 
 export default function NotificationsPage() {
@@ -14,12 +14,10 @@ export default function NotificationsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: ords }, { data: prods }] = await Promise.all([
-      supabase.from('orders').select('*').order('created_at', { ascending: false }),
-      supabase.from('products').select('*').eq('is_active', true),
-    ])
-    setOrders(ords || [])
-    setProducts(prods || [])
+    const [ordersResponse, productsResponse] = await Promise.all([authedFetch('/api/admin/orders?limit=1000'), authedFetch('/api/admin/products')])
+    const [ordersPayload, productsPayload] = await Promise.all([ordersResponse.json().catch(() => ({})), productsResponse.json().catch(() => ({}))])
+    setOrders(ordersResponse.ok ? ordersPayload.orders || [] : [])
+    setProducts(productsResponse.ok ? (productsPayload.products || []).filter((product: any) => product.is_active) : [])
     setLoading(false)
   }
 

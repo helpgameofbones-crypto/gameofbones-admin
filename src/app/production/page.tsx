@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabase'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Plus, X, ChevronDown, ChevronUp, Download, BarChart2, Clock, TrendingUp, Package } from 'lucide-react'
 
 export default function ProductionPage() {
@@ -19,11 +19,9 @@ export default function ProductionPage() {
 
   async function fetchBatches() {
     setLoading(true)
-    const { data } = await supabase
-      .from('production_batches')
-      .select('*')
-      .order('date', { ascending: false })
-    setBatches(data || [])
+    const response = await authedFetch('/api/admin/operations-data?resource=production')
+    const payload = await response.json().catch(() => ({}))
+    setBatches(response.ok ? payload.items || [] : [])
     setLoading(false)
   }
 
@@ -51,7 +49,7 @@ export default function ProductionPage() {
     const yield_pct = c.total_kg > 0 ? Math.round((yield_g / (c.total_kg * 1000)) * 100) : 0
     const run_time = `${Math.floor(c.run_time_hours)}h ${Math.round((c.run_time_hours % 1) * 60)}m`
 
-    const { error } = await supabase.from('production_batches').insert({
+    const response = await authedFetch('/api/admin/operations-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'production',
       ...form,
       price: c.price,
       total_cost: c.total_cost,
@@ -60,8 +58,8 @@ export default function ProductionPage() {
       total_grams: c.total_kg * 1000,
       yield_g,
       yield_pct,
-    })
-    if (!error) {
+    }) })
+    if (response.ok) {
       setShowForm(false)
       setForm({ batch_name: '', batch_id: '', start_time: '', end_time: '', price_per_kg: '', total_kg: '', transportation: '', notes: '', date: new Date().toISOString().split('T')[0] })
       fetchBatches()

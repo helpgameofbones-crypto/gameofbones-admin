@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const EMPTY_FORM = {
   name: '', instagram_handle: '', phone: '', email: '', address: '',
@@ -26,12 +26,10 @@ export default function InfluencersPage() {
 
   async function fetchAll() {
     setLoading(true)
-    const [inf, snd] = await Promise.all([
-      supabase.from('influencers').select('*').order('created_at', { ascending: false }),
-      supabase.from('influencer_sends').select('*').order('sent_date', { ascending: false }),
-    ])
-    setInfluencers(inf.data || [])
-    setSends(snd.data || [])
+    const response = await authedFetch('/api/admin/operations-data?resource=influencers')
+    const payload = await response.json().catch(() => ({}))
+    setInfluencers(response.ok ? payload.influencers || [] : [])
+    setSends(response.ok ? payload.sends || [] : [])
     setLoading(false)
   }
 
@@ -42,7 +40,7 @@ export default function InfluencersPage() {
   async function saveInfluencer() {
     if (!form.name || !form.instagram_handle) return
     setSaving(true)
-    await supabase.from('influencers').insert({
+    const response = await authedFetch('/api/admin/operations-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'influencer',
       name:              form.name,
       instagram_handle:  form.instagram_handle.replace(/^@/, ''),
       phone:             form.phone,
@@ -51,8 +49,9 @@ export default function InfluencersPage() {
       collab_type:       form.collab_type,
       payment_amount:    form.collab_type === 'paid' && form.payment_amount ? parseFloat(form.payment_amount) : null,
       notes:             form.notes,
-    })
+    }) })
     setSaving(false)
+    if (!response.ok) return
     setShowAddForm(false)
     setForm(EMPTY_FORM)
     fetchAll()
@@ -61,30 +60,23 @@ export default function InfluencersPage() {
   async function logSend() {
     if (!selected || !sendForm.items) return
     setLoggingSend(true)
-    await supabase.from('influencer_sends').insert({
+    const response = await authedFetch('/api/admin/operations-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'influencer-send',
       influencer_id: selected.id,
       items:         sendForm.items,
       value:         sendForm.value ? parseFloat(sendForm.value) : null,
       sent_date:     sendForm.sent_date,
       tracking_awb:  sendForm.tracking_awb,
       notes:         sendForm.notes,
-    })
-    await supabase.from('activity_log').insert({
-      action:      'influencer send logged',
-      entity_type: 'influencer',
-      entity_id:   selected.id,
-      entity_name: selected.name,
-      details:     `Sent: ${sendForm.items}${sendForm.value ? ` (₹${sendForm.value})` : ''}`,
-    })
+    }) })
     setLoggingSend(false)
+    if (!response.ok) return
     setSendForm(EMPTY_SEND)
     fetchAll()
   }
 
   async function deleteInfluencer(id: string) {
     if (!confirm('Delete this influencer and their send history?')) return
-    await supabase.from('influencer_sends').delete().eq('influencer_id', id)
-    await supabase.from('influencers').delete().eq('id', id)
+    await authedFetch(`/api/admin/operations-data?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     setSelected(null)
     fetchAll()
   }

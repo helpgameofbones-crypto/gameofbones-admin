@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 interface AuditEntry {
   id: number; table_name: string; record_id: string; action: string;
@@ -16,9 +16,9 @@ export default function AuditTrailPage() {
 
   async function fetchAudit() {
     setLoading(true);
-    const { data } = await supabase.from('audit_log')
-      .select('*').order('created_at', { ascending: false }).limit(200);
-    setEntries(data || []);
+    const response = await authedFetch('/api/admin/operations-data?resource=audit');
+    const payload = await response.json().catch(() => ({}));
+    setEntries(response.ok ? payload.items || [] : []);
     setLoading(false);
   }
 
