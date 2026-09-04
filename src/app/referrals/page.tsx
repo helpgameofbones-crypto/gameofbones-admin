@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<any[]>([]);
@@ -12,9 +12,10 @@ export default function ReferralsPage() {
   async function fetchReferrals() {
     setLoading(true);
     setError('');
-    const { data, error } = await supabase.from('referrals').select('*').order('created_at', { ascending: false });
-    if (error) { setError(error.message); setLoading(false); return; }
-    setReferrals(data || []);
+    const response = await authedFetch('/api/admin/growth?resource=referrals');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(payload.error || 'Unable to load referrals.'); setLoading(false); return; }
+    setReferrals(payload.items || []);
     setLoading(false);
   }
 

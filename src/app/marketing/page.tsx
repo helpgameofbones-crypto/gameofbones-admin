@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function MarketingPage() {
   const [tab, setTab]           = useState('pixel')
@@ -26,26 +26,25 @@ export default function MarketingPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [spend, utm] = await Promise.all([
-      supabase.from('ad_spend').select('*').order('date', { ascending: false }),
-      supabase.from('utm_links').select('*').order('created_at', { ascending: false }),
-    ])
-    setAdSpend(spend.data || [])
-    setUtmLinks(utm.data || [])
+    const response = await authedFetch('/api/admin/growth?resource=marketing')
+    const payload = await response.json().catch(() => ({}))
+    setAdSpend(response.ok ? payload.ad_spend || [] : [])
+    setUtmLinks(response.ok ? payload.utm_links || [] : [])
     setLoading(false)
   }
 
   async function addAdSpend() {
     if (!newSpend.amount) return
     setSaving(true)
-    await supabase.from('ad_spend').insert({
+    const response = await authedFetch('/api/admin/growth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'ad-spend',
       date: newSpend.date, platform: newSpend.platform,
       campaign_name: newSpend.campaign_name, amount: parseFloat(newSpend.amount),
       impressions: parseInt(newSpend.impressions) || 0, clicks: parseInt(newSpend.clicks) || 0,
       orders_attributed: parseInt(newSpend.orders_attributed) || 0,
       revenue_attributed: parseFloat(newSpend.revenue_attributed) || 0, notes: newSpend.notes,
-    })
+    }) })
     setSaving(false)
+    if (!response.ok) { setMsg('Unable to save advertising spend.'); return }
     setMsg('Saved!')
     setNewSpend({ ...newSpend, campaign_name: '', amount: '', impressions: '', clicks: '', orders_attributed: '', revenue_attributed: '', notes: '' })
     fetchData()
@@ -64,8 +63,9 @@ export default function MarketingPage() {
   async function saveUtmLink() {
     if (!newUtm.name || !newUtm.utm_source) return
     setSaving(true)
-    await supabase.from('utm_links').insert({ ...newUtm, full_url: buildUtmUrl() })
+    const response = await authedFetch('/api/admin/growth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource: 'utm', ...newUtm, full_url: buildUtmUrl() }) })
     setSaving(false)
+    if (!response.ok) { setMsg('Unable to save tracking link.'); return }
     setMsg('Saved!')
     setNewUtm({ ...newUtm, name: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_content: '' })
     fetchData()

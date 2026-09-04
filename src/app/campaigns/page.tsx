@@ -226,13 +226,10 @@ export default function CampaignsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [cust, ordersResponse] = await Promise.all([
-      supabase.from('customers').select('*').not('email', 'is', null),
-      authedFetch('/api/admin/orders?limit=500'),
-    ])
-    const ordersPayload = await ordersResponse.json()
-    setCustomers(cust.data || [])
-    setOrders(ordersResponse.ok && Array.isArray(ordersPayload.orders) ? ordersPayload.orders : [])
+    const response = await authedFetch('/api/admin/customer-intelligence')
+    const payload = await response.json().catch(() => ({}))
+    setCustomers(response.ok ? payload.customers || [] : [])
+    setOrders(response.ok ? payload.orders || [] : [])
     setLoading(false)
   }
 
