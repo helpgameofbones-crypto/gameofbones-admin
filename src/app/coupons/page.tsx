@@ -13,7 +13,7 @@ interface Coupon {
 }
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 function discountLabel(c: Coupon) {
   if (c.type === 'percent') return `${c.value ?? 0}%`;
@@ -48,25 +48,11 @@ export default function CouponsPage() {
 
   const fetchCoupons = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      const list = (data as Coupon[]) || [];
-      setCoupons(list);
-
-      // Count real usage per code from the orders table.
-      const { data: orderRows } = await supabase
-        .from('orders')
-        .select('coupon_code')
-        .not('coupon_code', 'is', null);
-      const counts: Record<string, number> = {};
-      (orderRows || []).forEach((o: any) => {
-        if (!o.coupon_code) return;
-        counts[o.coupon_code] = (counts[o.coupon_code] || 0) + 1;
-      });
-      setUsageCounts(counts);
+      const response = await authedFetch('/api/admin/coupons');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to load coupons');
+      setCoupons((Array.isArray(data.coupons) ? data.coupons : []) as Coupon[]);
+      setUsageCounts(data.usageCounts || {});
     } catch (error) {
       console.error('Error fetching coupons:', error);
     }
@@ -88,8 +74,9 @@ export default function CouponsPage() {
         max_uses: couponData.max_uses || null,
         is_active: couponData.is_active,
       };
-      const { error } = await supabase.from('coupons').insert([payload]);
-      if (error) throw error;
+      const response = await authedFetch('/api/admin/coupons', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to create coupon');
 
       setCouponData({
         code: '', type: 'percent', value: 10, min_order: 0,
@@ -105,8 +92,8 @@ export default function CouponsPage() {
 
   const handleToggleCoupon = async (id: string, is_active: boolean) => {
     try {
-      const { error } = await supabase.from('coupons').update({ is_active }).eq('id', id);
-      if (error) throw error;
+      const response = await authedFetch('/api/admin/coupons', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active }) });
+      if (!response.ok) throw new Error('Unable to update coupon');
       fetchCoupons();
     } catch (error) {
       console.error('Error toggling coupon:', error);
