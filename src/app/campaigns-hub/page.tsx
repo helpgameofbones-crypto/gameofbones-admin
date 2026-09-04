@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch'
 
 const LOGO = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg'
@@ -112,14 +111,10 @@ export default function CampaignsHubPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [cust, prods, orders] = await Promise.all([
-      supabase.from('customers').select('name, email, phone, total_orders, total_spent').not('email', 'is', null),
-      supabase.from('products').select('*').eq('is_active', true),
-      supabase.from('orders').select('items, created_at').gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
-    ])
-
-    const productsData = prods.data || []
-    const ordersData   = orders.data || []
+    const response = await authedFetch('/api/admin/campaign-hub')
+    const data = await response.json()
+    const productsData: any[] = response.ok && Array.isArray(data.products) ? data.products : []
+    const ordersData: any[]   = response.ok && Array.isArray(data.orders) ? data.orders : []
 
     const salesMap: Record<string, number> = {}
     ordersData.forEach(o => {
@@ -139,7 +134,7 @@ export default function CampaignsHubPage() {
     }).filter(p => p.daysLeft <= 14 && p.daysLeft < 999)
       .sort((a, b) => a.daysLeft - b.daysLeft)
 
-    setCustomers(cust.data || [])
+    setCustomers(response.ok && Array.isArray(data.customers) ? data.customers : [])
     setReplenishment(replen)
     setLoading(false)
   }
@@ -174,16 +169,8 @@ export default function CampaignsHubPage() {
 
     const couponCode = festival.code + new Date().getFullYear()
 
-    await supabase.from('coupons').insert({
-      code:        couponCode,
-      type:        'percent',
-      value:       festival.discount,
-      min_order:   499,
-      max_uses:    1000,
-      valid_from:  new Date().toISOString().split('T')[0],
-      valid_until: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      is_active:   true,
-    }).single()
+    const couponResponse = await authedFetch('/api/admin/coupons', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: couponCode, type: 'percent', value: festival.discount, min_order: 499, max_uses: 1000, valid_until: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], is_active: true }) })
+    if (!couponResponse.ok) { setSaving(false); setMsg('Unable to create the campaign coupon.'); return }
 
     const res = await authedFetch('/api/send-campaign', {
       method: 'POST',
