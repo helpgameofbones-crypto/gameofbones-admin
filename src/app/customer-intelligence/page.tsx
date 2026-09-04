@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function CustomerIntelligencePage() {
@@ -25,43 +24,29 @@ export default function CustomerIntelligencePage() {
 
   async function fetchData() {
     setLoading(true)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const [cust, ordersResponse, subs, prods] = await Promise.all([
-      supabase.from('customers').select('*').order('total_spent', { ascending: false }),
-      authedFetch('/api/admin/orders?limit=500'),
-      supabase.from('subscriptions').select('*').order('created_at', { ascending: false }),
-      supabase.from('products').select('id, name, price, product_sizes(*)').eq('is_active', true).order('name'),
-    ])
-    const ordersPayload = await ordersResponse.json()
-    setCustomers(cust.data || [])
-    setOrders(ordersResponse.ok && Array.isArray(ordersPayload.orders) ? ordersPayload.orders : [])
-    setSubscriptions(subs.data || [])
-    setProducts(prods.data || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/customer-intelligence')
+      const data = await response.json()
+      setCustomers(response.ok && Array.isArray(data.customers) ? data.customers : [])
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+      setSubscriptions(response.ok && Array.isArray(data.subscriptions) ? data.subscriptions : [])
+      setProducts(response.ok && Array.isArray(data.products) ? data.products : [])
+    } finally { setLoading(false) }
   }
 
   async function importCustomers() {
     if (!importData.trim()) return
     setSaving(true)
-    const lines = importData.trim().split('\n')
-    let imported = 0
-    for (const line of lines) {
+    const rows = importData.trim().split('\n').map(line => {
       const parts = line.split(',').map(p => p.trim().replace(/"/g, ''))
-      if (parts.length < 2) continue
       const [name, phone, email, city, state] = parts
-      if (!name || !phone) continue
-      const { data: existing } = await supabase.from('customers').select('id').eq('phone', phone).single()
-      if (existing) continue
-      await supabase.from('customers').insert({
-        name, phone, email: email || null, city: city || null, state: state || null,
-        total_orders: 0, total_spent: 0,
-      })
-      imported++
-    }
+      return { name, phone, email, city, state }
+    })
+    const response = await authedFetch('/api/admin/customer-intelligence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'import', rows }) })
+    const data = await response.json()
     setSaving(false)
-    setMsg(` Imported ${imported} customers!`)
+    if (!response.ok) { setMsg(data.error || 'Unable to import customers.'); return }
+    setMsg(` Imported ${data.imported} customers!`)
     setImportData('')
     fetchData()
     setTimeout(() => setMsg(''), 4000)
@@ -69,18 +54,12 @@ export default function CustomerIntelligencePage() {
 
   async function mergeCustomers() {
     if (!mergePhone1 || !mergePhone2) return
-    const c1 = customers.find(c => c.phone === mergePhone1)
-    const c2 = customers.find(c => c.phone === mergePhone2)
-    if (!c1 || !c2) { setMsg(' Customer not found'); return }
     setSaving(true)
-    await supabase.from('customers').update({
-      total_orders: c1.total_orders + c2.total_orders,
-      total_spent:  c1.total_spent + c2.total_spent,
-      notes: [c1.notes, c2.notes].filter(Boolean).join(' | '),
-    }).eq('id', c1.id)
-    await supabase.from('customers').delete().eq('id', c2.id)
+    const response = await authedFetch('/api/admin/customer-intelligence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'merge', keepPhone: mergePhone1, removePhone: mergePhone2 }) })
+    const data = await response.json()
     setSaving(false)
-    setMsg(` Merged ${c2.name} into ${c1.name}`)
+    if (!response.ok) { setMsg(data.error || 'Unable to merge customers.'); return }
+    setMsg(` Merged ${data.mergedName} into ${data.keepName}`)
     setMergePhone1('')
     setMergePhone2('')
     fetchData()
@@ -90,22 +69,9 @@ export default function CustomerIntelligencePage() {
   async function addSubscription() {
     if (!newSub.customer_phone || !newSub.product_id) return
     setSaving(true)
-    const customer  = customers.find(c => c.phone === newSub.customer_phone)
-    const product   = products.find(p => p.id === newSub.product_id)
-    const size      = product?.product_sizes?.find((s: any) => s.label === newSub.size_label)
-    await supabase.from('subscriptions').insert({
-      customer_phone: newSub.customer_phone,
-      customer_name:  customer?.name || '',
-      customer_email: customer?.email || '',
-      product_id:     newSub.product_id,
-      product_name:   product?.name || '',
-      size_label:     newSub.size_label,
-      price:          size?.price || product?.price || 0,
-      frequency_days: parseInt(newSub.frequency_days) || 30,
-      next_order_date: newSub.next_order_date || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-      is_active:      true,
-    })
+    const response = await authedFetch('/api/admin/customer-intelligence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'subscription', subscription: newSub }) })
     setSaving(false)
+    if (!response.ok) { setMsg('Unable to create subscription.'); return }
     setMsg(' Subscription created!')
     setNewSub({ customer_phone: '', product_id: '', size_label: '', frequency_days: '30', next_order_date: '' })
     fetchData()
@@ -113,7 +79,8 @@ export default function CustomerIntelligencePage() {
   }
 
   async function toggleSubscription(id: string, current: boolean) {
-    await supabase.from('subscriptions').update({ is_active: !current }).eq('id', id)
+    const response = await authedFetch('/api/admin/customer-intelligence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: !current }) })
+    if (!response.ok) return
     fetchData()
   }
 
