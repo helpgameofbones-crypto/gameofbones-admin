@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,34 +10,6 @@ const supabase = createClient(
 
 const DELHIVERY_TOKEN = process.env.DELHIVERY_API_TOKEN
 const DELHIVERY_BASE  = 'https://track.delhivery.com'
-
-// ===== Same XOR/base64 scheme used by the website's encryptData() =====
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = Buffer.from(encrypted, 'base64').toString('binary')
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
-function decryptAddressField(raw: string): string {
-  if (!raw) return ''
-  const dec = decryptData(raw)
-  const printable = dec.replace(/[\x20-\x7E]/g, '').length
-  return printable / Math.max(dec.length, 1) > 0.3 ? raw : dec
-}
 
 function itemQty(i: any): number {
   return i?.quantity ?? i?.qty ?? 1
@@ -58,15 +31,15 @@ export async function POST(req: NextRequest) {
       const order = orderData
 
       const streetRaw = order.shipping_address?.street || order.shipping_address?.line1 || order.shipping_address?.address || ''
-      const decryptedStreet = decryptAddressField(streetRaw)
-      const decryptedPhone = decryptPhone(order.customer_phone)
+      const decryptedStreet = String(revealLegacyPiiValue(streetRaw))
+      const decryptedPhone = revealLegacyPii(order.customer_phone)
 
       const totalQty = (order.items || []).reduce((s: number, i: any) => s + itemQty(i), 0)
       const totalWeightG = (order.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0)
 
       const payload = {
         shipments: [{
-          name:              order.customer_name,
+          name:              revealLegacyPii(order.customer_name),
           add:               decryptedStreet,
           city:              order.shipping_address?.city,
           state:             order.shipping_address?.state,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { JWT } from 'google-auth-library'
+import { revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,41 +15,6 @@ const SHEET_ID = '1XYL7ucovkfGr-9Ry-kVYm1j2Lv22ed-0akMEhz-iyYA'
 const ORDERS_TAB = 'Sales & Orders Log'
 const STOCK_TAB = 'Stock Levels'
 const ORDERS_START_ROW = 11 // matches the tab's own documented paste-start row
-
-// Same XOR/base64 scheme as the website's encryptData() -- customer_phone/email and
-// shipping_address.street are stored obfuscated this way.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = Buffer.from(encrypted, 'base64').toString('binary')
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
-function decryptEmail(raw: string): string {
-  if (!raw) return ''
-  if (raw.includes('@')) return raw
-  const dec = decryptData(raw)
-  return dec.includes('@') ? dec : raw
-}
-function decryptAddressField(raw: string): string {
-  if (!raw) return ''
-  const dec = decryptData(raw)
-  const nonPrintable = dec.replace(/[\x20-\x7E]/g, '').length
-  return nonPrintable / Math.max(dec.length, 1) > 0.3 ? raw : dec
-}
 
 // Order items are saved with a `quantity` key and `product_name`, not `qty`/`name`
 // for website checkouts, but manual admin orders use `quantity`/`name`. Handle both.
@@ -123,10 +89,10 @@ export async function GET(req: NextRequest) {
     const orderRows = orderList.map(o => [
       o.ref,
       new Date(o.created_at).toLocaleDateString('en-IN'),
-      o.customer_name || '',
-      decryptPhone(o.customer_phone),
-      decryptEmail(o.customer_email),
-      decryptAddressField(o.shipping_address?.street || ''),
+      revealLegacyPii(o.customer_name),
+      revealLegacyPii(o.customer_phone),
+      revealLegacyPii(o.customer_email),
+      String(revealLegacyPiiValue(o.shipping_address?.street || '')),
       o.shipping_address?.city || '',
       o.shipping_address?.state || '',
       o.shipping_address?.pincode || '',

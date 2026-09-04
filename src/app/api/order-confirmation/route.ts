@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { corsHeaders } from '@/app/lib/cors'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -14,59 +15,27 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-// Mirrors the reversible XOR obfuscation used in the storefront (index.html,
-// ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'). customer_email,
-// customer_phone and shipping_address.street are stored run through this on
-// newer orders; older orders may still have plaintext values, so callers
-// below fall back to the raw value when the decrypted result doesn't look
-// like real data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-
-function decryptData(encrypted: string): string {
-    try {
-          if (!encrypted) return ''
-          const decoded = Buffer.from(encrypted, 'base64').toString('binary')
-          let result = ''
-          for (let i = 0; i < decoded.length; i++) {
-                  result += String.fromCharCode(
-                            decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
-                          )
-          }
-          return result
-    } catch (e) {
-          return encrypted
-    }
-}
-
-// customer_email: try decrypting; use the decrypted value only if it looks
-// like an email. Handles both encrypted (new) and plaintext (old) orders.
 function resolveEmail(raw: string | null | undefined): string {
     if (!raw) return ''
     if (raw.includes('@')) return raw
-    const decrypted = decryptData(raw)
+    const decrypted = revealLegacyPii(raw)
     if (decrypted.includes('@')) return decrypted
     return ''
 }
 
-// customer_phone: same encrypted/plaintext fallback pattern as resolveEmail.
-// A resolved phone "looks right" if it has at least 10 digits after
-// stripping non-digit characters.
 function resolvePhone(raw: string | null | undefined): string {
     if (!raw) return ''
     const rawDigits = raw.replace(/\D/g, '')
     if (rawDigits.length >= 10) return raw
-    const decrypted = decryptData(raw)
+    const decrypted = revealLegacyPii(raw)
     const decryptedDigits = decrypted.replace(/\D/g, '')
     if (decryptedDigits.length >= 10) return decrypted
     return ''
 }
 
-// shipping_address.street: try decrypting; fall back to the raw value if the
-// result contains control/non-printable characters (a sign decryption was
-// run on an already-plaintext string).
 function resolveAddressField(raw: string | null | undefined): string {
     if (!raw) return ''
-    const decrypted = decryptData(raw)
+    const decrypted = revealLegacyPii(raw)
     const looksGarbled = /[\x00-\x08\x0e-\x1f]/.test(decrypted)
     return looksGarbled ? raw : decrypted
 }

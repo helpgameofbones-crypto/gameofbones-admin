@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { protectLegacyPii } from '@/app/lib/pii-crypto'
 
 export const maxDuration = 20
 
@@ -8,21 +9,6 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
-
-// Same reversible XOR+base64 scheme used everywhere else in this codebase
-// (see orders/page.tsx decryptData) so that a self-healed order's
-// phone/email/address show up correctly on the admin Orders page instead
-// of as raw plaintext next to every other (encrypted) order.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function encryptData(data: string): string {
-    if (!data) return ''
-    try {
-          const bytes = Array.from(data).map((c, i) => c.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-          return Buffer.from(bytes).toString('base64')
-    } catch {
-          return data
-    }
-}
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -92,9 +78,9 @@ export async function POST(req: NextRequest) {
                       await supabase.from('orders').insert({
                                   ref: orderId || ('RZP-' + payment.id),
                                   customer_name: customerNoteName || null,
-                                  customer_email: payment.email ? encryptData(payment.email) : null,
-                                  customer_phone: contact ? encryptData(contact) : null,
-                                  shipping_address: { street: encryptData(recoveredAddress || addressNote), city: '', state: '', pincode: '' },
+                                  customer_email: payment.email ? protectLegacyPii(payment.email) : null,
+                                  customer_phone: contact ? protectLegacyPii(contact) : null,
+                                  shipping_address: { street: protectLegacyPii(recoveredAddress || addressNote), city: '', state: '', pincode: '' },
                                   items: recoveredItems,
                                   subtotal: subtotalRupees,
                                   discount: discountRupees,

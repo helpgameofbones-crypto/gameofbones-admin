@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,32 +14,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_APP_PASSWORD,
   },
 })
-
-// Same XOR/base64 scheme as the website's encryptData() — customer_phone is stored encrypted.
-// TODO(security): this is a reversible XOR+base64 obfuscation, not real encryption, and the
-// key is hardcoded and shipped to client bundles — it provides no real protection. Replace with
-// server-side AES-256-GCM (key from a secrets manager, never sent to the browser) and run a
-// data migration for existing rows. Not safe to change here without DB access to migrate data.
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = Buffer.from(encrypted, 'base64').toString('binary')
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
 
 export async function GET(req: NextRequest) {
   // Verify cron secret
@@ -158,7 +133,7 @@ export async function GET(req: NextRequest) {
             <span style="font-weight:700;color:#c8973a">${o.ref}</span>
             <span style="font-weight:700;color:#1a1008">Rs.${o.grand_total?.toLocaleString('en-IN')}</span>
           </div>
-          <div style="color:#8a7a6a;margin-top:2px">${o.customer_name} · ${decryptPhone(o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
+          <div style="color:#8a7a6a;margin-top:2px">${revealLegacyPii(o.customer_name)} · ${revealLegacyPii(o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
         </div>`).join('') || ''}
     </div>` : ''}
   </div>

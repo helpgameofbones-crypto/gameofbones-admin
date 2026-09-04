@@ -1,32 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { resend } from '@/app/lib/emailClient'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-const ENCRYPTION_KEY = 'gob_secret_2024_gameofbones_in_kalyan'
-function decryptData(encrypted: string): string {
-  if (!encrypted) return ''
-  try {
-    const binary = Buffer.from(encrypted, 'base64').toString('binary')
-    let result = ''
-    for (let i = 0; i < binary.length; i++) {
-      result += String.fromCharCode(binary.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length))
-    }
-    return result
-  } catch {
-    return encrypted
-  }
-}
-function decryptPhone(raw: string): string {
-  if (!raw) return ''
-  if (/^\+?\d{10,13}$/.test(raw)) return raw
-  const dec = decryptData(raw)
-  return /^\+?\d{10,13}$/.test(dec) ? dec : raw
-}
 
 const RS_PER_POINT = 10
 const POINTS_EXPIRY_DAYS = 60
@@ -53,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   for (const order of (deliveredOrders || [])) {
     try {
-      const phone = decryptPhone(order.customer_phone || '')
+      const phone = revealLegacyPii(order.customer_phone)
       if (!phone) {
         results.push({ ref: order.ref, skipped: 'no phone on order' })
         continue
@@ -96,7 +76,8 @@ export async function GET(req: NextRequest) {
         details:     `+${pointsEarned} points — auto-credited on delivery of order ${order.ref}`,
       })
 
-      const toEmail = order.customer_email || customer.email
+      const toEmail = revealLegacyPii(order.customer_email) || customer.email
+      const customerName = revealLegacyPii(order.customer_name) || customer.name
       if (toEmail) {
         const expiryLabel = expiresAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
         await resend.emails.send({
@@ -110,7 +91,7 @@ export async function GET(req: NextRequest) {
 <div style="background:#f9f6f2;padding:32px;text-align:center">
   <h2 style="color:#1a1008;margin:0 0 8px">Your order was delivered — points are in!</h2>
   <p style="color:#6b7280;font-size:14px;margin:0 0 24px">
-    Hi ${order.customer_name || customer.name}, your order <strong>${order.ref}</strong> has been delivered.
+    Hi ${customerName}, your order <strong>${order.ref}</strong> has been delivered.
     You've earned <strong style="color:#c8973a">${pointsEarned} loyalty points</strong> for this order.
   </p>
   <div style="background:white;border-radius:12px;padding:20px;margin-bottom:16px">
