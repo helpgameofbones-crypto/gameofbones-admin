@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Plus, X, Shield, Eye, Edit, Trash2, User } from 'lucide-react'
 
 const ROLES = {
@@ -29,12 +29,7 @@ export default function TeamAccessPage() {
 
   async function fetchTeam() {
     setLoading(true)
-    const { data } = await supabase
-      .from('team_members')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setTeam(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/team'); const data = await response.json(); setTeam(response.ok && Array.isArray(data.team) ? data.team : []) } finally { setLoading(false) }
   }
 
   async function inviteMember() {
@@ -50,17 +45,10 @@ export default function TeamAccessPage() {
       return
     }
 
-    const { error } = await supabase.from('team_members').insert({
-      email: form.email,
-      name: form.name,
-      role: form.role,
-      permissions: PERMISSIONS[form.role],
-      status: 'invited',
-      invited_at: new Date().toISOString(),
-    })
-
-    if (error) {
-      setInviteResult({ success: false, message: 'Failed to add member. Try again.' })
+    const response = await authedFetch('/api/admin/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    const data = await response.json()
+    if (!response.ok) {
+      setInviteResult({ success: false, message: data.error || 'Failed to add member. Try again.' })
     } else {
       setInviteResult({ success: true, message: `${form.name} added as ${ROLES[form.role as keyof typeof ROLES].label}. Share the admin panel URL with them and ask them to sign up with this email.` })
       setForm({ email: '', name: '', role: 'manager' })
@@ -70,21 +58,18 @@ export default function TeamAccessPage() {
   }
 
   async function updateRole(id: string, role: string) {
-    await supabase.from('team_members').update({
-      role,
-      permissions: PERMISSIONS[role],
-    }).eq('id', id)
+    const response = await authedFetch('/api/admin/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, role }) }); if (!response.ok) return
     setTeam(prev => prev.map(m => m.id === id ? { ...m, role, permissions: PERMISSIONS[role] } : m))
   }
 
   async function removeMember(id: string) {
-    await supabase.from('team_members').delete().eq('id', id)
+    const response = await authedFetch('/api/admin/team', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); if (!response.ok) return
     setTeam(prev => prev.filter(m => m.id !== id))
   }
 
   async function toggleStatus(id: string, current: string) {
     const status = current === 'active' ? 'suspended' : 'active'
-    await supabase.from('team_members').update({ status }).eq('id', id)
+    const response = await authedFetch('/api/admin/team', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }); if (!response.ok) return
     setTeam(prev => prev.map(m => m.id === id ? { ...m, status } : m))
   }
 
