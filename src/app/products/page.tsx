@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient';
+import { authedFetch } from '@/app/lib/authedFetch';
 const STORAGE_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/';
 const MAX_SOURCE_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_OPTIMIZED_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -24,9 +24,10 @@ export default function ProductsPage() {
 
   async function fetchProducts() {
     setLoading(true);
-    const { data, error } = await supabase.from('products').select('*').order('name');
-    if (error) { alert('Failed to load products: ' + error.message); setLoading(false); return; }
-    setProducts(data || []);
+    const response = await authedFetch('/api/admin/products');
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { alert('Failed to load products: ' + (payload.error || 'Please try again.')); setLoading(false); return; }
+    setProducts(payload.products || []);
     setLoading(false);
   }
 
@@ -49,8 +50,8 @@ export default function ProductsPage() {
     // Uploads are intentionally deferred from cleanup until Save. If the editor
     // is cancelled, remove only the newly-created draft files — never the live media.
     if (draftUploadPaths.length) {
-      void supabase.storage.from('product-images').remove(draftUploadPaths)
-        .catch((error) => console.warn('Could not clean up draft media:', error.message));
+      void authedFetch('/api/admin/products', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths: draftUploadPaths }) })
+        .catch(() => console.warn('Could not clean up draft media.'));
     }
     setEditing(null);
     setReplacedStoragePaths([]);
@@ -98,8 +99,8 @@ async function compressImage(file: File): Promise<Blob> {
             alert('Choose an image smaller than 8 MB. It will be optimized before upload.');
             return;
           }
-          if (type === 'video' && (!ALLOWED_VIDEO_TYPES.has(file.type) || file.size > MAX_VIDEO_BYTES)) {
-            alert('Use an MP4 or WebM video smaller than 12 MB. This keeps the storefront fast and protects our storage allowance.');
+          if (type === 'video' && (!ALLOWED_VIDEO_TYPES.has(file.type) || file.size > 4 * 1024 * 1024)) {
+            alert('Use an MP4 or WebM video smaller than 4 MB. This keeps the storefront fast and protects our storage allowance.');
             return;
           }
           setUploading(true);
@@ -118,11 +119,13 @@ async function compressImage(file: File): Promise<Blob> {
                             return;
                   }
           }
-          const name = `${editing.id}/${type}-${slotIdx}-${Date.now()}.${ext}`;
-          const { error } = await supabase.storage.from('product-images').upload(name, uploadBlob, { contentType: type === 'image' ? 'image/jpeg' : file.type, upsert: true });
+          const data = new FormData(); data.append('productId', editing.id); data.append('type', type); data.append('slot', String(slotIdx)); data.append('file', new File([uploadBlob], `upload.${ext}`, { type: type === 'image' ? 'image/jpeg' : file.type }));
+          const response = await authedFetch('/api/admin/products', { method: 'POST', body: data });
           setUploading(false);
-          if (error) { alert('Upload failed: ' + error.message); return; }
-          const url = STORAGE_URL + name;
+          const responsePayload = await response.json().catch(() => ({}));
+          if (!response.ok) { alert('Upload failed: ' + (responsePayload.error || 'Please try again.')); return; }
+          const name = responsePayload.path;
+          const url = responsePayload.url;
           const previousUrl = type === 'image' ? editing.images?.[slotIdx] : editing.videos?.[slotIdx];
           const previousPath = getManagedStoragePath(previousUrl);
 
@@ -177,17 +180,13 @@ async function compressImage(file: File): Promise<Blob> {
       image_url: editing.image_url || editing.images?.[0] || null,
     };
 
-    const { error } = await supabase.from('products').update(payload).eq('id', editing.id);
+    const response = await authedFetch('/api/admin/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', id: editing.id, ...payload, replaced_paths: replacedStoragePaths }) });
     setSaving(false);
 
-    if (error) {
-      alert('❌ Save failed: ' + error.message + '\n\nNothing was changed. Please screenshot this and share it.');
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      alert('❌ Save failed: ' + (result.error || 'Please try again.') + '\n\nNothing was changed. Please screenshot this and share it.');
       return;
-    }
-
-    if (replacedStoragePaths.length) {
-      const { error: removalError } = await supabase.storage.from('product-images').remove(replacedStoragePaths);
-      if (removalError) console.warn('Product saved, but replaced media could not be removed:', removalError.message);
     }
     setEditing(null);
     setReplacedStoragePaths([]);
@@ -196,8 +195,8 @@ async function compressImage(file: File): Promise<Blob> {
   }
 
   async function toggleActive(id: string, current: boolean) {
-    const { error } = await supabase.from('products').update({ is_active: !current }).eq('id', id);
-    if (error) { alert('Failed to update: ' + error.message); return; }
+    const response = await authedFetch('/api/admin/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'status', id, is_active: !current }) });
+    if (!response.ok) { alert('Failed to update product status.'); return; }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p));
   }
 
