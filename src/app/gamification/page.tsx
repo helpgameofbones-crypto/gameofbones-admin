@@ -1,6 +1,5 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function GamificationPage() {
@@ -21,19 +20,13 @@ export default function GamificationPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [cust, ordersResponse, rew, mil, str] = await Promise.all([
-      supabase.from('customers').select('*').order('total_spent', { ascending: false }),
-      authedFetch('/api/admin/orders?limit=500'),
-      supabase.from('rewards').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('milestones').select('*').order('order_count'),
-      supabase.from('streaks').select('*').order('current_streak', { ascending: false }),
-    ])
-    setCustomers(cust.data || [])
-    const ordersPayload = await ordersResponse.json()
-    setOrders(ordersResponse.ok && Array.isArray(ordersPayload.orders) ? ordersPayload.orders : [])
-    setRewards(rew.data || [])
-    setMilestones(mil.data || [])
-    setStreaks(str.data || [])
+    const response = await authedFetch('/api/admin/gamification')
+    const payload = await response.json().catch(() => ({}))
+    setCustomers(response.ok ? payload.customers || [] : [])
+    setOrders(response.ok ? payload.orders || [] : [])
+    setRewards(response.ok ? payload.rewards || [] : [])
+    setMilestones(response.ok ? payload.milestones || [] : [])
+    setStreaks(response.ok ? payload.streaks || [] : [])
     setLoading(false)
   }
 
@@ -42,138 +35,29 @@ export default function GamificationPage() {
     setSpinning(true)
     setSpinResult(null)
 
-    const prizes = [
-      { label: '10% OFF',     code: 'SPIN10',  value: 10,  probability: 30 },
-      { label: '15% OFF',     code: 'SPIN15',  value: 15,  probability: 25 },
-      { label: '20% OFF',     code: 'SPIN20',  value: 20,  probability: 20 },
-      { label: 'Free Ship',   code: 'SPINFS',  value: 0,   probability: 15 },
-      { label: '25% OFF',     code: 'SPIN25',  value: 25,  probability: 8  },
-      { label: '30% OFF',     code: 'SPIN30',  value: 30,  probability: 2  },
-    ]
-
-    const rand  = Math.random() * 100
-    let cumulative = 0
-    let prize = prizes[0]
-    for (const p of prizes) {
-      cumulative += p.probability
-      if (rand < cumulative) { prize = p; break }
-    }
-
     await new Promise(r => setTimeout(r, 2000))
-
-    const customer  = customers.find(c => c.phone === phone)
-    const coupon    = prize.code + Date.now().toString(36).slice(-4).toUpperCase()
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
-
-    if (prize.value > 0) {
-      await supabase.from('coupons').insert({
-        code:        coupon,
-        type:        'percent',
-        value:       prize.value,
-        min_order:   499,
-        max_uses:    1,
-        valid_from:  new Date().toISOString().split('T')[0],
-        valid_until: expiresAt.toISOString().split('T')[0],
-        is_active:   true,
-      })
-    }
-
-    await supabase.from('rewards').insert({
-      customer_phone: phone,
-      customer_name:  customer?.name || phone,
-      type:           'spin_wheel',
-      description:    prize.label,
-      coupon_code:    coupon,
-      discount_value: prize.value,
-      expires_at:     expiresAt.toISOString(),
-    })
-
-    setSpinResult({ ...prize, coupon, customer })
+    const response = await authedFetch('/api/admin/gamification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'spin', phone }) })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) { setMsg(payload.error || 'Unable to spin.'); setSpinning(false); return }
+    setSpinResult({ ...payload.prize, coupon: payload.prize.code, customer: payload.customer })
     setSpinning(false)
     fetchData()
   }
 
   async function checkMilestones(phone: string) {
-    const customer = customers.find(c => c.phone === phone)
-    if (!customer) return
-
-    const orderCount = customer.total_orders
-    const milestone  = milestones.find(m => m.order_count === orderCount && m.is_active)
-    if (!milestone) {
-      setMsg(`No milestone at ${orderCount} orders`)
-      return
-    }
-
-    const coupon = milestone.coupon_code + Date.now().toString(36).slice(-4).toUpperCase()
-    if (milestone.discount_percent > 0) {
-      await supabase.from('coupons').insert({
-        code:        coupon,
-        type:        'percent',
-        value:       milestone.discount_percent,
-        min_order:   0,
-        max_uses:    1,
-        valid_from:  new Date().toISOString().split('T')[0],
-        valid_until: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-        is_active:   true,
-      })
-    }
-
-    await supabase.from('rewards').insert({
-      customer_phone: phone,
-      customer_name:  customer.name,
-      type:           'milestone',
-      description:    milestone.reward_description,
-      coupon_code:    coupon,
-      discount_value: milestone.discount_percent,
-    })
-
-    setMsg(` Milestone reward sent to ${customer.name}!`)
+    const response = await authedFetch('/api/admin/gamification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'milestone', phone }) })
+    const payload = await response.json().catch(() => ({}))
+    setMsg(response.ok ? payload.message : payload.error || 'Unable to send milestone reward.')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
 
   async function updateStreaks() {
     setSaving(true)
-    const currentMonth = new Date().toISOString().slice(0, 7)
-
-    for (const customer of customers) {
-      const custOrders = orders.filter(o => o.customer_phone === customer.phone)
-      if (custOrders.length === 0) continue
-
-      const orderMonths = [...new Set(custOrders.map(o => o.created_at.slice(0, 7)))]
-        .sort().reverse()
-
-      let streak = 0
-      let month  = currentMonth
-
-      for (const m of orderMonths) {
-        if (m === month) {
-          streak++
-          const d = new Date(month)
-          d.setMonth(d.getMonth() - 1)
-          month = d.toISOString().slice(0, 7)
-        } else break
-      }
-
-      const existing = streaks.find(s => s.customer_phone === customer.phone)
-      if (existing) {
-        await supabase.from('streaks').update({
-          current_streak:  streak,
-          longest_streak:  Math.max(streak, existing.longest_streak),
-          last_order_month: orderMonths[0],
-          updated_at:      new Date().toISOString(),
-        }).eq('customer_phone', customer.phone)
-      } else if (streak > 0) {
-        await supabase.from('streaks').insert({
-          customer_phone:  customer.phone,
-          current_streak:  streak,
-          longest_streak:  streak,
-          last_order_month: orderMonths[0],
-        })
-      }
-    }
+    const response = await authedFetch('/api/admin/gamification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'streaks' }) })
     setSaving(false)
-    setMsg(' Streaks updated!')
+    const payload = await response.json().catch(() => ({}))
+    setMsg(response.ok ? `${payload.updated || 0} streaks updated!` : payload.error || 'Unable to update streaks.')
     fetchData()
     setTimeout(() => setMsg(''), 3000)
   }
