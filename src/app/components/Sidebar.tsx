@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3, Boxes, ClipboardList, FileText, HeartHandshake, LayoutDashboard,
-  Megaphone, PackageCheck, Settings2, ShoppingCart, Truck, Users, WalletCards,
+  Mail, Megaphone, PackageCheck, Settings2, ShoppingCart, Ticket, Truck, Users, WalletCards,
 } from 'lucide-react';
 
 const SECTIONS = [
@@ -19,7 +19,10 @@ const SECTIONS = [
     { name: 'Customers', href: '/customers', icon: Users, desc: 'Profiles, loyalty and retention' },
   ]},
   { title: 'GROWTH', color: '#f97316', items: [
-    { name: 'Marketing', href: '/campaigns-hub', icon: Megaphone, desc: 'Campaigns, offers and acquisition' },
+    { name: 'Marketing', href: '/campaigns-hub', icon: Megaphone, desc: 'Campaigns, segments and acquisition' },
+    { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
+    { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
+    { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
     { name: 'Content', href: '/site-content', icon: FileText, desc: 'Storefront, blogs and social proof' },
   ]},
   { title: 'FINANCE', color: '#84cc16', items: [
@@ -31,7 +34,7 @@ const SECTIONS = [
     { name: 'Returns & RTO', href: '/returns', icon: Truck, desc: 'Returns, refunds and RTO recovery' },
     { name: 'Inventory & Production', href: '/inventory', icon: Boxes, desc: 'Stock, batches and production work' },
     { name: 'Loyalty & Recovery', href: '/gamification', icon: HeartHandshake, desc: 'Rewards, birthdays, carts and referrals' },
-    { name: 'Campaign tools', href: '/campaigns', icon: Megaphone, desc: 'Coupons, captures, influencers and promotions' },
+    { name: 'Campaign setup', href: '/campaigns', icon: Megaphone, desc: 'Build audiences and send campaigns' },
     { name: 'Detailed reports', href: '/cohort-analysis', icon: BarChart3, desc: 'Cohorts, city and hour analysis' },
     { name: 'Admin & exports', href: '/tasks', icon: Settings2, desc: 'Tasks, team, audit trail and exports' },
   ]},

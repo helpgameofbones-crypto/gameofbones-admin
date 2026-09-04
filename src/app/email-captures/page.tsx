@@ -132,7 +132,8 @@ export default function EmailCaptures() {
             style={styles.select}
           >
             <option value="all">All Sources</option>
-            <option value="spin_wheel">Spin Wheel</option>
+            <option value="spin_to_win">Spin to Win</option>
+            <option value="spin_wheel">Legacy Spin Wheel</option>
             <option value="newsletter">Newsletter</option>
             <option value="dog_birthday">Dog Birthday Club</option>
             <option value="exit-intent">Exit-Intent Popup</option>
