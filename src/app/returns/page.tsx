@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const RETURN_WINDOW_HOURS = 48
 
@@ -19,56 +19,33 @@ export default function ReturnsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [r, o] = await Promise.all([
-      supabase.from('returns').select('*').order('created_at', { ascending: false }),
-      // NOTE: delivered_at + status are needed here so that logging a return
-      // from the admin panel can be flagged as an "exception" when it's
-      // created outside the normal 48-hour self-serve window.
-      supabase.from('orders').select('id, ref, customer_name, customer_phone, items, grand_total, delivered_at, status').order('created_at', { ascending: false }).limit(200)
-    ])
-    setReturns(r.data || [])
-    setOrders(o.data || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/returns')
+      const data = await response.json()
+      setReturns(response.ok && Array.isArray(data.returns) ? data.returns : [])
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+    } finally { setLoading(false) }
   }
 
   async function addReturn() {
     if (!newReturn.order_ref || !newReturn.reason) return
     setSaving(true)
-    const order = orders.find(o => o.ref.toLowerCase() === newReturn.order_ref.toLowerCase())
-
-    // Flag as an exception if the matched order was delivered more than
-    // 48 hours ago (or has no delivery timestamp at all) — the customer
-    // could not have used the self-serve flow for this, so staff are
-    // deliberately overriding the window.
-    let isException = false
-    if (!order || order.status !== 'delivered' || !order.delivered_at) {
-      isException = true
-    } else {
-      const hoursSince = (Date.now() - new Date(order.delivered_at).getTime()) / 36e5
-      isException = hoursSince > RETURN_WINDOW_HOURS
-    }
-
-    await supabase.from('returns').insert({
-      order_id: order?.id, order_ref: newReturn.order_ref.toUpperCase(),
-      customer_name: order?.customer_name || '', customer_phone: order?.customer_phone || '',
-      reason: newReturn.reason, refund_amount: parseFloat(newReturn.refund_amount) || 0,
-      notes: newReturn.notes, items: order?.items || [], status: 'requested',
-      source: 'admin', is_exception: isException,
+    const response = await authedFetch('/api/admin/returns', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newReturn),
     })
+    const data = await response.json()
     setSaving(false)
+    if (!response.ok) { setMsg(data.error || 'Unable to log return.'); return }
     setShowAdd(false)
     setNewReturn({ order_ref: '', reason: '', refund_amount: '', notes: '' })
-    setMsg(isException ? 'Return logged as an exception (outside the 48-hour window)!' : 'Return logged!')
+    setMsg(data.isException ? 'Return logged as an exception (outside the 48-hour window)!' : 'Return logged!')
     fetchData()
     setTimeout(() => setMsg(''), 4000)
   }
 
   async function updateReturnStatus(id: string, status: string) {
-    await supabase.from('returns').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
-    if (status === 'approved') {
-      const ret = returns.find(r => r.id === id)
-      if (ret?.order_id) await supabase.from('orders').update({ status: 'rto' }).eq('id', ret.order_id)
-    }
+    const response = await authedFetch('/api/admin/returns', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) })
+    if (!response.ok) return
     fetchData()
     if (selected?.id === id) setSelected({ ...selected, status })
   }

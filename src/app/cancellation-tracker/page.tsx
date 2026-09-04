@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { XCircle, MapPin, TrendingDown } from 'lucide-react'
 
 export default function CancellationTrackerPage() {
@@ -12,13 +12,11 @@ export default function CancellationTrackerPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_phone, shipping_address, payment_method, grand_total, total_amount, status, created_at, cancellation_reason')
-      .eq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/cancellations')
+      const data = await response.json()
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+    } finally { setLoading(false) }
   }
 
   function getAddress(addr: any) {

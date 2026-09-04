@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
 
 export default function RefundTrackerPage() {
@@ -14,15 +14,13 @@ export default function RefundTrackerPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: ords }, { data: refs }, { data: prods }] = await Promise.all([
-      supabase.from('orders').select('id, grand_total, total_amount, created_at, status, items, customer_phone, payment_method'),
-      supabase.from('refunds').select('*'),
-      supabase.from('products').select('id, name, price'),
-    ])
-    setOrders(ords || [])
-    setRefunds(refs || [])
-    setProducts(prods || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/refunds')
+      const data = await response.json()
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+      setRefunds(response.ok && Array.isArray(data.refunds) ? data.refunds : [])
+      setProducts(response.ok && Array.isArray(data.products) ? data.products : [])
+    } finally { setLoading(false) }
   }
 
   const totalOrders = orders.filter(o => o.status !== 'cancelled').length
