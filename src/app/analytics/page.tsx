@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch'
 
 function InsightAction({ title, body, href, action }: { title: string; body: string; href: string; action: string }) {
@@ -66,17 +65,15 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function fetchOrders() {
       setLoading(true)
-      const { data } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      const now = new Date()
-      const rangeMs = Number.parseInt(range, 10) * 24 * 60 * 60 * 1000
-      const cutoff = new Date(now.getTime() - rangeMs)
-      const filtered = ((data || []) as AnalyticsOrder[]).filter(order => new Date(order.created_at) >= cutoff)
-      setOrders(filtered)
-      setLoading(false)
+      try {
+        const response = await authedFetch(`/api/admin/analytics?days=${encodeURIComponent(range)}`)
+        const data = await response.json()
+        setOrders(response.ok && Array.isArray(data.orders) ? data.orders as AnalyticsOrder[] : [])
+      } catch {
+        setOrders([])
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchOrders()

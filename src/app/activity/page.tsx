@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 interface ActivityItem {
   id: string;
@@ -19,59 +19,15 @@ export default function ActivityLogPage() {
 
   async function fetchActivity() {
     setLoading(true);
-    const items: ActivityItem[] = [];
-
-    // Order status changes (from audit_log)
-    const { data: auditData } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(50);
-    (auditData || []).forEach((a: any) => {
-      items.push({
-        id: 'audit-' + a.id,
-        source: 'Orders',
-        action: `Status changed: ${a.old_data?.status || '?'} → ${a.new_data?.status || '?'}`,
-        detail: `Order #${a.record_id}`,
-        timestamp: a.created_at,
-      });
-    });
-
-    // Recent orders placed
-    const { data: orderData } = await supabase.from('orders').select('ref, customer_name, grand_total, total_amount, created_at').order('created_at', { ascending: false }).limit(30);
-    (orderData || []).forEach((o: any) => {
-      items.push({
-        id: 'order-' + o.ref,
-        source: 'Orders',
-        action: 'New order placed',
-        detail: `#${o.ref} — ${o.customer_name || 'Customer'} — ₹${o.grand_total || o.total_amount || 0}`,
-        timestamp: o.created_at,
-      });
-    });
-
-    // Recent blog changes
-    const { data: blogData } = await supabase.from('blogs').select('title, created_at').order('created_at', { ascending: false }).limit(15);
-    (blogData || []).forEach((b: any) => {
-      items.push({
-        id: 'blog-' + b.title,
-        source: 'Content',
-        action: 'Blog article created/updated',
-        detail: b.title,
-        timestamp: b.created_at,
-      });
-    });
-
-    // Recent reorder alerts generated
-    const { data: alertData } = await supabase.from('reorder_alerts').select('customer_name, alert_type, created_at').order('created_at', { ascending: false }).limit(15);
-    (alertData || []).forEach((a: any, i: number) => {
-      items.push({
-        id: 'alert-' + i + '-' + a.created_at,
-        source: 'Marketing',
-        action: `${a.alert_type === 'winback' ? 'Win-back' : 'Reorder'} alert generated`,
-        detail: a.customer_name || 'Customer',
-        timestamp: a.created_at,
-      });
-    });
-
-    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setActivities(items.slice(0, 100));
-    setLoading(false);
+    try {
+      const response = await authedFetch('/api/admin/activity')
+      const data = await response.json()
+      setActivities(response.ok && Array.isArray(data.activities) ? data.activities : [])
+    } catch {
+      setActivities([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const filtered = filter === 'all' ? activities : activities.filter(a => a.source === filter);
