@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Phone, CheckCircle, XCircle, Clock, Search, RefreshCw } from 'lucide-react'
 
 export default function CODTrackerPage() {
@@ -14,22 +14,25 @@ export default function CODTrackerPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_phone, grand_total, total_amount, status, created_at, cod_confirmed, cod_confirmed_at, cod_confirmation_notes, items')
-      .eq('payment_method', 'cod')
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/cod')
+      const data = await response.json()
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+    } catch {
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function updateConfirmation(id: string, confirmed: boolean, notes: string = '') {
     setUpdating(id)
-    await supabase.from('orders').update({
-      cod_confirmed: confirmed,
-      cod_confirmed_at: confirmed ? new Date().toISOString() : null,
-      cod_confirmation_notes: notes,
-    }).eq('id', id)
+    const response = await authedFetch('/api/admin/cod', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, confirmed, notes }),
+    })
+    if (!response.ok) { setUpdating(null); return }
     setOrders(prev => prev.map(o => o.id === id ? {
       ...o,
       cod_confirmed: confirmed,

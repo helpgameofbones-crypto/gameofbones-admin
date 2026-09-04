@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
 import { authedFetch } from '@/app/lib/authedFetch';
 
 interface OrderETA {
@@ -19,13 +18,16 @@ export default function DeliveryEstimatorPage() {
 
   async function fetchOrders() {
     setLoading(true);
-    const { data } = await supabase.from('orders')
-      .select('id,ref,customer_name,customer_phone,delhivery_awb,status,created_at,estimated_delivery')
-      .not('delhivery_awb', 'is', null)
-      .not('status', 'in', '(delivered,cancelled,returned)')
-      .order('created_at', { ascending: false });
-    setOrders((data || []).map((o: any) => ({ ...o, delhiveryETA: o.estimated_delivery || null, daysRemaining: null })));
-    setLoading(false);
+    try {
+      const response = await authedFetch('/api/admin/shipping?view=shipments')
+      const data = await response.json()
+      const loaded = response.ok && Array.isArray(data.orders) ? data.orders : []
+      setOrders(loaded.map((o: any) => ({ ...o, delhiveryETA: o.estimated_delivery || null, daysRemaining: null })))
+    } catch {
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Tracking used to hit track.delhivery.com directly from the browser with
@@ -55,7 +57,10 @@ export default function DeliveryEstimatorPage() {
           const eta = new Date(shipment.ExpectedDeliveryDate);
           const now = new Date();
           order.daysRemaining = Math.ceil((eta.getTime() - now.getTime()) / 86400000);
-          await supabase.from('orders').update({ estimated_delivery: shipment.ExpectedDeliveryDate }).eq('id', order.id);
+          await authedFetch('/api/admin/shipping', {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: order.id, estimated_delivery: shipment.ExpectedDeliveryDate }),
+          });
         } else {
           failed++;
         }

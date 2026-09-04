@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { Calendar, Truck, Clock, Search, CheckCircle } from 'lucide-react'
 
 const ZONE_DAYS: Record<string, { min: number; max: number }> = {
@@ -22,17 +22,25 @@ export default function DeliveryEstimatorPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: ords }, { data: pins }] = await Promise.all([
-      supabase.from('orders').select('id, ref, customer_name, customer_phone, shipping_address, status, created_at, dispatched_at, delhivery_awb, estimated_delivery').neq('status', 'cancelled'),
-      supabase.from('serviceable_pincodes').select('pincode, zone, city, state'),
-    ])
-    setOrders(ords || [])
-    setPincodes(pins || [])
-    setLoading(false)
+    try {
+      const response = await authedFetch('/api/admin/shipping?view=timeline')
+      const data = await response.json()
+      setOrders(response.ok && Array.isArray(data.orders) ? data.orders : [])
+      setPincodes(response.ok && Array.isArray(data.pincodes) ? data.pincodes : [])
+    } catch {
+      setOrders([])
+      setPincodes([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function setEstimate(orderId: string, date: string) {
-    await supabase.from('orders').update({ estimated_delivery: date }).eq('id', orderId)
+    const response = await authedFetch('/api/admin/shipping', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: orderId, estimated_delivery: date }),
+    })
+    if (!response.ok) return
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, estimated_delivery: date } : o))
   }
 
