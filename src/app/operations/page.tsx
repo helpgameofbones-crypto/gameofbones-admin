@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function OperationsPage() {
   const [tab, setTab]                     = useState('suppliers')
@@ -30,25 +30,23 @@ export default function OperationsPage() {
 
   async function fetchAll() {
     setLoading(true)
-    const [s, p, st] = await Promise.all([
-      supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
-      supabase.from('packaging_materials').select('*').order('name'),
-      supabase.from('staff_accounts').select('*').order('name'),
-    ])
-    setSuppliers(s.data || [])
-    setPackaging(p.data || [])
-    setStaff(st.data || [])
+    const response = await authedFetch('/api/admin/operations')
+    const payload = await response.json().catch(() => ({}))
+    setSuppliers(response.ok ? payload.suppliers || [] : [])
+    setPackaging(response.ok ? payload.packaging || [] : [])
+    setStaff(response.ok ? payload.staff || [] : [])
     setLoading(false)
   }
 
   async function addSupplier() {
     if (!newSupplier.name) return
     setSaving(true)
-    await supabase.from('suppliers').insert({
+    const response = await authedFetch('/api/admin/operations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'supplier',
       ...newSupplier,
       lead_time_days: parseInt(newSupplier.lead_time_days) || 0
-    })
+    }) })
     setSaving(false)
+    if (!response.ok) return
     setShowAddSupplier(false)
     setNewSupplier({ name:'',contact_name:'',phone:'',email:'',address:'',products_supplied:'',lead_time_days:'',moq:'',price_notes:'' })
     fetchAll()
@@ -57,13 +55,14 @@ export default function OperationsPage() {
   async function addPackaging() {
     if (!newPackaging.name) return
     setSaving(true)
-    await supabase.from('packaging_materials').insert({
+    const response = await authedFetch('/api/admin/operations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'packaging',
       ...newPackaging,
       current_stock: parseInt(newPackaging.current_stock) || 0,
       min_stock:     parseInt(newPackaging.min_stock) || 20,
       cost_per_unit: parseFloat(newPackaging.cost_per_unit) || 0,
-    })
+    }) })
     setSaving(false)
+    if (!response.ok) return
     setShowAddPackaging(false)
     setNewPackaging({ name:'',unit:'pieces',current_stock:'',min_stock:'',cost_per_unit:'',supplier:'',notes:'' })
     fetchAll()
@@ -72,22 +71,21 @@ export default function OperationsPage() {
   async function addStaff() {
     if (!newStaff.name || !newStaff.email) return
     setSaving(true)
-    await supabase.from('staff_accounts').insert(newStaff)
+    const response = await authedFetch('/api/admin/operations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'staff', ...newStaff }) })
     setSaving(false)
+    if (!response.ok) return
     setShowAddStaff(false)
     setNewStaff({ name:'', email:'', role:'staff' })
     fetchAll()
   }
 
   async function updatePackagingStock(id: string, stock: number) {
-    await supabase.from('packaging_materials')
-      .update({ current_stock: stock, updated_at: new Date().toISOString() })
-      .eq('id', id)
+    await authedFetch('/api/admin/operations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'packaging-stock', id, stock }) })
     fetchAll()
   }
 
   async function deleteSupplier(id: string) {
-    await supabase.from('suppliers').update({ is_active: false }).eq('id', id)
+    await authedFetch('/api/admin/operations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'supplier-status', id }) })
     fetchAll()
   }
 

@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient';
+import { authedFetch } from '@/app/lib/authedFetch';
 
 const PERSONS = [
   { key: 'anjan',    label: 'Anjan',        color: '#3b82f6', bg: '#dbeafe', dark: '#1e40af' },
@@ -36,20 +36,9 @@ export default function ExpensesPage() {
 
   async function fetchExpenses() {
     setLoading(true)
-    const from = new Date()
-    from.setDate(from.getDate() - parseInt(range))
-
-    let q = supabase
-      .from('expenses')
-      .select('*')
-      .gte('date', from.toISOString().split('T')[0])
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false })
-
-    if (filterPerson !== 'all') q = q.eq('person', filterPerson)
-
-    const { data } = await q
-    setExpenses(data || [])
+    const response = await authedFetch(`/api/admin/expenses?days=${range}&person=${encodeURIComponent(filterPerson)}`)
+    const payload = await response.json().catch(() => ({}))
+    setExpenses(response.ok ? payload.expenses || [] : [])
     setLoading(false)
   }
 
@@ -59,7 +48,7 @@ export default function ExpensesPage() {
       return
     }
     setSaving(true)
-    await supabase.from('expenses').insert({
+    const response = await authedFetch('/api/admin/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       date:         form.date,
       description:  form.description,
       amount:       parseFloat(form.amount),
@@ -67,22 +56,17 @@ export default function ExpensesPage() {
       person:       form.person,
       payment_mode: form.payment_mode,
       notes:        form.notes,
-    })
-    await supabase.from('activity_log').insert({
-      action:      'expense added',
-      entity_type: 'expense',
-      entity_name: form.description,
-      details:     `Rs ${form.amount} by ${form.person}`,
-    })
+    }) })
     setSaving(false)
-    setMsg(' Expense added!')
+    if (!response.ok) { setMsg('Unable to add expense. Please try again.'); return }
+    setMsg('Expense added!')
     setForm({ ...form, description: '', amount: '', notes: '' })
     fetchExpenses()
     setTimeout(() => setMsg(''), 3000)
   }
 
   async function deleteExpense(id: string) {
-    await supabase.from('expenses').delete().eq('id', id)
+    await authedFetch(`/api/admin/expenses?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     fetchExpenses()
   }
 
