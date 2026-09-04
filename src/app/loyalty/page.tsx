@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function LoyaltyPage() {
   const [customers, setCustomers] = useState<any[]>([])
@@ -15,28 +15,18 @@ export default function LoyaltyPage() {
   const [pointsReason, setPointsReason] = useState('')
   const [search, setSearch]       = useState('')
 
-  useEffect(() => { fetchCustomers() }, []); const [ledger, setLedger] = useState<any[]>([]); const [loadingLedger, setLoadingLedger] = useState(false); async function fetchLedger(customerId: string) { setLoadingLedger(true); const { data } = await supabase.from('loyalty_ledger').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }); setLedger(data || []); setLoadingLedger(false) }
+  useEffect(() => { fetchCustomers() }, []); const [ledger, setLedger] = useState<any[]>([]); const [loadingLedger, setLoadingLedger] = useState(false); async function fetchLedger(customerId: string) { setLoadingLedger(true); try { const response = await authedFetch(`/api/admin/loyalty?customerId=${encodeURIComponent(customerId)}`); const data = await response.json(); setLedger(response.ok && Array.isArray(data.ledger) ? data.ledger : []) } finally { setLoadingLedger(false) } }
 
   async function fetchCustomers() {
-    const { data } = await supabase
-      .from('customers')
-      .select('*')
-      .order('loyalty_points', { ascending: false })
-    setCustomers(data || [])
-    setLoading(false)
+    try { const response = await authedFetch('/api/admin/loyalty'); const data = await response.json(); setCustomers(response.ok && Array.isArray(data.customers) ? data.customers : []) } finally { setLoading(false) }
   }
 
   async function saveDogProfile() {
     if (!selected) return
     setSavingDog(true)
-    await supabase.from('customers').update({
-      dog_name:         dogProfile.dog_name,
-      dog_breed:        dogProfile.dog_breed,
-      dog_age:          dogProfile.dog_age,
-      dog_weight:       dogProfile.dog_weight,
-      dog_preferences:  dogProfile.dog_preferences,
-    }).eq('id', selected.id)
+    const response = await authedFetch('/api/admin/loyalty', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, action: 'profile', profile: dogProfile }) })
     setSavingDog(false)
+    if (!response.ok) return
     setSelected({ ...selected, ...dogProfile })
     fetchCustomers()
   }
@@ -44,21 +34,11 @@ export default function LoyaltyPage() {
   async function addPoints() {
     if (!selected || !pointsAmount) return
     setAddingPoints(true)
-    const newPoints = (selected.loyalty_points || 0) + parseInt(pointsAmount)
-    // Same 60-day expiry window used by the automatic on-delivery credit —
-    // see api/award-loyalty-points/route.ts for the caveat that this is a
-    // single running expiry, not a per-batch ledger.
-    const expiresAt = new Date(Date.now() + 60 * 86400000).toISOString()
-    await supabase.from('customers')
-      .update({ loyalty_points: newPoints, loyalty_points_expire_at: expiresAt })
-      .eq('id', selected.id)
-    await supabase.from('activity_log').insert({
-      action:      'loyalty points added',
-      entity_type: 'customer',
-      entity_id:   selected.id,
-      entity_name: selected.name,
-      details:     `+${pointsAmount} points  ${pointsReason}`,
-    })
+    const response = await authedFetch('/api/admin/loyalty', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, action: 'points', points: pointsAmount, reason: pointsReason }) })
+    const data = await response.json()
+    if (!response.ok) { setAddingPoints(false); return }
+    const newPoints = data.loyalty_points
+    const expiresAt = data.loyalty_points_expire_at
     setSelected({ ...selected, loyalty_points: newPoints, loyalty_points_expire_at: expiresAt })
     setAddingPoints(false)
     setPointsAmount('')
@@ -67,8 +47,10 @@ export default function LoyaltyPage() {
   }
 
   async function generateReferralCode(customerId: string, phone: string) {
-    const code = 'GOB' + phone.slice(-4) + Math.random().toString(36).slice(-3).toUpperCase()
-    await supabase.from('customers').update({ referral_code: code }).eq('id', customerId)
+    const response = await authedFetch('/api/admin/loyalty', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: customerId, action: 'referral', phone }) })
+    const data = await response.json()
+    if (!response.ok) return
+    const code = data.referral_code
     setSelected({ ...selected, referral_code: code })
     fetchCustomers()
   }
