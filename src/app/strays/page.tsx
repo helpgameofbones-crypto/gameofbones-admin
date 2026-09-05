@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function StraysPage() {
   const [strays, setStrays] = useState<any[]>([]);
@@ -10,16 +10,18 @@ export default function StraysPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { fetch(); }, []);
-  async function fetch() { setLoading(true); const { data } = await supabase.from('strays').select('*').order('created_at'); setStrays(data || []); setLoading(false); }
+  async function fetch() { setLoading(true); const response = await authedFetch('/api/admin/strays'); const payload = await response.json().catch(() => ({})); setStrays(response.ok ? payload.strays || [] : []); setLoading(false); }
 
   async function uploadImage(file: File) {
     if (!file) return '';
     setUploading(true);
-    const name = `strays/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '')}`;
-    const { error } = await supabase.storage.from('product-images').upload(name, file, { contentType: file.type, upsert: true });
+    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) { alert('Use an image under 5MB.'); setUploading(false); return ''; }
+    const data = new FormData(); data.append('file', file);
+    const response = await authedFetch('/api/admin/strays', { method: 'POST', body: data });
     setUploading(false);
-    if (error) { alert('Upload failed: ' + error.message); return ''; }
-    return `https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/${name}`;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { alert('Upload failed: ' + (payload.error || 'Please try again.')); return ''; }
+    return payload.url;
   }
 
   async function handleFiles(files: FileList) {
@@ -34,12 +36,11 @@ export default function StraysPage() {
   async function save() {
     if (!editing?.name) { alert('Name required'); return; }
     const payload = { name: editing.name, location: editing.location || '', description: editing.description || '', images: editing.images || [], is_active: editing.is_active ?? true };
-    if (editing.id) { await supabase.from('strays').update(payload).eq('id', editing.id); }
-    else { await supabase.from('strays').insert(payload); }
+    await authedFetch('/api/admin/strays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...payload }) });
     setEditing(null); fetch();
   }
 
-  async function remove(id: number) { if (confirm('Delete?')) { await supabase.from('strays').delete().eq('id', id); fetch(); } }
+  async function remove(id: number) { if (confirm('Delete?')) { await authedFetch(`/api/admin/strays?id=${encodeURIComponent(id)}`, { method: 'DELETE' }); fetch(); } }
 
   return (
     <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
