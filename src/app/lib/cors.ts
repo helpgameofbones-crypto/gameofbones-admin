@@ -5,6 +5,8 @@ const ALLOWED_ORIGINS = [
   'https://www.gameofbones.in',
   'http://localhost:3000',
   'http://localhost:5173',
+  'http://127.0.0.1:4173',
+  'https://gameofbones-website-git-storefront-staging-gameofbones.vercel.app',
 ]
 
 const DEFAULT_ORIGIN = 'https://gameofbones.in'
