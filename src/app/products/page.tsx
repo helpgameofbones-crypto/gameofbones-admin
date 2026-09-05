@@ -17,7 +17,9 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [replacedStoragePaths, setReplacedStoragePaths] = useState<string[]>([]);
   const [draftUploadPaths, setDraftUploadPaths] = useState<string[]>([]);
-  const imgRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  // The product API supports up to six images; expose every supported slot here
+  // so a complete storefront gallery can be managed without code changes.
+  const imgRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const vidRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   useEffect(() => { fetchProducts(); }, []);
@@ -92,6 +94,20 @@ async function compressImage(file: File): Promise<Blob> {
   function getManagedStoragePath(url?: string) {
     if (!url?.startsWith(STORAGE_URL)) return null;
     return decodeURIComponent(url.slice(STORAGE_URL.length));
+  }
+
+  function removeImage(slotIdx: number) {
+    const existingImages = [...(editing?.images || [])];
+    const removedUrl = existingImages[slotIdx];
+    const removedPath = getManagedStoragePath(removedUrl);
+
+    // Keep the gallery compact after a removal, so the next image becomes the
+    // storefront primary image when slot zero is removed.
+    existingImages.splice(slotIdx, 1);
+    if (removedPath) {
+      setReplacedStoragePaths((paths) => paths.includes(removedPath) ? paths : [...paths, removedPath]);
+    }
+    setEditing({ ...editing, images: existingImages, image_url: existingImages[0] || null });
   }
 
     async function uploadFile(file: File, type: 'image' | 'video', slotIdx: number) {
@@ -236,12 +252,18 @@ async function compressImage(file: File): Promise<Blob> {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '40px 20px' }}
           onClick={e => { if (e.target === e.currentTarget) discardEditing(); }}>
           <div style={{ background: '#fff', borderRadius: 8, width: '100%', maxWidth: 750, padding: 28, height: 'fit-content' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
-              {[0, 1, 2, 3].map(i => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+              {[0, 1, 2, 3, 4, 5].map(i => (
                 <div key={i} onClick={() => imgRefs[i]?.current?.click()}
                   style={{ aspectRatio: '1', border: '2px dashed #e5e7eb', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', background: '#faf8f5', position: 'relative' }}>
                   {editing.images?.[i] ? (
-                    <img src={editing.images[i]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <>
+                      <img src={editing.images[i]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button type="button" title={`Remove image ${i + 1}`} onClick={(event) => { event.stopPropagation(); removeImage(i); }}
+                        style={{ position: 'absolute', top: 6, right: 6, border: 0, borderRadius: 4, padding: '4px 6px', background: '#7f1d1d', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                        Remove
+                      </button>
+                    </>
                   ) : (
                     <div style={{ textAlign: 'center', color: '#9ca3af' }}>
                       <div style={{ fontSize: 24 }}>📷</div>
