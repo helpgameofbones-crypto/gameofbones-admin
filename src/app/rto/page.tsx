@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 function getRTORisk(order: any) {
   let score = 0
@@ -23,12 +23,9 @@ export default function RTOPage() {
   useEffect(() => { fetchOrders() }, [])
 
   async function fetchOrders() {
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .not('status', 'in', '("delivered","rto")')
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
+    const response = await authedFetch('/api/admin/legacy-tools?resource=rto')
+    const payload = await response.json().catch(() => ({}))
+    setOrders(response.ok ? payload.orders || [] : [])
     setLoading(false)
   }
 

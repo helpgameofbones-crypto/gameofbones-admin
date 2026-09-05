@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 import { AlertTriangle, CheckCircle, Phone, Package } from 'lucide-react'
 
 export default function DuplicateOrdersPage() {
@@ -12,11 +12,9 @@ export default function DuplicateOrdersPage() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('id, ref, customer_name, customer_phone, grand_total, total_amount, status, created_at, items, payment_method')
-      .order('created_at', { ascending: false })
-    setOrders(data || [])
+    const response = await authedFetch('/api/admin/legacy-tools?resource=duplicates')
+    const payload = await response.json().catch(() => ({}))
+    setOrders(response.ok ? payload.orders || [] : [])
     setLoading(false)
   }
 

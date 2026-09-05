@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function AdvancedAnalyticsPage() {
   const [orders, setOrders]   = useState<any[]>([])
@@ -11,11 +11,9 @@ export default function AdvancedAnalyticsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: true })
-    setOrders(data || [])
+    const response = await authedFetch('/api/admin/legacy-tools?resource=advanced-analytics')
+    const payload = await response.json().catch(() => ({}))
+    setOrders(response.ok ? payload.orders || [] : [])
     setLoading(false)
   }
 

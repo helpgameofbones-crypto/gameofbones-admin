@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 export default function NPSPage() {
   const [surveys, setSurveys] = useState<any[]>([])
@@ -9,11 +9,9 @@ export default function NPSPage() {
   useEffect(() => { fetchSurveys() }, [])
 
   async function fetchSurveys() {
-    const { data } = await supabase
-      .from('nps_surveys')
-      .select('*')
-      .order('sent_at', { ascending: false })
-    setSurveys(data || [])
+    const response = await authedFetch('/api/admin/legacy-tools?resource=nps')
+    const payload = await response.json().catch(() => ({}))
+    setSurveys(response.ok ? payload.surveys || [] : [])
     setLoading(false)
   }
 

@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/app/lib/supabaseBrowserClient'
+import { authedFetch } from '@/app/lib/authedFetch'
 
 const DEFAULT_TASKS = [
   { id: 'pack',     label: 'Pack all pending orders',         category: 'orders',    done: false },
@@ -26,19 +26,10 @@ export default function TasksPage() {
   }, [])
 
   async function fetchStats() {
-    const { count: orders } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['placed', 'confirmed', 'packed', 'labelled'])
-
-    const { count: stock } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .lt('stock', 10)
-      .eq('is_active', true)
-
-    setPendingOrders(orders || 0)
-    setLowStock(stock || 0)
+    const response = await authedFetch('/api/admin/legacy-tools?resource=tasks')
+    const payload = await response.json().catch(() => ({}))
+    setPendingOrders(response.ok ? payload.pendingOrders || 0 : 0)
+    setLowStock(response.ok ? payload.lowStock || 0 : 0)
   }
 
   function toggleTask(id: string) {
