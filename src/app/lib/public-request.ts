@@ -7,6 +7,7 @@ const TRUSTED_ORIGINS = new Set([
   'http://localhost:5173',
   'http://127.0.0.1:4173',
   'https://gameofbones-website-git-storefront-staging-gameofbones.vercel.app',
+  'https://gameofbones-website-ctndz06py-gameofbones.vercel.app',
 ])
 
 type Bucket = { count: number; resetAt: number }
