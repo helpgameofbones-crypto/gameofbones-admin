@@ -12,11 +12,14 @@ const razorpay = new Razorpay({
 })
 const database = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-async function welcomeEligible(req: NextRequest) {
+async function customerCheckoutState(req: NextRequest) {
   const session = customerSessionFromRequest(req)
-  if (!session) return false
-  const { data, error } = await database.rpc('get_customer_order_history', { p_phone: session.phone })
-  return !error && Array.isArray(data) && data.length === 0
+  if (!session) return { welcomeEligible: false, availablePoints: 0 }
+  const [history, customer] = await Promise.all([
+    database.rpc('get_customer_order_history', { p_phone: session.phone }),
+    database.from('customers').select('loyalty_points').eq('phone', session.phone).maybeSingle(),
+  ])
+  return { welcomeEligible: !history.error && Array.isArray(history.data) && history.data.length === 0, availablePoints: Number(customer.data?.loyalty_points || 0) }
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -30,8 +33,9 @@ export async function POST(req: NextRequest) {
     if (originError) return originError
     const limitError = rateLimit(req, 'razorpay-order', 5, 10 * 60 * 1000)
     if (limitError) return limitError
-    const { items, payment_method, coupon_code, receipt, notes } = await req.json()
-    const quote = await checkoutQuote(database, items, payment_method === 'online' ? 'online' : '', coupon_code, await welcomeEligible(req))
+    const { items, payment_method, coupon_code, loyalty_points_redeemed, receipt, notes } = await req.json()
+    const customer = await customerCheckoutState(req)
+    const quote = await checkoutQuote(database, items, payment_method === 'online' ? 'online' : '', coupon_code, customer.welcomeEligible, customer.availablePoints, loyalty_points_redeemed)
     const order = await razorpay.orders.create({
       amount: quote.grand_total * 100,
       currency: 'INR',

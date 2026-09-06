@@ -17,6 +17,8 @@ export type CheckoutQuote = {
   packaging: number
   grand_total: number
   coupon_code: string | null
+  points_redeemed: number
+  points_discount: number
 }
 
 // The browser may display a quote, but it must never be allowed to set the
@@ -28,6 +30,8 @@ export async function checkoutQuote(
   paymentMethod: unknown,
   requestedCoupon: unknown,
   welcomeEligible = false,
+  availablePoints = 0,
+  requestedPoints = 0,
 ): Promise<CheckoutQuote> {
   if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new Error('Your bag is empty or invalid.')
   const { data, error } = await database.from('products').select('name,price,sizes,is_active').eq('is_active', true).limit(2000)
@@ -52,8 +56,10 @@ export async function checkoutQuote(
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
   const couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
+  const points_redeemed = Math.min(Math.max(Math.floor(Number(requestedPoints) || 0), 0), 100, Math.max(0, Math.floor(Number(availablePoints) || 0)))
+  const points_discount = Math.round(points_redeemed * .3)
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
-  return { items, subtotal, discount, packaging, grand_total: Math.max(1, subtotal - discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null }
+  return { items, subtotal, discount, packaging, points_redeemed, points_discount, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null }
 }
