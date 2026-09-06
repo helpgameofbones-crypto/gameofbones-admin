@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-type Product = { name: string; price: unknown; is_active: unknown }
+type Product = { name: string; price: unknown; sizes: unknown; is_active: unknown }
 type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown }
 
 const cleanName = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : ''
@@ -30,16 +30,21 @@ export async function checkoutQuote(
   welcomeEligible = false,
 ): Promise<CheckoutQuote> {
   if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new Error('Your bag is empty or invalid.')
-  const { data, error } = await database.from('products').select('name,price,is_active').eq('is_active', true).limit(2000)
+  const { data, error } = await database.from('products').select('name,price,sizes,is_active').eq('is_active', true).limit(2000)
   if (error) throw new Error('Unable to verify current product pricing.')
   const products = new Map((data || []).map((product: Product) => [cleanName(product.name), product]))
   const items = (requestedItems as RequestedLine[]).map(line => {
     const name = cleanName(line?.name), product = products.get(name)
     const quantity = Math.min(Math.max(Math.floor(Number(line?.quantity) || 0), 1), 99)
     if (!product || !name) throw new Error('One or more treats in your bag are no longer available. Please refresh your bag.')
-    const price = money(product.price)
+    const packLabel = cleanLabel(line?.pack_label)
+    const matchedPack = Array.isArray(product.sizes)
+      ? product.sizes.find((pack: unknown) => pack && typeof pack === 'object' && cleanName((pack as Record<string, unknown>).label) === cleanName(packLabel)) as Record<string, unknown> | undefined
+      : undefined
+    if (packLabel && !matchedPack) throw new Error(`The selected pack for ${product.name} has changed. Please refresh your bag and select it again.`)
+    const price = money(matchedPack?.price ?? product.price)
     if (!price) throw new Error(`Current pricing is unavailable for ${product.name}.`)
-    return { name: product.name, pack_label: cleanLabel(line?.pack_label), price, quantity }
+    return { name: product.name, pack_label: packLabel, price, quantity }
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)
