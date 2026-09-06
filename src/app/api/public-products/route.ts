@@ -54,17 +54,14 @@ export async function GET(request: NextRequest) {
     const images = mediaList(product.images, 6)
     const videos = mediaList(product.videos, 3)
     const sizes = packList(product.sizes)
-    // Pack pricing is the customer-facing source of truth. Older records can
-    // retain a former top-level price after their packs were edited.
-    const firstPack = sizes[0]
     return {
       id: cleanText(product.id, 100),
       name: cleanText(product.name, 300),
       image_url: images[0] || cleanText(product.image_url, 2000),
       images,
       videos,
-      price: firstPack?.price || money(product.price),
-      compare_price: firstPack?.compare_price || money(product.compare_price),
+      price: money(product.price),
+      compare_price: money(product.compare_price),
       is_active: Boolean(product.is_active),
       sizes,
       is_bestseller: Boolean(product.is_bestseller),
