@@ -5,6 +5,9 @@ type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown 
 
 const cleanName = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : ''
 const cleanLabel = (value: unknown) => typeof value === 'string' ? value.trim().slice(0, 100) : ''
+const POINT_VALUE_RUPEES = .3
+const MAX_POINTS_DISCOUNT_RUPEES = 100
+const MAX_REDEMPTION_POINTS = Math.floor(MAX_POINTS_DISCOUNT_RUPEES / POINT_VALUE_RUPEES)
 const money = (value: unknown) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0
@@ -56,8 +59,10 @@ export async function checkoutQuote(
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
   const couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
-  const points_redeemed = Math.min(Math.max(Math.floor(Number(requestedPoints) || 0), 0), 100, Math.max(0, Math.floor(Number(availablePoints) || 0)))
-  const points_discount = Math.round(points_redeemed * .3)
+  // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
+  // which rounds to ₹100; the money cap below remains authoritative.
+  const points_redeemed = Math.min(Math.max(Math.floor(Number(requestedPoints) || 0), 0), MAX_REDEMPTION_POINTS, Math.max(0, Math.floor(Number(availablePoints) || 0)))
+  const points_discount = Math.min(MAX_POINTS_DISCOUNT_RUPEES, Math.round(points_redeemed * POINT_VALUE_RUPEES))
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
