@@ -3,9 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, protectLegacyPii, protectLegacyPiiValue, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { checkoutQuote } from '@/app/lib/checkout-pricing'
+import { customerSessionFromRequest } from '@/app/lib/customer-session'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
-function validItems(items: unknown): items is Array<{name:string;price:number;quantity:number}> { return Array.isArray(items) && items.length > 0 && items.length <= 50 && items.every(item => item && typeof item.name === 'string' && typeof item.price === 'number' && Number.isFinite(item.price) && typeof item.quantity === 'number' && Number.isFinite(item.quantity)) }
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
 export async function POST(req: NextRequest) {
  const headers = corsHeaders(req)
@@ -14,11 +15,18 @@ export async function POST(req: NextRequest) {
   const limitError = rateLimit(req, 'save-order', 5, 10 * 60 * 1000); if (limitError) return limitError
   const order = await req.json(), phone = revealLegacyPii(order.customer_phone), email = revealLegacyPii(order.customer_email), name = revealLegacyPii(order.customer_name)
   if (!order.ref || !phone) return NextResponse.json({ error:'Missing required fields: ref, customer_phone' }, { status:400, headers })
-  if (!REF_RE.test(order.ref) || !PHONE_RE.test(phone) || !validItems(order.items) || ![order.total_amount,order.shipping,order.discount,order.grand_total].every((value:unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0) || order.grand_total < 1 || order.grand_total > 100000 || !['cod','razorpay'].includes(order.payment_method)) return NextResponse.json({ error:'Invalid order details' }, { status:400, headers })
+  if (!REF_RE.test(order.ref) || !PHONE_RE.test(phone) || !['cod','razorpay'].includes(order.payment_method)) return NextResponse.json({ error:'Invalid order details' }, { status:400, headers })
+  const session = customerSessionFromRequest(req)
+  let canUseWelcome = false
+  if (String(order.coupon_code || '').toUpperCase() === 'WELCOME15' && session && normalizePhoneForHash(session.phone) === normalizePhoneForHash(phone)) {
+    const history = await supabase.rpc('get_customer_order_history', { p_phone: session.phone })
+    canUseWelcome = !history.error && Array.isArray(history.data) && history.data.length === 0
+  }
+  const quote = await checkoutQuote(supabase, order.items, order.payment_method, order.coupon_code, canUseWelcome)
   const { data: existing } = await supabase.from('orders').select('id').eq('ref',order.ref).limit(1)
-  const storedItems = order.items.map((item: any) => ({ product_name: item.name, pack_label: item.pack_label ?? null, pack_price: item.price, quantity: item.quantity, bundle_id: item.bundle_id, bundle_name: item.bundle_name }))
+  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_price: item.price, quantity: item.quantity }))
   const address = revealLegacyPiiValue(order.shipping_address)
-  const insertData: Record<string, unknown> = { ref:order.ref, customer_name:protectLegacyPii(name), customer_phone:protectLegacyPii(phone), customer_email:protectLegacyPii(email), pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(address), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_key_version:1, items:storedItems, subtotal:typeof order.subtotal === 'number' ? order.subtotal : order.total_amount, total_amount:order.total_amount, shipping:order.shipping, discount:order.discount, coupon_code:typeof order.coupon_code === 'string' ? order.coupon_code : null, packaging:typeof order.packaging === 'number' ? order.packaging : 0, grand_total:order.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, shipping_address:protectLegacyPiiValue(address), notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:typeof order.loyalty_points_redeemed === 'number' ? order.loyalty_points_redeemed : 0, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
+  const insertData: Record<string, unknown> = { ref:order.ref, customer_name:protectLegacyPii(name), customer_phone:protectLegacyPii(phone), customer_email:protectLegacyPii(email), pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(address), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_key_version:1, items:storedItems, subtotal:quote.subtotal, total_amount:quote.subtotal, shipping:0, discount:quote.discount, coupon_code:quote.coupon_code, packaging:quote.packaging, grand_total:quote.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, shipping_address:protectLegacyPiiValue(address), notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:typeof order.loyalty_points_redeemed === 'number' ? order.loyalty_points_redeemed : 0, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
   const updateData = { ...insertData }
   delete updateData.ref
   delete updateData.payment_status
