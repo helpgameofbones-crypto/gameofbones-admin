@@ -57,7 +57,15 @@ export default function FinancePage() {
   const totalDiscount   = orders.reduce((s, o) => s + (o.discount || 0), 0)
   const totalRefunds    = orders.reduce((s, o) => s + (o.refund_amount || 0), 0)
   const netRevenue      = totalRevenue - totalRefunds
-  const estimatedCOGS   = netRevenue * (parseFloat(cogsPercent) / 100)
+  const matchedCOGS = orders.reduce((total, order) => total + (order.items || []).reduce((sum: number, item: any) => {
+    const name = String(item.name ?? item.product_name ?? '').trim().toLowerCase()
+    const packLabel = String(item.size ?? item.pack_label ?? '').trim().toLowerCase()
+    const product = products.find((product: any) => String(product.name || '').trim().toLowerCase() === name)
+    const pack = Array.isArray(product?.sizes) ? product.sizes.find((size: any) => String(size.label || '').trim().toLowerCase() === packLabel) : null
+    const unitCost = Number(pack?.cogs ?? product?.cost_price ?? 0)
+    return sum + unitCost * Number(item.qty ?? item.quantity ?? 1)
+  }, 0), 0)
+  const estimatedCOGS   = matchedCOGS || netRevenue * (parseFloat(cogsPercent) / 100)
   const grossProfit     = netRevenue - estimatedCOGS
   const grossMargin     = netRevenue ? Math.round((grossProfit / netRevenue) * 100) : 0
 
