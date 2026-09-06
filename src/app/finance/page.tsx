@@ -211,8 +211,8 @@ export default function FinancePage() {
                     { label: 'Discounts Given',      value: -totalDiscount,             color: '#ef4444', prefix: '' },
                     { label: 'Refunds',              value: -totalRefunds,              color: '#ef4444', prefix: '' },
                     { label: 'Net Revenue',          value: netRevenue,                 color: '#3b82f6', prefix: '' },
-                    { label: `COGS (${cogsPercent}%)`, value: -estimatedCOGS,          color: '#ef4444', prefix: '' },
-                    { label: 'Estimated Gross Profit', value: grossProfit,             color: '#10b981', prefix: '' },
+                    { label: matchedCOGS ? 'Actual product COGS' : `Fallback COGS (${cogsPercent}%)`, value: -estimatedCOGS, color: '#ef4444', prefix: '' },
+                    { label: matchedCOGS ? 'Gross Profit' : 'Estimated Gross Profit', value: grossProfit, color: '#10b981', prefix: '' },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#1a1008' }}>{row.label}</td>
