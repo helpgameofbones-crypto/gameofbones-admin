@@ -23,6 +23,7 @@ const SECTIONS = [
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
+    { name: 'Enquiries', href: '/contact-inquiries', icon: Mail, desc: 'Customer contact-form messages' },
     { name: 'Content', href: '/site-content', icon: FileText, desc: 'Storefront, blogs and social proof' },
   ]},
   { title: 'FINANCE', color: '#84cc16', items: [
