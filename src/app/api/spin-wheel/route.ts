@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { corsHeaders } from '@/app/lib/cors'
 import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
+import { sendWheelWelcomeEmail } from '@/app/lib/lifecycle-emails'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const prizes = [
@@ -28,8 +29,16 @@ export async function POST(req: NextRequest) {
     if (prior.error) throw prior.error
     if (prior.data) return NextResponse.json({ alreadySpun: true, prize: prior.data.prize || 'Your reward', coupon_code: prior.data.coupon_code || '' }, { headers })
     const prize = prizes[randomInt(prizes.length)]
-    const insert = await supabase.from('email_captures').insert({ email, name, phone, source: 'spin_to_win', status: 'active', prize: prize.label, coupon_code: prize.detail, pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 })
+    const insert = await supabase.from('email_captures').insert({ email, name, phone, source: 'spin_to_win', status: 'active', prize: prize.label, coupon_code: prize.detail, pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
     if (insert.error) throw insert.error
+    try {
+      await sendWheelWelcomeEmail({ name, email, couponCode: prize.detail, prize: prize.label })
+      await supabase.from('email_captures').update({ welcome_email_sent_at: new Date().toISOString() }).eq('id', insert.data.id)
+    } catch (emailError) {
+      // A prize must never be lost because the mail provider is temporarily unavailable.
+      // The missing timestamp keeps the capture identifiable for a safe resend from admin.
+      console.error('Spin-wheel welcome email failed', emailError)
+    }
     return NextResponse.json({ alreadySpun: false, prize: prize.label, coupon_code: prize.detail }, { status: 201, headers })
   } catch {
     return NextResponse.json({ error: 'Unable to check spin eligibility right now.' }, { status: 500, headers })

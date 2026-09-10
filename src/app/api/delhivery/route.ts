@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 import { revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { sendDispatchEmail } from '@/app/lib/lifecycle-emails'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -110,6 +111,22 @@ export async function POST(req: NextRequest) {
           entity_id:   orderId,
           details:     'AWB: ' + awb,
         })
+
+        const { data: savedOrder } = await supabase
+          .from('orders')
+          .select('dispatch_email_sent_at')
+          .eq('id', orderId)
+          .maybeSingle()
+        if (!savedOrder?.dispatch_email_sent_at) {
+          try {
+            if (await sendDispatchEmail(order, awb)) {
+              await supabase.from('orders').update({ dispatch_email_sent_at: new Date().toISOString() }).eq('id', orderId)
+            }
+          } catch (emailError) {
+            // Delhivery shipment creation has already succeeded. Keep it successful even if mail fails.
+            console.error('[delhivery] dispatch email failed', emailError)
+          }
+        }
 
         return NextResponse.json({ ok: true, awb })
       } else {

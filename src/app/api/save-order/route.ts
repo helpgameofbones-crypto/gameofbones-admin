@@ -5,6 +5,7 @@ import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, protectLegacyPii, protectLegacyPiiValue, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
+import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -81,6 +82,16 @@ export async function POST(req: NextRequest) {
     if (referrerPhone && referredPhone && referrerPhone !== referredPhone) {
       const { data: credited } = await supabase.from('referrals').select('id').eq('order_id', orderId).limit(1)
       if (!credited?.length) await supabase.from('referrals').insert({ referrer_phone: referrerPhone, referred_phone: referredPhone, order_id: orderId, points_awarded: 300 })
+    }
+  }
+  if (!existing?.length && data?.[0]) {
+    try {
+      if (await sendOrderPlacedEmail(data[0])) {
+        await supabase.from('orders').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', data[0].id)
+      }
+    } catch (emailError) {
+      // Checkout already succeeded; do not turn an email-provider hiccup into a failed order.
+      console.error('Order confirmation email failed', emailError)
     }
   }
   return NextResponse.json({ success:true, profile_created: customerCreated, order:data }, { status:201, headers })

@@ -1,110 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import nodemailer from 'nodemailer'
+import { resend } from '@/app/lib/emailClient'
+import { customerEmail } from '@/app/lib/lifecycle-emails'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-})
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const threeDaysAgo = new Date()
-  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-
-  const fourDaysAgo = new Date()
-  fourDaysAgo.setDate(fourDaysAgo.getDate() - 4)
-
-  const { data: deliveredOrders } = await supabase
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+  const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+  const { data: deliveredOrders, error } = await supabase
     .from('orders')
-    .select('*')
+    .select('id,ref,customer_name,customer_email,items,updated_at')
     .eq('status', 'delivered')
+    .is('review_request_sent_at', null)
     .gte('updated_at', fourDaysAgo.toISOString())
     .lte('updated_at', threeDaysAgo.toISOString())
 
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
   let sent = 0
-
-  for (const order of (deliveredOrders || [])) {
-    if (!order.customer_email) continue
-
-    const items = (order.items || [])
-      .slice(0, 2)
-      .map((i: any) => i.name)
-      .join(' and ')
-
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
-      to: order.customer_email,
-      subject: `How did ${items} go down? 🐾`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-          <div style="background:#1a1008;padding:24px;text-align:center">
-            <h1 style="color:#c8973a;margin:0">🐾 Game of Bones</h1>
-          </div>
-
-          <div style="background:#f9f6f2;padding:32px;text-align:center">
-            <div style="font-size:48px;margin-bottom:16px">⭐</div>
-            <h2 style="color:#1a1008;margin:0 0 8px">
-              How did your pup like the treats?
-            </h2>
-            <p style="color:#6b7280;font-size:14px;margin:0 0 8px">
-              Hi ${order.customer_name}!
-            </p>
-            <p style="color:#6b7280;font-size:14px;margin:0 0 24px">
-              Your order <strong>${order.ref}</strong> was delivered 3 days ago.
-              We'd love to know what your dog thought! 🐶
-            </p>
-
-            <div style="background:white;border-radius:12px;padding:20px;margin-bottom:24px">
-              <div style="font-size:13px;color:#6b7280;margin-bottom:12px">
-                Tap a star to rate your experience
-              </div>
-              <div style="font-size:40px;letter-spacing:8px;margin-bottom:16px">
-                ⭐⭐⭐⭐⭐
-              </div>
-              <a href="https://gameofbones.in"
-                style="background:#c8973a;color:#1a1008;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block">
-                Leave a Review →
-              </a>
-            </div>
-
-            <div style="background:#fef3c7;border-radius:12px;padding:16px;margin-bottom:16px">
-              <p style="margin:0;font-size:13px;color:#92400e">
-                🎁 <strong>Leave a review and get 10% off</strong> your next order!
-                We'll send you a code once your review is live.
-              </p>
-            </div>
-
-            <p style="color:#9ca3af;font-size:12px">
-              Questions? WhatsApp us at +91 90825 03295
-            </p>
-          </div>
-
-          <div style="background:#1a1008;padding:16px;text-align:center">
-            <p style="color:rgba(255,255,255,0.4);margin:0;font-size:12px">
-              Game of Bones · gameofbones.in
-            </p>
-          </div>
-        </div>
-      `
+  for (const order of deliveredOrders || []) {
+    const email = customerEmail(order.customer_email)
+    if (!email) continue
+    const items = (order.items || []).slice(0, 2).map((item: any) => item.product_name || item.name).filter(Boolean).join(' and ') || 'your treats'
+    const firstName = escapeHtml(revealLegacyPii(order.customer_name).split(' ')[0] || 'there')
+    await resend.emails.send({
+      to: email,
+      subject: `How did ${items} go down?`,
+      html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26"><div style="max-width:600px;margin:0 auto;padding:28px 16px"><div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;letter-spacing:2px">GAME OF BONES</strong></div><div style="background:#fffdf8;padding:32px;text-align:center"><h1 style="margin-top:0">How did your pup like the treats?</h1><p>Hi ${firstName}, your order <strong>${escapeHtml(order.ref)}</strong> was delivered a few days ago. We'd love a quick, honest review.</p><a href="https://gameofbones.in/products" style="display:inline-block;margin:16px 0;background:#c88722;color:#fff;padding:14px 24px;text-decoration:none;font-weight:700">LEAVE A REVIEW →</a><div style="margin-top:12px;padding:18px;background:#f9e7a5;text-align:left"><strong>50 Game of Bones points after approval</strong><br><span style="font-size:13px">Once your review is moderated and approved, we will add 50 points to your customer account. Points are not awarded for unapproved reviews.</span></div></div></div></body></html>`,
     })
+    await supabase.from('orders').update({ review_request_sent_at: new Date().toISOString() }).eq('id', order.id)
     sent++
   }
 
-  return NextResponse.json({
-    ok: true,
-    orders_checked: deliveredOrders?.length || 0,
-    emails_sent: sent
-  })
+  return NextResponse.json({ ok: true, orders_checked: deliveredOrders?.length || 0, emails_sent: sent })
 }
