@@ -3,8 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 import { resend } from '@/app/lib/emailClient'
 import { customerEmail } from '@/app/lib/lifecycle-emails'
 import { revealLegacyPii } from '@/app/lib/pii-crypto'
+import { emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+type ReviewOrderItem = { product_name?: unknown; name?: unknown }
+type DeliveredOrder = { id: string; ref?: unknown; customer_name?: unknown; customer_email?: unknown; items?: unknown }
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -28,15 +31,23 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   let sent = 0
-  for (const order of deliveredOrders || []) {
+  for (const order of (deliveredOrders || []) as DeliveredOrder[]) {
     const email = customerEmail(order.customer_email)
     if (!email) continue
-    const items = (order.items || []).slice(0, 2).map((item: any) => item.product_name || item.name).filter(Boolean).join(' and ') || 'your treats'
+    const orderItems = Array.isArray(order.items) ? order.items as ReviewOrderItem[] : []
+    const items = orderItems.slice(0, 2).map((item) => item.product_name || item.name).filter((item): item is string => typeof item === 'string' && Boolean(item)).join(' and ') || 'your treats'
     const firstName = escapeHtml(revealLegacyPii(order.customer_name).split(' ')[0] || 'there')
     await resend.emails.send({
       to: email,
       subject: `How did ${items} go down?`,
-      html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26"><div style="max-width:600px;margin:0 auto;padding:28px 16px"><div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;letter-spacing:2px">GAME OF BONES</strong></div><div style="background:#fffdf8;padding:32px;text-align:center"><h1 style="margin-top:0">How did your pup like the treats?</h1><p>Hi ${firstName}, your order <strong>${escapeHtml(order.ref)}</strong> was delivered a few days ago. We'd love a quick, honest review.</p><a href="https://gameofbones.in/products" style="display:inline-block;margin:16px 0;background:#c88722;color:#fff;padding:14px 24px;text-decoration:none;font-weight:700">LEAVE A REVIEW →</a><div style="margin-top:12px;padding:18px;background:#f9e7a5;text-align:left"><strong>50 Game of Bones points after approval</strong><br><span style="font-size:13px">Once your review is moderated and approved, we will add 50 points to your customer account. Points are not awarded for unapproved reviews.</span></div></div></div></body></html>`,
+      html: lifecycleEmailTemplate({
+        eyebrow: 'Your order has arrived',
+        title: 'How did your pup like the treats?',
+        introHtml: `Hi ${firstName}, your order <strong>${escapeHtml(order.ref)}</strong> was delivered a few days ago. We’d love a quick, honest review.`,
+        ctaLabel: 'Leave a review',
+        ctaUrl: 'https://gameofbones.in/products',
+        detailHtml: emailCard(`<div style="color:#dc650b;font-size:14px;font-weight:800;letter-spacing:.4px">50 GAME OF BONES POINTS AFTER APPROVAL</div><div style="border-top:1px solid #dfc988;margin:14px 0 12px"></div><div style="font-size:13px;line-height:1.5">Once your review is moderated and approved, we will add 50 points to your customer account.</div>`, 'left'),
+      }),
     })
     await supabase.from('orders').update({ review_request_sent_at: new Date().toISOString() }).eq('id', order.id)
     sent++

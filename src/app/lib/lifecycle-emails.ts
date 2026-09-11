@@ -1,5 +1,9 @@
 import { resend } from '@/app/lib/emailClient'
 import { revealLegacyPii } from '@/app/lib/pii-crypto'
+import { couponCard, emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
+
+type OrderItem = { product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown }
+type CustomerOrder = { customer_email?: unknown; customer_name?: unknown; ref?: unknown; grand_total?: unknown; items?: unknown }
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -22,40 +26,44 @@ export async function sendWheelWelcomeEmail(input: { name: string; email: string
   return resend.emails.send({
     to: input.email,
     subject: `Your Game of Bones reward: ${input.couponCode}`,
-    html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26">
-      <div style="max-width:600px;margin:0 auto;padding:28px 16px">
-        <div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;font-family:Georgia,'Times New Roman',serif;font-size:22px;letter-spacing:1.5px">GAME OF BONES</strong></div>
-        <div style="background:#fffdf8;padding:32px;text-align:center">
-          <p style="margin:0 0 12px;font-size:14px;color:#a86913;letter-spacing:1px;font-weight:700">WELCOME TO THE PACK</p>
-          <h1 style="margin:0 0 16px;font-size:30px">You spun ${prize}!</h1>
-          <p style="line-height:1.6">Hi ${firstName}, your reward is ready. Use this code at checkout:</p>
-          <div style="margin:24px auto;padding:16px;background:#f9e7a5;border:1px dashed #a86913;font-size:24px;font-weight:700;letter-spacing:2px">${coupon}</div>
-          <a href="https://gameofbones.in/products" style="display:inline-block;background:#c88722;color:#fff;padding:14px 24px;text-decoration:none;font-weight:700">SHOP TREATS →</a>
-          <p style="margin:24px 0 0;font-size:12px;color:#6b6257">One spin per person. Your reward will be checked at checkout.</p>
-        </div>
-      </div>
-    </body></html>`,
+    html: lifecycleEmailTemplate({
+      eyebrow: 'Welcome to the pack',
+      title: `You spun ${prize}!`,
+      introHtml: `Good things happen to good pups.<br>Use your exclusive code at checkout and<br>treat your furry friend today.`,
+      detailHtml: couponCard(coupon),
+      ctaLabel: 'Shop treats',
+      ctaUrl: 'https://gameofbones.in/products',
+      noteHtml: `Hi ${firstName}, one spin per person. Your reward will be checked at checkout.`,
+    }),
   })
 }
 
-export async function sendOrderPlacedEmail(order: any) {
+export async function sendOrderPlacedEmail(order: CustomerOrder) {
   const email = customerEmail(order.customer_email)
   if (!email) return false
   const firstName = escapeHtml(revealLegacyPii(order.customer_name).split(' ')[0] || 'there')
   const ref = escapeHtml(order.ref)
   const total = Number(order.grand_total || 0).toLocaleString('en-IN')
-  const itemLines = (order.items || []).slice(0, 5).map((item: any) =>
-    `<li style="padding:5px 0">${escapeHtml(item.product_name || item.name || 'Treat')} × ${Number(item.quantity ?? item.qty ?? 1)}</li>`
+  const items = Array.isArray(order.items) ? order.items as OrderItem[] : []
+  const itemLines = items.slice(0, 5).map((item) =>
+    `<tr><td style="padding:7px 0;border-bottom:1px solid #eadfca">${escapeHtml(item.product_name || item.name || 'Treat')} × ${Math.max(1, Number(item.quantity ?? item.qty ?? 1) || 1)}</td></tr>`
   ).join('')
   await resend.emails.send({
     to: email,
     subject: `Order confirmed: ${ref}`,
-    html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26"><div style="max-width:600px;margin:0 auto;padding:28px 16px"><div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;letter-spacing:2px">GAME OF BONES</strong></div><div style="background:#fffdf8;padding:32px"><h1 style="margin-top:0">Your order is confirmed.</h1><p>Hi ${firstName}, thank you for your order. We will email your Delhivery tracking link as soon as it is dispatched.</p><p><strong>Order:</strong> ${ref}<br><strong>Total:</strong> ₹${total}</p><ul style="padding-left:20px">${itemLines}</ul><a href="https://gameofbones.in/track" style="display:inline-block;margin-top:16px;background:#c88722;color:#fff;padding:14px 24px;text-decoration:none;font-weight:700">TRACK MY ORDER →</a></div></div></body></html>`,
+    html: lifecycleEmailTemplate({
+      eyebrow: 'Order confirmed',
+      title: 'Your order is confirmed.',
+      introHtml: `Hi ${firstName}, thank you for your order. We’ll email your Delhivery tracking link as soon as it is dispatched.`,
+      detailHtml: emailCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="color:#082f26;font-size:14px;text-align:left"><tr><td style="padding-bottom:14px;color:#dc650b;font-size:11px;font-weight:700;letter-spacing:1.2px">ORDER</td><td align="right" style="padding-bottom:14px;color:#dc650b;font-size:11px;font-weight:700;letter-spacing:1.2px">TOTAL</td></tr><tr><td style="padding-bottom:16px;font-size:21px;font-weight:700">${ref}</td><td align="right" style="padding-bottom:16px;font-size:21px;font-weight:700">₹${total}</td></tr>${itemLines}</table>`, 'left'),
+      ctaLabel: 'Track my order',
+      ctaUrl: 'https://gameofbones.in/track',
+    }),
   })
   return true
 }
 
-export async function sendDispatchEmail(order: any, awb: string) {
+export async function sendDispatchEmail(order: CustomerOrder, awb: string) {
   const email = customerEmail(order.customer_email)
   if (!email) return false
   const firstName = escapeHtml(revealLegacyPii(order.customer_name).split(' ')[0] || 'there')
@@ -63,7 +71,14 @@ export async function sendDispatchEmail(order: any, awb: string) {
   await resend.emails.send({
     to: email,
     subject: `Your Game of Bones order is on its way: ${awb}`,
-    html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26"><div style="max-width:600px;margin:0 auto;padding:28px 16px"><div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;letter-spacing:2px">GAME OF BONES</strong></div><div style="background:#fffdf8;padding:32px"><h1 style="margin-top:0">Your treats are on the way.</h1><p>Hi ${firstName}, your shipment has been booked with Delhivery.</p><p><strong>Tracking number:</strong> ${escapeHtml(awb)}</p><a href="${trackingUrl}" style="display:inline-block;background:#c88722;color:#fff;padding:14px 24px;text-decoration:none;font-weight:700">TRACK WITH DELHIVERY →</a></div></div></body></html>`,
+    html: lifecycleEmailTemplate({
+      eyebrow: 'Dispatched',
+      title: 'Your treats are on the way.',
+      introHtml: `Hi ${firstName}, your shipment has been booked with Delhivery.`,
+      detailHtml: emailCard(`<div style="color:#dc650b;font-size:11px;font-weight:700;letter-spacing:1.3px">TRACKING NUMBER</div><div style="font-size:25px;font-weight:700;margin:9px 0 12px;word-break:break-all">${escapeHtml(awb)}</div><div style="border-top:1px solid #dfc988;padding-top:12px;font-size:13px;line-height:1.45">Your delivery updates will be available through Delhivery.</div>`),
+      ctaLabel: 'Track with Delhivery',
+      ctaUrl: trackingUrl,
+    }),
   })
   return true
 }

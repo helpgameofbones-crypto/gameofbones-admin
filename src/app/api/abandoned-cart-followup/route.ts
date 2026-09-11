@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
+import { emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -115,34 +116,19 @@ export async function GET(req: NextRequest) {
         : ''
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #f0ebe3"><tr>${imageCell}<td valign="middle" style="padding:10px 0;font-size:13px;line-height:1.45;color:#1a1008"><strong>${escapeHtml(name)}</strong>${pack ? ` · ${escapeHtml(pack)}` : ''} × ${quantity}</td><td valign="middle" align="right" style="padding:10px 0;font-size:13px;font-weight:600;color:#1a1008;white-space:nowrap">₹${(price * quantity).toLocaleString('en-IN')}</td></tr></table>`
     }).join('')
-    const couponCode = cart.coupon_code || 'SAVE50'
-        const couponLabel = cart.coupon_code ? '10% off' : 'Rs.50 off'
-    const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
-<div style="max-width:600px;margin:0 auto;padding:24px 16px">
-  <div style="background:#1a1008;padding:20px 28px;border-radius:8px 8px 0 0;text-align:center">
-    <div style="font-size:20px;font-weight:700;color:#c8973a">GAME OF BONES</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">You left something behind...</div>
-  </div>
-  <div style="background:white;padding:28px">
-    <p style="font-size:15px;color:#1a1008">Hi ${cart.customer_name?.split(' ')[0] || 'there'},</p>
-    <p style="font-size:14px;color:#5a4a3a;line-height:1.7">Your dog is still waiting! You left these treats in your cart — we've saved them for you.</p>
-    <div style="margin:20px 0">${itemsHtml}</div>
-    <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid #f0ebe3;font-size:15px;font-weight:700">
-      <span>Total</span><span style="color:#c8973a">Rs.${cart.total?.toLocaleString('en-IN')}</span>
-    </div>
-    <div style="text-align:center;margin-top:24px">
-      <a href="https://gameofbones-website.vercel.app/?cart=recover&phone=${cart.customer_phone}"
-         style="display:inline-block;background:#c8973a;color:#1a1008;padding:14px 36px;font-weight:700;font-size:13px;text-decoration:none;border-radius:2px;letter-spacing:.1em">
-        COMPLETE MY ORDER →
-      </a>
-    </div>
-    <p style="font-size:12px;color:#8a7a6a;text-align:center;margin-top:20px">
-            Use code <strong>${couponCode}</strong> for ${couponLabel} if you complete your order in the next 24 hours!
-    </p>
-  </div>
-            <p style="font-size:11px;color:rgba(255,255,255,.4);margin:0">Game of Bones · Made in Kalyan, Maharashtra</p>
-  </div>
-</div></body></html>`
+    const couponCode = text(cart.coupon_code) || 'SAVE50'
+    const couponLabel = cart.coupon_code ? '10% off' : '₹50 off'
+    const firstName = escapeHtml(text(cart.customer_name).split(' ')[0] || 'there')
+    const total = Math.max(0, Number(cart.total) || 0).toLocaleString('en-IN')
+    const recoveryUrl = `https://gameofbones.in/?cart=recover&phone=${encodeURIComponent(text(cart.customer_phone))}`
+    const html = lifecycleEmailTemplate({
+      eyebrow: 'Your treats are waiting',
+      title: 'Your pup’s treats are still in the bowl.',
+      introHtml: `Hi ${firstName}, you left these treats in your cart. We’ve saved them for you.`,
+      detailHtml: `${emailCard(`${itemsHtml}<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding-top:14px;font-size:15px;font-weight:700">TOTAL</td><td align="right" style="padding-top:14px;font-size:17px;font-weight:700">₹${total}</td></tr></table>`, 'left')}<div style="margin-top:13px;background:#fff4cb;border:1px solid #dfb75e;border-radius:9px;padding:12px 15px;font-size:13px;line-height:1.45">Use code <strong>${escapeHtml(couponCode)}</strong> for ${couponLabel} if you complete your order in the next 24 hours.</div>`,
+      ctaLabel: 'Complete my order',
+      ctaUrl: recoveryUrl,
+    })
 
     await transporter.sendMail({
       from: process.env.GMAIL_USER,

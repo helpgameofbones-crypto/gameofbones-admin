@@ -23,6 +23,7 @@ const SECTIONS = [
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
+    { name: 'Review approval', href: '/reviews', icon: HeartHandshake, desc: 'Moderate reviews and award points' },
     { name: 'Enquiries', href: '/contact-inquiries', icon: Mail, desc: 'Customer contact-form messages' },
     { name: 'Content', href: '/site-content', icon: FileText, desc: 'Storefront, blogs and social proof' },
   ]},
