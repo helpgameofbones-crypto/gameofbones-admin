@@ -20,6 +20,7 @@ const SECTIONS = [
   ]},
   { title: 'GROWTH', color: '#f97316', items: [
     { name: 'Marketing & Ad Spend', href: '/marketing', icon: Megaphone, desc: 'Meta spend, ROAS, pixels and tracking links' },
+    { name: 'Campaign setup', href: '/campaigns', icon: Megaphone, desc: 'Build audiences and send campaigns' },
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
@@ -29,6 +30,9 @@ const SECTIONS = [
   ]},
   { title: 'FINANCE', color: '#84cc16', items: [
     { name: 'Finance', href: '/finance', icon: WalletCards, desc: 'Revenue, margin, payments and invoices' },
+    { name: 'Razorpay payments', href: '/razorpay', icon: WalletCards, desc: 'Payments, refunds and settlements' },
+    { name: 'Invoices', href: '/invoices', icon: FileText, desc: 'Customer invoices and tax documents' },
+    { name: 'Expenses', href: '/expenses', icon: WalletCards, desc: 'Operating costs and margins' },
   ]},
   { title: 'MORE TOOLS', color: '#78716c', collapsedByDefault: true, items: [
     { name: 'Manual Order', href: '/manual-order', icon: ClipboardList, desc: 'Phone, walk-in and offline orders' },
@@ -36,8 +40,11 @@ const SECTIONS = [
     { name: 'Returns & RTO', href: '/returns', icon: Truck, desc: 'Returns, refunds and RTO recovery' },
     { name: 'Inventory & Production', href: '/inventory', icon: Boxes, desc: 'Stock, batches and production work' },
     { name: 'Loyalty & Recovery', href: '/gamification', icon: HeartHandshake, desc: 'Rewards, birthdays, carts and referrals' },
-    { name: 'Campaign setup', href: '/campaigns', icon: Megaphone, desc: 'Build audiences and send campaigns' },
     { name: 'Detailed reports', href: '/cohort-analysis', icon: BarChart3, desc: 'Cohorts, city and hour analysis' },
+    { name: 'Customer intelligence', href: '/customer-intelligence', icon: Users, desc: 'Segments, repeat rate and customer value' },
+    { name: 'Product performance', href: '/product-performance', icon: PackageCheck, desc: 'Best sellers and product affinity' },
+    { name: 'Delivery tracking', href: '/shipment-tracker', icon: Truck, desc: 'Shipment status and delivery issues' },
+    { name: 'Activity & audit trail', href: '/audit-trail', icon: ClipboardList, desc: 'Changes, actions and accountability' },
     { name: 'Admin & exports', href: '/tasks', icon: Settings2, desc: 'Tasks, team, audit trail and exports' },
   ]},
 ];

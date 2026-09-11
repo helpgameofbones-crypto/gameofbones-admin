@@ -168,12 +168,30 @@ export default function DashboardPage() {
     { key: 'delivery', label: 'Delivery exceptions', detail: 'RTO, return, or delivery-failed orders need a decision.', count: orders.filter(o => ['rto', 'returned', 'delivery_failed'].includes(o.status || '')).length, href: '/rto', tone: '#7e22ce', background: '#f8f0ff' },
   ].filter(item => item.count > 0);
 
+  const workspaces = [
+    { label: 'Take orders', detail: 'Orders, manual orders and payment checks', href: '/orders', links: [['Manual order', '/manual-order'], ['Razorpay', '/razorpay'], ['COD queue', '/cod-tracker']] },
+    { label: 'Fulfil orders', detail: 'Dispatch, shipment status, returns and RTO', href: '/delhivery', links: [['Fulfilment', '/delhivery'], ['Shipment tracking', '/shipment-tracker'], ['Returns & RTO', '/returns']] },
+    { label: 'Manage catalogue', detail: 'Products, inventory and production', href: '/products', links: [['Products', '/products'], ['Inventory', '/inventory'], ['Production', '/production']] },
+    { label: 'Grow revenue', detail: 'Meta spend, campaigns, coupons and leads', href: '/marketing', links: [['Marketing & ad spend', '/marketing'], ['Campaigns', '/campaigns'], ['Coupons', '/coupons'], ['Spin & leads', '/email-captures']] },
+  ];
+
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20 }}>
-        <div><p style={{ margin: '0 0 4px', color: '#8a5c22', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Operations overview</p><h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Today’s work</h1></div>
-        <Link href="/orders" style={{ color: '#1a1008', fontSize: 13, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 4 }}>Open all orders</Link>
+    <div className="gob-dashboard" style={{ padding: '30px 28px 48px', maxWidth: 1360, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #e6dccb' }}>
+        <div><p style={{ margin: '0 0 5px', color: '#9a6514', fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>Game of Bones · Operations desk</p><h1 style={{ fontSize: 32, lineHeight: 1, letterSpacing: '-.04em', fontWeight: 800, margin: 0, fontFamily: 'Georgia, serif' }}>Today’s work</h1></div>
+        <Link href="/orders" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: '#1a1008', color: '#fff', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>Open order queue →</Link>
       </div>
+
+      <section aria-labelledby="workspace-heading" style={{ marginBottom: 24, border: '1px solid #ddd1bf', background: '#fffdf9', boxShadow: '0 8px 24px rgba(59,37,12,.05)' }}>
+        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #eee4d7' }}><h2 id="workspace-heading" style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>Jump into a workspace</h2><p style={{ margin: '3px 0 0', color: '#746759', fontSize: 12 }}>Every previous admin tool remains available here or in the left navigation.</p></div>
+        <div className="gob-dashboard-workspaces" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+          {workspaces.map((space, index) => <div key={space.label} style={{ padding: 18, borderLeft: index ? '1px solid #eee4d7' : 'none', minWidth: 0 }}>
+            <Link href={space.href} style={{ display: 'block', color: '#1a1008', textDecoration: 'none', fontSize: 15, fontWeight: 800, marginBottom: 5 }}>{space.label} →</Link>
+            <p style={{ margin: '0 0 12px', minHeight: 32, color: '#746759', fontSize: 12, lineHeight: 1.35 }}>{space.detail}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 10px' }}>{space.links.map(([name, href]) => <Link key={href} href={href} style={{ color: '#875b1e', textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 11, fontWeight: 700 }}>{name}</Link>)}</div>
+          </div>)}
+        </div>
+      </section>
 
       <section aria-labelledby="attention-heading" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 24, overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '15px 18px', borderBottom: attentionItems.length ? '1px solid #eee7db' : 'none' }}>
@@ -184,7 +202,7 @@ export default function DashboardPage() {
       </section>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="gob-dashboard-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString('en-IN')}`, sub: `${todayOrders.length} orders`, color: '#16a34a' },
           { label: '7-Day Revenue', value: `₹${weekRevenue.toLocaleString('en-IN')}`, sub: `${weekOrders.length} orders`, color: '#c8973a' },
@@ -200,7 +218,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Second row KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="gob-dashboard-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Customers', value: String(uniqueCustomers) },
           { label: 'Avg Order Value', value: `₹${avgOrderValue.toLocaleString('en-IN')}` },
@@ -234,7 +252,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Status breakdown + Recent orders */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20 }}>
+      <div className="gob-dashboard-split" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20 }}>
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Order Status</h3>
           {Object.entries(statusCounts).sort(([, a], [, b]) => (b as number) - (a as number)).map(([status, count]) => {
