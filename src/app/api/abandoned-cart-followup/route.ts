@@ -14,6 +14,63 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+type CartItem = {
+  name?: unknown
+  sizeLabel?: unknown
+  size?: unknown
+  qty?: unknown
+  quantity?: unknown
+  price?: unknown
+}
+
+type ProductImageRow = {
+  name: string
+  image_url?: unknown
+  images?: unknown
+}
+
+function text(value: unknown): string {
+  return String(value ?? '').trim()
+}
+
+function escapeHtml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function catalogueImage(row: ProductImageRow): string {
+  const candidates = [
+    ...(Array.isArray(row.images) ? row.images : []),
+    row.image_url,
+  ]
+
+  return candidates
+    .map((value) => text(value))
+    .find((value) => /^https:\/\//i.test(value)) || ''
+}
+
+async function productImagesFor(items: CartItem[]): Promise<Map<string, string>> {
+  const names = [...new Set(items.map((item) => text(item.name)).filter(Boolean))].slice(0, 25)
+  if (!names.length) return new Map()
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('name,image_url,images')
+    .in('name', names)
+
+  if (error || !data) return new Map()
+
+  return new Map(
+    (data as ProductImageRow[])
+      .map((product) => [text(product.name), catalogueImage(product)] as const)
+      .filter(([, image]) => Boolean(image))
+  )
+}
+
 // Cron job: originally ran every hour and swept a tight 1-2h window, but
 // Vercel's Hobby plan only allows crons to run once per day (anything more
 // frequent fails at deploy time -- see vercel.json). Now runs once daily and
@@ -43,12 +100,21 @@ export async function GET(req: NextRequest) {
 
   let sent = 0
   for (const cart of carts || []) {
-    const itemsHtml = (cart.items || []).map((i: any) =>
-      `<div style="padding:8px 0;border-bottom:1px solid #f0ebe3;font-size:13px;display:flex;justify-content:space-between">
-        <span>${i.name} ${i.sizeLabel ? '· ' + i.sizeLabel : ''} × ${i.qty}</span>
-        <span style="font-weight:600">Rs.${(i.price * i.qty).toLocaleString('en-IN')}</span>
-      </div>`
-    ).join('')
+    const items = Array.isArray(cart.items) ? cart.items as CartItem[] : []
+    // Resolve images from the current, admin-managed catalogue. Cart payloads
+    // can be old or user-controlled, so we never render their image URL.
+    const productImages = await productImagesFor(items)
+    const itemsHtml = items.map((item) => {
+      const name = text(item.name) || 'Treat'
+      const pack = text(item.sizeLabel ?? item.size)
+      const quantity = Math.max(1, Number(item.qty ?? item.quantity ?? 1) || 1)
+      const price = Math.max(0, Number(item.price) || 0)
+      const image = productImages.get(name) || ''
+      const imageCell = image
+        ? `<td width="68" valign="middle" style="width:68px;padding:10px 12px 10px 0"><img src="${escapeHtml(image)}" alt="${escapeHtml(name)}" width="56" height="56" style="display:block;width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #eee6d8" /></td>`
+        : ''
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #f0ebe3"><tr>${imageCell}<td valign="middle" style="padding:10px 0;font-size:13px;line-height:1.45;color:#1a1008"><strong>${escapeHtml(name)}</strong>${pack ? ` · ${escapeHtml(pack)}` : ''} × ${quantity}</td><td valign="middle" align="right" style="padding:10px 0;font-size:13px;font-weight:600;color:#1a1008;white-space:nowrap">₹${(price * quantity).toLocaleString('en-IN')}</td></tr></table>`
+    }).join('')
     const couponCode = cart.coupon_code || 'SAVE50'
         const couponLabel = cart.coupon_code ? '10% off' : 'Rs.50 off'
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f9f6f2;font-family:Arial,sans-serif">
