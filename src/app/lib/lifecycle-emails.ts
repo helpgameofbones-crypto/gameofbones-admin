@@ -24,7 +24,7 @@ export async function sendWheelWelcomeEmail(input: { name: string; email: string
     subject: `Your Game of Bones reward: ${input.couponCode}`,
     html: `<!doctype html><html><body style="margin:0;background:#f7f0e4;font-family:Arial,sans-serif;color:#082f26">
       <div style="max-width:600px;margin:0 auto;padding:28px 16px">
-        <div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;letter-spacing:2px">GAME OF BONES</strong></div>
+        <div style="background:#082f26;padding:28px;text-align:center"><strong style="color:#d28b21;font-family:Georgia,'Times New Roman',serif;font-size:22px;letter-spacing:1.5px">GAME OF BONES</strong></div>
         <div style="background:#fffdf8;padding:32px;text-align:center">
           <p style="margin:0 0 12px;font-size:14px;color:#a86913;letter-spacing:1px;font-weight:700">WELCOME TO THE PACK</p>
           <h1 style="margin:0 0 16px;font-size:30px">You spun ${prize}!</h1>
