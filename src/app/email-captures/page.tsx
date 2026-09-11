@@ -5,7 +5,7 @@ import { authedFetch } from '@/app/lib/authedFetch';
 
 interface EmailCapture {
   id: number;
-  email: string;
+  email: string | null;
   name: string | null;
   phone: string | null;
   source: string;
@@ -71,7 +71,7 @@ export default function EmailCaptures() {
     const rows = emails.map(e => [
       e.name || '',
       e.phone || '',
-      e.email,
+      e.email || 'Not collected (legacy)',
       e.source || 'unknown',
       e.prize || '',
       e.coupon_code || '',
@@ -187,9 +187,13 @@ export default function EmailCaptures() {
                     {email.phone || '—'}
                   </td>
                   <td style={styles.td}>
-                    <a href={`mailto:${email.email}`} style={styles.link}>
-                      {email.email}
-                    </a>
+                    {email.email ? (
+                      <a href={`mailto:${email.email}`} style={styles.link}>
+                        {email.email}
+                      </a>
+                    ) : (
+                      <span style={styles.time}>Not collected (legacy)</span>
+                    )}
                   </td>
                   <td style={styles.td}>
                     <span style={styles.badge}>
