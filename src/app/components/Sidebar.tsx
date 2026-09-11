@@ -19,7 +19,7 @@ const SECTIONS = [
     { name: 'Customers', href: '/customers', icon: Users, desc: 'Profiles, loyalty and retention' },
   ]},
   { title: 'GROWTH', color: '#f97316', items: [
-    { name: 'Marketing', href: '/campaigns-hub', icon: Megaphone, desc: 'Campaigns, segments and acquisition' },
+    { name: 'Marketing & Ad Spend', href: '/marketing', icon: Megaphone, desc: 'Meta spend, ROAS, pixels and tracking links' },
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
