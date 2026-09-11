@@ -177,9 +177,9 @@ export default function DashboardPage() {
 
   return (
     <div className="gob-dashboard" style={{ padding: '30px 28px 48px', maxWidth: 1360, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #e6dccb' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #e6dccb' }}>
         <div><p style={{ margin: '0 0 5px', color: '#9a6514', fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>Game of Bones · Operations desk</p><h1 style={{ fontSize: 32, lineHeight: 1, letterSpacing: '-.04em', fontWeight: 800, margin: 0, fontFamily: 'Georgia, serif' }}>Today’s work</h1></div>
-        <Link href="/orders" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: '#1a1008', color: '#fff', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>Open order queue →</Link>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'end' }}><Link href="/tools" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', border: '1px solid #bfae97', color: '#1a1008', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>All tools</Link><Link href="/orders" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: '#1a1008', color: '#fff', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>Open order queue →</Link></div>
       </div>
 
       <section aria-labelledby="workspace-heading" style={{ marginBottom: 24, border: '1px solid #ddd1bf', background: '#fffdf9', boxShadow: '0 8px 24px rgba(59,37,12,.05)' }}>

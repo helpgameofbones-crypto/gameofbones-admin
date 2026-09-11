@@ -4,12 +4,13 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3, Boxes, ClipboardList, FileText, HeartHandshake, LayoutDashboard,
-  Mail, Megaphone, PackageCheck, Settings2, ShoppingCart, Ticket, Truck, Users, WalletCards,
+  Mail, Megaphone, PackageCheck, Search, Settings2, ShoppingCart, Ticket, Truck, Users, WalletCards,
 } from 'lucide-react';
 
 const SECTIONS = [
   { title: 'START HERE', color: '#c8973a', items: [
     { name: 'Today', href: '/dashboard', icon: LayoutDashboard, desc: "Today's work, exceptions and sales" },
+    { name: 'All tools', href: '/tools', icon: Search, desc: 'Search every available admin function' },
     { name: 'Insights', href: '/analytics', icon: BarChart3, desc: 'Demand, retention and performance signals' },
   ]},
   { title: 'WORKSPACE', color: '#f59e0b', items: [
