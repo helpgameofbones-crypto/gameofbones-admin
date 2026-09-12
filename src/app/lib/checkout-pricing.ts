@@ -48,10 +48,13 @@ export async function checkoutQuote(
     const matchedPack = Array.isArray(product.sizes)
       ? product.sizes.find((pack: unknown) => pack && typeof pack === 'object' && cleanName((pack as Record<string, unknown>).label) === cleanName(packLabel)) as Record<string, unknown> | undefined
       : undefined
-    if (packLabel && !matchedPack) throw new Error(`The selected pack for ${product.name} has changed. Please refresh your bag and select it again.`)
+    // Browser carts can retain a pack label from an older catalogue version.
+    // Never trust that label or its price; fall back to the current base
+    // product when the label no longer exists instead of blocking checkout.
+    const effectivePackLabel = matchedPack ? packLabel : ''
     const price = money(matchedPack?.price ?? product.price)
     if (!price) throw new Error(`Current pricing is unavailable for ${product.name}.`)
-    return { name: product.name, pack_label: packLabel, price, quantity }
+    return { name: product.name, pack_label: effectivePackLabel, price, quantity }
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)
