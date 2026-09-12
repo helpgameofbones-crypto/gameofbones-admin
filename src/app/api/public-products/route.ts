@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (limited) return limited
 
   const client = database()
-  let { data, error } = await client
+  let { data, error }: { data: Array<Record<string, any>> | null; error: any } = await client
     .from('products')
     .select('id,name,image_url,images,videos,price,compare_price,sizes,is_active,is_bestseller')
     .order('name')
