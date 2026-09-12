@@ -42,11 +42,24 @@ export async function GET(request: NextRequest) {
   const limited = rateLimit(request, 'public-products', 120, 60_000)
   if (limited) return limited
 
-  const { data, error } = await database()
+  const client = database()
+  let { data, error } = await client
     .from('products')
     .select('id,name,image_url,images,videos,price,compare_price,sizes,is_active,is_bestseller')
     .order('name')
     .limit(2000)
+
+  // Keep the storefront usable during a staggered schema rollout. Older
+  // production databases may not have optional media/bestseller columns yet.
+  if (error) {
+    const fallback = await client
+      .from('products')
+      .select('id,name,image_url,images,price,compare_price,sizes,is_active')
+      .order('name')
+      .limit(2000)
+    data = fallback.data
+    error = fallback.error
+  }
 
   if (error) return NextResponse.json({ error: 'Unable to load the catalogue.' }, { status: 500, headers: corsHeaders(request) })
 
