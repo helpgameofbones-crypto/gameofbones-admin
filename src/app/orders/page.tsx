@@ -38,7 +38,10 @@ function parseItems(items: any): string[] {
       if (it.name) return `${it.name}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`;
       if (it.product_name) return `${it.product_name}${it.pack_label ? ' (' + it.pack_label + ')' : ''}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
       if (it.product) return it.product;
-      return JSON.stringify(it);
+      // Never expose raw JSON in the workspace. A small number of historic
+      // Razorpay recovery records contain only pack metadata, so there is no
+      // trustworthy product name to show.
+      return 'Product details unavailable — verify payment record';
     });
   }
   if (typeof items === 'object') return Object.entries(items).map(([k, v]) => `${k}: ${v}`);

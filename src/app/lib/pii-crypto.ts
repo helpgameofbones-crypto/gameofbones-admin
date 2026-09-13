@@ -26,11 +26,19 @@ function decryptLegacyXor(value: string): string {
 
   try {
     const bytes = Buffer.from(value, 'base64')
-    for (const key of LEGACY_XOR_KEYS) {
-      const decoded = xor(bytes, key)
-      if (/^[\x20-\x7E\r\n\t]+$/.test(decoded)) return decoded
-    }
-    return value
+    const candidates = LEGACY_XOR_KEYS
+      .map(key => xor(bytes, key))
+      .filter(decoded => /^[\x20-\x7E\r\n\t]+$/.test(decoded))
+    if (!candidates.length) return value
+
+    // Both historic XOR keys can occasionally produce printable text. Choose
+    // the value that most resembles real customer data instead of accepting
+    // the first printable (but garbled) candidate.
+    const score = (decoded: string) => Array.from(decoded).reduce((total, char) => {
+      if (/[A-Za-z0-9\s@.+,/'-]/.test(char)) return total + 2
+      return total - 3
+    }, 0)
+    return candidates.sort((left, right) => score(right) - score(left))[0]
   } catch {
     return value
   }
