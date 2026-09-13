@@ -19,7 +19,27 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: 'Unable to load orders.' }, { status: 500 })
 
   try {
-    return NextResponse.json({ orders: (data || []).map(row => revealOrderForAdmin(row)) })
+    // Older orders may contain an undecodable legacy phone/email value while
+    // their linked customer profile is intact. Prefer that verified profile
+    // only when the order value is clearly not usable; never overwrite data.
+    const customerIds = [...new Set((data || []).map(row => typeof row.customer_id === 'string' ? row.customer_id : '').filter(Boolean))]
+    const { data: customerRows } = customerIds.length
+      ? await database().from('customers').select('id,name,phone,email').in('id', customerIds)
+      : { data: [] as Array<{ id: string; name: string | null; phone: string | null; email: string | null }> }
+    const customers = new Map((customerRows || []).map(customer => [customer.id, customer]))
+    const validPhone = (value: unknown) => /^\+?\d{10,13}$/.test(String(value || '').replace(/[\s-]/g, ''))
+    const validEmail = (value: unknown) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
+    const orders = (data || []).map(row => {
+      const readable = revealOrderForAdmin(row)
+      const customer = typeof row.customer_id === 'string' ? customers.get(row.customer_id) : undefined
+      return {
+        ...readable,
+        customer_name: String(readable.customer_name || '').trim() || customer?.name || '',
+        customer_phone: validPhone(readable.customer_phone) ? readable.customer_phone : (customer?.phone || ''),
+        customer_email: validEmail(readable.customer_email) ? readable.customer_email : (customer?.email || ''),
+      }
+    })
+    return NextResponse.json({ orders })
   } catch (error) {
     console.error('Admin order decryption failed', error)
     return NextResponse.json({ error: 'Customer-data encryption is not configured correctly.' }, { status: 500 })

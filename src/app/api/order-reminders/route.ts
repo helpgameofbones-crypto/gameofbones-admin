@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
     .from('customers')
     .select('*')
     .gt('total_orders', 0)
-    .not('customer_email', 'is', null)
+    // Customer profiles use `email` (not the legacy `customer_email` field).
+    // Querying the old name meant this scheduled reminder could either fail or
+    // skip every eligible customer.
+    .not('email', 'is', null)
+    .is('restock_reminder_sent_at', null)
 
   const { data: recentOrders } = await supabase
     .from('orders')
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest) {
     const lastOrder = lastOrderMap[customer.phone]
     const lastItems = (lastOrder?.items || [])
       .slice(0, 3)
-      .map((i: any) => i.name)
+      .map((i: any) => i.product_name || i.name)
       .join(', ')
 
     await transporter.sendMail({
@@ -121,6 +125,7 @@ export async function GET(req: NextRequest) {
         </div>
       `
     })
+    await supabase.from('customers').update({ restock_reminder_sent_at: new Date().toISOString() }).eq('id', customer.id)
     sent++
   }
 

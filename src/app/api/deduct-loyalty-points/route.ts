@@ -16,6 +16,7 @@ const { data: orders, error: fetchError } = await supabase
   .from('orders')
   .select('id, ref, customer_id, customer_name, loyalty_points_redeemed, loyalty_points_deducted')
   .gt('loyalty_points_redeemed', 0)
+  .in('status', ['confirmed', 'placed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered'])
   .or('loyalty_points_deducted.is.null,loyalty_points_deducted.eq.false')
   .limit(200)
 

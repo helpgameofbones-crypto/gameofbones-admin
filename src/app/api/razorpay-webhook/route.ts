@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
 
       if (event.event === 'payment.captured') {
               const payment = event.payload.payment.entity
-              const orderId = payment.notes?.order_ref || payment.order_id
+              // Storefront checkouts use `ref` as the Game of Bones order
+              // reference.  Older checkouts used `order_ref`; support both so
+              // a captured payment updates its original order instead of being
+              // incorrectly inserted as a second, incomplete fallback order.
+              const orderId = payment.notes?.order_ref || payment.notes?.ref || payment.order_id
 
             // RACE-CONDITION GUARD: this webhook can arrive before the browser's
             // own order-save request (with the real cart items) has landed --
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
 
       if (event.event === 'payment.failed') {
               const payment = event.payload.payment.entity
-              const orderId = payment.notes?.order_ref
+              const orderId = payment.notes?.order_ref || payment.notes?.ref
               if (orderId) {
                         await supabase.from('orders').update({ payment_status: 'failed' }).eq('ref', orderId)
               }

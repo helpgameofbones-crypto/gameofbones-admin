@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
  const headers = corsHeaders(req)
  try {
   const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-  const limitError = rateLimit(req, 'abandoned-cart', 3, 60 * 60 * 1000); if (limitError) return limitError
+  // A genuine shopper can update their bag across more than one checkout
+  // visit. Keep abuse protection, but do not reject ordinary retrying.
+  const limitError = rateLimit(req, 'abandoned-cart', 10, 60 * 60 * 1000); if (limitError) return limitError
   const { phone, email, name, items, total } = await req.json()
   const normalizedPhone = cleanText(phone,20).replace(/^\+?91/, ''), normalizedEmail=cleanText(email,254), normalizedName=cleanText(name,100)
   if (!/^\d{10}$/.test(normalizedPhone) || !Array.isArray(items) || items.length < 1 || items.length > 25 || !Number.isFinite(Number(total)) || Number(total) < 1 || Number(total) > 100000) return NextResponse.json({ ok:true }, { headers })

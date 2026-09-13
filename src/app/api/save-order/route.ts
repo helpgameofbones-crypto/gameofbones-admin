@@ -56,6 +56,23 @@ export async function POST(req: NextRequest) {
     : await supabase.from('orders').insert([insertData]).select()
   if (error) return NextResponse.json({ error:error.message }, { status:400, headers })
   if (!existing?.length) await supabase.from('customers').update({ total_orders: Number(customerRecord.total_orders || 0) + 1, total_spent: Number(customerRecord.total_spent || 0) + quote.grand_total }).eq('id', customerRecord.id)
+  // Reserve redeemed points at the same moment the successful order is saved.
+  // The old daily repair job left a window where the same balance could be
+  // spent twice, or could be deducted after a failed checkout.
+  if (!existing?.length && data?.[0]?.id && quote.points_redeemed > 0) {
+    try {
+      const newBalance = Math.max(0, Number(customerRecord.loyalty_points || 0) - quote.points_redeemed)
+      const { error: pointsError } = await supabase.from('customers').update({ loyalty_points: newBalance }).eq('id', customerRecord.id)
+      if (pointsError) throw pointsError
+      const { error: ledgerError } = await supabase.from('loyalty_ledger').insert({ customer_id: customerRecord.id, customer_name: customerRecord.name || '', customer_phone: customerRecord.phone || phone, type: 'redeemed', points: -quote.points_redeemed, balance_after: newBalance, order_ref: order.ref, description: `Redeemed at checkout on order ${order.ref}` })
+      if (ledgerError) throw ledgerError
+      await supabase.from('orders').update({ loyalty_points_deducted: true }).eq('id', data[0].id)
+    } catch (pointsError) {
+      // The saved order remains valid. The protected reconciliation job can
+      // safely repair a rare ledger/database failure using the false flag.
+      console.error('Checkout loyalty redemption needs reconciliation', pointsError)
+    }
+  }
   // Store the first checkout's delivery and pet details in the account as well.
   // These writes are best-effort: an order must never be lost if optional profile
   // fields are unavailable, and the customer can always edit them in My Account.

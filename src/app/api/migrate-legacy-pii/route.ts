@@ -5,6 +5,14 @@ import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, reve
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const BATCH_SIZE = 100
 
+function validPhone(value: string) {
+  return /^\+?\d{10,13}$/.test(value.replace(/[\s-]/g, ''))
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 function authorised(request: NextRequest) {
   return Boolean(process.env.CRON_SECRET) && request.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`
 }
@@ -29,6 +37,12 @@ async function migrate(request: NextRequest) {
         const phone = revealLegacyPii(row.customer_phone)
         const email = revealLegacyPii(row.customer_email)
         const address = revealLegacyPiiValue(row.shipping_address)
+        // Never turn an obviously garbled legacy value into an AES value. It
+        // would then look successfully migrated while being unrecoverable.
+        if ((!row.pii_phone_ciphertext && phone && !validPhone(phone)) || (!row.pii_email_ciphertext && email && !validEmail(email))) {
+          failures.push(String(row.id))
+          continue
+        }
         const update = {
           pii_name_ciphertext: row.pii_name_ciphertext || encryptPii(name),
           pii_phone_ciphertext: row.pii_phone_ciphertext || encryptPii(phone),
