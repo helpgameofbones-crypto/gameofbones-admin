@@ -77,6 +77,24 @@ function parseOrderNoteLines(notes: string | null | undefined, couponCode: strin
   return { discountLines, chargeLines, customerNoteLines };
 }
 
+function moneyValue(value: unknown) {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0
+}
+
+function orderSavings(order: any) {
+  const pointsUsed = Math.max(0, Math.floor(Number(order?.loyalty_points_redeemed) || 0))
+  const pointsDiscount = Math.min(100, Math.round(pointsUsed * .3))
+  const totalDiscount = moneyValue(order?.discount)
+  return {
+    coupon: typeof order?.coupon_code === 'string' && order.coupon_code.trim() ? order.coupon_code.trim() : '',
+    pointsUsed,
+    pointsDiscount: Math.min(pointsDiscount, totalDiscount),
+    offerDiscount: Math.max(0, totalDiscount - pointsDiscount),
+    totalDiscount,
+  }
+}
+
 function StatusDropdown({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -507,16 +525,32 @@ export default function OrdersPage() {
                   <span style={{ color: '#374151' }}>Order Value (Subtotal)</span>
                   <span style={{ fontWeight: 600 }}>₹{(selected.subtotal || 0).toLocaleString('en-IN')}</span>
                 </div>
-                {(selected.discount || 0) > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: '#374151' }}>Coupon used</span>
+                  {orderSavings(selected).coupon
+                    ? <code style={{ color: '#92400e', fontWeight: 700 }}>{orderSavings(selected).coupon}</code>
+                    : <span style={{ color: '#9ca3af' }}>None</span>}
+                </div>
+                {orderSavings(selected).offerDiscount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#92400e' }}>
+                    <span>Offer / coupon discount</span>
+                    <span style={{ fontWeight: 700 }}>-₹{orderSavings(selected).offerDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {orderSavings(selected).pointsUsed > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#7c3aed' }}>
+                    <span>Rewards points used ({orderSavings(selected).pointsUsed})</span>
+                    <span style={{ fontWeight: 700 }}>-₹{orderSavings(selected).pointsDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {orderSavings(selected).totalDiscount > 0 && (
                   <>
                     {parseOrderNoteLines(selected.notes, selected.coupon_code).discountLines.map((line, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: '#92400e' }}>
-                        <span>{line}</span>
-                      </div>
+                      <div key={i} style={{ fontSize: 12, marginBottom: 4, color: '#92400e' }}>{line}</div>
                     ))}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, fontWeight: 700, color: '#92400e' }}>
-                      <span>Total Discount</span>
-                      <span>-₹{selected.discount.toLocaleString('en-IN')}</span>
+                      <span>Total savings</span>
+                      <span>-₹{orderSavings(selected).totalDiscount.toLocaleString('en-IN')}</span>
                     </div>
                   </>
                 )}
