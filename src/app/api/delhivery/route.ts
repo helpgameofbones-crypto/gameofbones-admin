@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/app/lib/requireAdmin'
-import { revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
-import { sendDispatchEmail } from '@/app/lib/lifecycle-emails'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 
 const DELHIVERY_TOKEN = process.env.DELHIVERY_API_TOKEN
 const DELHIVERY_BASE  = 'https://track.delhivery.com'
-
-function itemQty(i: any): number {
-  return i?.quantity ?? i?.qty ?? 1
-}
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,110 +20,14 @@ export async function POST(req: NextRequest) {
     const { action, orderId, orderData } = await req.json()
 
     if (action === 'create_shipment') {
-      const order = orderData
-
-      const streetRaw = order.shipping_address?.street || order.shipping_address?.line1 || order.shipping_address?.address || ''
-      const decryptedStreet = String(revealLegacyPiiValue(streetRaw))
-      const decryptedPhone = revealLegacyPii(order.customer_phone)
-
-      const totalQty = (order.items || []).reduce((s: number, i: any) => s + itemQty(i), 0)
-      const totalWeightG = (order.items || []).reduce((s: number, i: any) => s + ((i.weight_grams || 100) * itemQty(i)), 0)
-
-      const payload = {
-        shipments: [{
-          name:              revealLegacyPii(order.customer_name),
-          add:               decryptedStreet,
-          city:              order.shipping_address?.city,
-          state:             order.shipping_address?.state,
-          country:           'India',
-          pin:               order.shipping_address?.pincode,
-          phone:             decryptedPhone,
-          order:             order.ref,
-          payment_mode:      order.payment_method === 'cod' ? 'COD' : 'Prepaid',
-          cod_amount:        order.payment_method === 'cod' ? order.grand_total : 0,
-          total_amount:      order.grand_total,
-          seller_name:       'Game of Bones',
-          seller_add:        'Kalyan, Maharashtra',
-          seller_phone:      '9082503295',
-          seller_gst_tin:    '',
-          shipping_mode:     'Surface',
-          pre_picked_up:     '0',
-          pickup_location:   'game of bones',
-          comment:           (order.items || []).map((i: any) => `${itemQty(i)}x ${i.name || i.product_name}`).join(', '),
-          products_desc:     (order.items || []).map((i: any) => i.name || i.product_name).join(', '),
-          hsn_code:          '',
-          cod_info:          '',
-          weight:            totalWeightG / 1000,
-          waybill:           '',
-          quantity:          totalQty,
-        }],
-        pickup_location: {
-          name: 'game of bones'
-        }
-      }
-
-      const formData = new URLSearchParams()
-      formData.append('format', 'json')
-      formData.append('data', JSON.stringify(payload))
-
-      const res = await fetch(`${DELHIVERY_BASE}/api/cmu/create.json`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${DELHIVERY_TOKEN}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString()
-      })
-
-      const rawText = await res.text()
-      console.log('[delhivery] create_shipment HTTP status:', res.status)
-      console.log('[delhivery] create_shipment raw response (first 2000 chars):', rawText.slice(0, 2000))
-
-      let data: any
-      try {
-        data = JSON.parse(rawText)
-      } catch (parseErr) {
-        console.error('[delhivery] Delhivery did not return valid JSON:', parseErr)
-        return NextResponse.json({
-          error: `Delhivery returned a non-JSON response (HTTP ${res.status}). Raw: ${rawText.slice(0, 300)}`
-        }, { status: 502 })
-      }
-
-      if (data.packages && data.packages[0]?.waybill) {
-        const awb = data.packages[0].waybill
-
-        await supabase.from('orders')
-          .update({ delhivery_awb: awb, status: 'labelled' })
-          .eq('id', orderId)
-
-        await supabase.from('activity_log').insert({
-          action:      'AWB generated',
-          entity_type: 'order',
-          entity_id:   orderId,
-          details:     'AWB: ' + awb,
-        })
-
-        const { data: savedOrder } = await supabase
-          .from('orders')
-          .select('dispatch_email_sent_at')
-          .eq('id', orderId)
-          .maybeSingle()
-        if (!savedOrder?.dispatch_email_sent_at) {
-          try {
-            if (await sendDispatchEmail(order, awb)) {
-              await supabase.from('orders').update({ dispatch_email_sent_at: new Date().toISOString() }).eq('id', orderId)
-            }
-          } catch (emailError) {
-            // Delhivery shipment creation has already succeeded. Keep it successful even if mail fails.
-            console.error('[delhivery] dispatch email failed', emailError)
-          }
-        }
-
-        return NextResponse.json({ ok: true, awb })
-      } else {
-        console.error('[delhivery] Delhivery rejected shipment:', JSON.stringify(data))
-        return NextResponse.json({ error: data.rmk || data.error || 'Failed to create shipment', raw: data }, { status: 400 })
-      }
+      if (typeof orderId !== 'string' || !orderId) return NextResponse.json({ error: 'A valid order is required.' }, { status: 400 })
+      // Never accept price, address, or payment details from the browser for a
+      // booking. The authenticated admin may request it, but the shipment is
+      // always built from the saved server-side order.
+      const { data: order, error } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle()
+      if (error || !order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 })
+      const result = await createDelhiveryShipment({ order, orderId })
+      return NextResponse.json(result, { status: result.ok ? 200 : result.skipped ? 422 : 502 })
     }
 
     if (action === 'track') {

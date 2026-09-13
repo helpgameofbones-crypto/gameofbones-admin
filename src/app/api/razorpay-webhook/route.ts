@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
 import { protectLegacyPii } from '@/app/lib/pii-crypto'
 
@@ -9,9 +10,29 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+const razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID!, key_secret: process.env.RAZORPAY_KEY_SECRET! })
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// The payment payload does not reliably include the order notes. Fetch the
+// Razorpay order when necessary so its receipt (our GOB reference) is used
+// instead of Razorpay's own order_… ID. This keeps the webhook and browser
+// save on one database row.
+async function checkoutReference(payment: { notes?: Record<string, unknown>; order_id?: string }) {
+  const notes = payment.notes || {}
+  const fromPayment = typeof notes.order_ref === 'string' ? notes.order_ref : typeof notes.ref === 'string' ? notes.ref : ''
+  if (fromPayment) return fromPayment
+  if (!payment.order_id) return ''
+  try {
+    const order = await razorpay.orders.fetch(payment.order_id) as { receipt?: string; notes?: Record<string, unknown> }
+    const orderNotes = order.notes || {}
+    return typeof orderNotes.order_ref === 'string' ? orderNotes.order_ref : typeof orderNotes.ref === 'string' ? orderNotes.ref : order.receipt || payment.order_id
+  } catch (error) {
+    console.error('Unable to read Razorpay checkout receipt; using its order ID as a fallback.', error)
+    return payment.order_id
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -40,7 +61,7 @@ export async function POST(req: NextRequest) {
               // reference.  Older checkouts used `order_ref`; support both so
               // a captured payment updates its original order instead of being
               // incorrectly inserted as a second, incomplete fallback order.
-              const orderId = payment.notes?.order_ref || payment.notes?.ref || payment.order_id
+              const orderId = await checkoutReference(payment)
 
             // RACE-CONDITION GUARD: this webhook can arrive before the browser's
             // own order-save request (with the real cart items) has landed --

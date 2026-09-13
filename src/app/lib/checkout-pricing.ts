@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-type Product = { name: string; price: unknown; sizes: unknown; is_active: unknown }
+type Product = { name: string; price: unknown; compare_price: unknown; sizes: unknown; is_active: unknown }
 type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown }
 
 const cleanName = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : ''
@@ -14,12 +14,13 @@ const money = (value: unknown) => {
 }
 
 export type CheckoutQuote = {
-  items: Array<{ name: string; pack_label: string; price: number; quantity: number }>
+  items: Array<{ name: string; pack_label: string; price: number; compare_price: number; is_sale: boolean; quantity: number }>
   subtotal: number
   discount: number
   packaging: number
   grand_total: number
   coupon_code: string | null
+  sale_items_present: boolean
   points_redeemed: number
   points_discount: number
 }
@@ -37,7 +38,7 @@ export async function checkoutQuote(
   requestedPoints = 0,
 ): Promise<CheckoutQuote> {
   if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new Error('Your bag is empty or invalid.')
-  const { data, error } = await database.from('products').select('name,price,sizes,is_active').eq('is_active', true).limit(2000)
+  const { data, error } = await database.from('products').select('name,price,compare_price,sizes,is_active').eq('is_active', true).limit(2000)
   if (error) throw new Error('Unable to verify current product pricing.')
   const products = new Map((data || []).map((product: Product) => [cleanName(product.name), product]))
   const items = (requestedItems as RequestedLine[]).map(line => {
@@ -53,14 +54,19 @@ export async function checkoutQuote(
     // product when the label no longer exists instead of blocking checkout.
     const effectivePackLabel = matchedPack ? packLabel : ''
     const price = money(matchedPack?.price ?? product.price)
+    const compare_price = money(matchedPack?.compare_price ?? product.compare_price)
     if (!price) throw new Error(`Current pricing is unavailable for ${product.name}.`)
-    return { name: product.name, pack_label: effectivePackLabel, price, quantity }
+    return { name: product.name, pack_label: effectivePackLabel, price, compare_price, is_sale: compare_price > price, quantity }
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)
-  const bulkRate = itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
+  const sale_items_present = items.some(item => item.is_sale)
+  // A marked-down price is final: it cannot stack with an offer code or the
+  // automatic buy-more tiers. Reward points are deliberately handled below
+  // and continue to work on sale baskets.
+  const bulkRate = sale_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
-  const couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
+  const couponRate = sale_items_present ? 0 : coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
   // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
   // which rounds to ₹100; the money cap below remains authoritative.
@@ -69,5 +75,5 @@ export async function checkoutQuote(
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
-  return { items, subtotal, discount, packaging, points_redeemed, points_discount, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null }
+  return { items, subtotal, discount, packaging, points_redeemed, points_discount, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
 }

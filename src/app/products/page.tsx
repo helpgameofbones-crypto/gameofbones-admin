@@ -346,7 +346,7 @@ async function compressImage(file: File): Promise<Blob> {
 
             {editing.sizes?.[0]?.compare_price > editing.sizes?.[0]?.price && (
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, padding: '8px 12px', marginBottom: 20, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                ✅ Website will show: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{editing.sizes[0].compare_price}</span> <strong>₹{editing.sizes[0].price}</strong> — {Math.round((1 - editing.sizes[0].price / editing.sizes[0].compare_price) * 100)}% OFF
+                ✅ Website will show: <span style={{ textDecoration: 'line-through', color: '#9ca3af' }}>₹{editing.sizes[0].compare_price}</span> <strong>₹{editing.sizes[0].price}</strong> — {Math.round((1 - editing.sizes[0].price / editing.sizes[0].compare_price) * 100)}% OFF. Sale-priced packs cannot use coupons or buy-more offers; reward points still work.
               </div>
             )}
 

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/app/lib/requireAdmin';
+import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,6 +99,22 @@ export async function POST(req: NextRequest) {
         { success: false, error: error.message },
         { status: 500 }
       );
+    }
+
+    // Manual orders use the same shipment handoff as website orders. Missing
+    // delivery fields simply leave the order in Admin for completion; they do
+    // not prevent the order record from being created.
+    if (data?.[0]?.id) {
+      try {
+        const shipment = await createDelhiveryShipment({
+          order: data[0],
+          orderId: data[0].id,
+          addressDetails: { line1: address, city, state, pincode }
+        });
+        if (!shipment.ok) console.error('[manual-order] Delhivery booking deferred', { orderId: data[0].id, error: shipment.error });
+      } catch (shipmentError) {
+        console.error('[manual-order] Delhivery booking failed after order save', shipmentError);
+      }
     }
 
     return NextResponse.json({

@@ -6,6 +6,7 @@ import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, prot
 import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
+import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -43,23 +44,39 @@ export async function POST(req: NextRequest) {
   }
   const canRedeemPoints = Boolean(session && normalizePhoneForHash(session.phone) === normalizePhoneForHash(phone))
   const quote = await checkoutQuote(supabase, order.items, order.payment_method, order.coupon_code, canUseWelcome, canRedeemPoints ? Number(customerRecord.loyalty_points || 0) : 0, order.loyalty_points_redeemed)
-  const { data: existing } = await supabase.from('orders').select('id').eq('ref',order.ref).limit(1)
-  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_price: item.price, quantity: item.quantity }))
+  const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id').eq('ref',order.ref).limit(1)
+  const transactionId = typeof order.transaction_id === 'string' ? order.transaction_id.trim() : ''
+  // If the webhook got there first under Razorpay's order ID, join that
+  // placeholder to the browser's GOB reference instead of inserting a second
+  // order for the exact same payment.
+  const { data: existingByTransaction } = !existingByRef?.length && transactionId
+    ? await supabase.from('orders').select('id,ref,customer_id').eq('transaction_id', transactionId).limit(1)
+    : { data: [] as Array<{ id: string; ref: string; customer_id: string | null }> }
+  const existing = existingByRef?.[0] || existingByTransaction?.[0] || null
+  const webhookPlaceholder = Boolean(existing && !existing.customer_id)
+  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
   const address = revealLegacyPiiValue(order.shipping_address)
-  const insertData: Record<string, unknown> = { ref:order.ref, customer_id:customerRecord.id, customer_name:protectLegacyPii(name), customer_phone:protectLegacyPii(phone), customer_email:protectLegacyPii(email), pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(address), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_key_version:1, items:storedItems, subtotal:quote.subtotal, total_amount:quote.subtotal, shipping:0, discount:quote.discount + quote.points_discount, coupon_code:quote.coupon_code, packaging:quote.packaging, grand_total:quote.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, shipping_address:protectLegacyPiiValue(address), notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:quote.points_redeemed, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
+  const addressDetails = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
+  const structuredAddress = Object.keys(addressDetails).length ? addressDetails : address
+  const insertData: Record<string, unknown> = { ref:order.ref, customer_id:customerRecord.id, customer_name:protectLegacyPii(name), customer_phone:protectLegacyPii(phone), customer_email:protectLegacyPii(email), pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(structuredAddress), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_key_version:1, items:storedItems, subtotal:quote.subtotal, total_amount:quote.subtotal, shipping:0, discount:quote.discount + quote.points_discount, coupon_code:quote.coupon_code, packaging:quote.packaging, grand_total:quote.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, shipping_address:protectLegacyPiiValue(structuredAddress), notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:quote.points_redeemed, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
   const updateData = { ...insertData }
   delete updateData.ref
   delete updateData.payment_status
   delete updateData.status
-  const { error, data } = existing?.length
-    ? await supabase.from('orders').update(updateData).eq('ref', order.ref).select()
+  // Rename only a webhook-created placeholder to the customer-facing GOB
+  // reference. A real existing order keeps its reference and is simply
+  // updated idempotently.
+  if (webhookPlaceholder) updateData.ref = order.ref
+  const { error, data } = existing
+    ? await supabase.from('orders').update(updateData).eq('id', existing.id).select()
     : await supabase.from('orders').insert([insertData]).select()
   if (error) return NextResponse.json({ error:error.message }, { status:400, headers })
-  if (!existing?.length) await supabase.from('customers').update({ total_orders: Number(customerRecord.total_orders || 0) + 1, total_spent: Number(customerRecord.total_spent || 0) + quote.grand_total }).eq('id', customerRecord.id)
+  const shouldFinalizeOrder = !existing || webhookPlaceholder
+  if (shouldFinalizeOrder) await supabase.from('customers').update({ total_orders: Number(customerRecord.total_orders || 0) + 1, total_spent: Number(customerRecord.total_spent || 0) + quote.grand_total }).eq('id', customerRecord.id)
   // Reserve redeemed points at the same moment the successful order is saved.
   // The old daily repair job left a window where the same balance could be
   // spent twice, or could be deducted after a failed checkout.
-  if (!existing?.length && data?.[0]?.id && quote.points_redeemed > 0) {
+  if (shouldFinalizeOrder && data?.[0]?.id && quote.points_redeemed > 0) {
     try {
       const newBalance = Math.max(0, Number(customerRecord.loyalty_points || 0) - quote.points_redeemed)
       const { error: pointsError } = await supabase.from('customers').update({ loyalty_points: newBalance }).eq('id', customerRecord.id)
@@ -77,7 +94,7 @@ export async function POST(req: NextRequest) {
   // These writes are best-effort: an order must never be lost if optional profile
   // fields are unavailable, and the customer can always edit them in My Account.
   if (customerCreated) {
-    const details = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
+    const details = addressDetails
     const clean = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : ''
     const line1 = clean(details.line1, 180), city = clean(details.city, 80), state = clean(details.state, 80), pincode = clean(details.pincode, 6)
     if (line1 && city && state && /^\d{6}$/.test(pincode)) {
@@ -101,7 +118,7 @@ export async function POST(req: NextRequest) {
       if (!credited?.length) await supabase.from('referrals').insert({ referrer_phone: referrerPhone, referred_phone: referredPhone, order_id: orderId, points_awarded: 300 })
     }
   }
-  if (!existing?.length && data?.[0]) {
+  if (shouldFinalizeOrder && data?.[0]) {
     try {
       if (await sendOrderPlacedEmail(data[0])) {
         await supabase.from('orders').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', data[0].id)
@@ -109,6 +126,17 @@ export async function POST(req: NextRequest) {
     } catch (emailError) {
       // Checkout already succeeded; do not turn an email-provider hiccup into a failed order.
       console.error('Order confirmation email failed', emailError)
+    }
+  }
+  // Book delivery only after the order is safely persisted. A Delhivery
+  // problem is recorded server-side but can never turn a paid checkout into a
+  // failed order. COD follows the same confirmed-order workflow used by Admin.
+  if (shouldFinalizeOrder && data?.[0] && (order.payment_method === 'cod' || transactionId)) {
+    try {
+      const shipment = await createDelhiveryShipment({ order: data[0], orderId: data[0].id, addressDetails })
+      if (!shipment.ok) console.error('[checkout] Delhivery booking deferred', { orderId: data[0].id, error: shipment.error })
+    } catch (shipmentError) {
+      console.error('[checkout] Delhivery booking failed after order save', shipmentError)
     }
   }
   return NextResponse.json({ success:true, profile_created: customerCreated, order:data }, { status:201, headers })
