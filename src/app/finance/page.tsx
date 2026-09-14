@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { getSheetCogs, SHEET_COGS_SOURCE } from '@/app/lib/sheetCogs'
 
 export default function FinancePage() {
   const [orders, setOrders]     = useState<any[]>([])
@@ -57,17 +58,29 @@ export default function FinancePage() {
   const totalDiscount   = orders.reduce((s, o) => s + (o.discount || 0), 0)
   const totalRefunds    = orders.reduce((s, o) => s + (o.refund_amount || 0), 0)
   const netRevenue      = totalRevenue - totalRefunds
+  let matchedLineCount = 0
+  let unmatchedLineCount = 0
+  let unmatchedRevenue = 0
   const matchedCOGS = orders.reduce((total, order) => total + (order.items || []).reduce((sum: number, item: any) => {
     const name = String(item.name ?? item.product_name ?? '').trim().toLowerCase()
     const packLabel = String(item.size ?? item.pack_label ?? '').trim().toLowerCase()
     const product = products.find((product: any) => String(product.name || '').trim().toLowerCase() === name)
     const pack = Array.isArray(product?.sizes) ? product.sizes.find((size: any) => String(size.label || '').trim().toLowerCase() === packLabel) : null
-    const unitCost = Number(pack?.cogs ?? product?.cost_price ?? 0)
-    return sum + unitCost * Number(item.qty ?? item.quantity ?? 1)
+    const databaseCost = Number(pack?.cogs ?? product?.cost_price ?? 0)
+    const unitCost = databaseCost > 0 ? databaseCost : getSheetCogs(name, packLabel)
+    const quantity = Number(item.qty ?? item.quantity ?? 1)
+    if (unitCost && unitCost > 0) matchedLineCount += 1
+    else {
+      unmatchedLineCount += 1
+      unmatchedRevenue += Number(item.price ?? item.pack_price ?? 0) * quantity
+    }
+    return sum + Number(unitCost || 0) * quantity
   }, 0), 0)
-  const estimatedCOGS   = matchedCOGS || netRevenue * (parseFloat(cogsPercent) / 100)
+  const fallbackCOGS = unmatchedRevenue * (parseFloat(cogsPercent) / 100)
+  const estimatedCOGS = matchedCOGS + fallbackCOGS
   const grossProfit     = netRevenue - estimatedCOGS
   const grossMargin     = netRevenue ? Math.round((grossProfit / netRevenue) * 100) : 0
+  const usesFallbackCOGS = unmatchedLineCount > 0
 
   // Product performance
   // Order items are saved with `product_name`/`quantity`/`pack_price` keys, not `name`/`qty`/`price`.
@@ -92,7 +105,7 @@ export default function FinancePage() {
   const fixedCosts    = parseFloat(monthlyRent || '0') + parseFloat(monthlyLabour || '0') +
                         parseFloat(monthlyAds || '0') + parseFloat(monthlyOther || '0')
   const aov           = parseFloat(avgOrderValue || '0')
-  const cogs          = parseFloat(cogsPercent || '0') / 100
+  const cogs          = netRevenue > 0 ? estimatedCOGS / netRevenue : parseFloat(cogsPercent || '0') / 100
   const contributionMargin = aov * (1 - cogs)
   const breakEvenOrders = contributionMargin > 0
     ? Math.ceil(fixedCosts / contributionMargin)
@@ -191,18 +204,10 @@ export default function FinancePage() {
 
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>P&L Summary</h3>
-              <div className="mb-4">
-                <label className="text-xs font-semibold" style={{ color: '#1a1008' }}>
-                  COGS % (your cost of goods as % of revenue)
-                </label>
-                <div className="flex items-center gap-3 mt-1">
-                  <input
-                    type="range" min="10" max="80" value={cogsPercent}
-                    onChange={e => setCogsPercent(e.target.value)}
-                    className="w-48"
-                  />
-                  <span className="font-bold" style={{ color: '#1a1008' }}>{cogsPercent}%</span>
-                </div>
+              <div className="mb-4 rounded-lg px-4 py-3" style={{ background: '#f8f5ef', border: '1px solid #e8dfce' }}>
+                <p className="text-xs font-semibold" style={{ color: '#1a1008' }}>COGS source: {SHEET_COGS_SOURCE}</p>
+                <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{matchedLineCount} order line{matchedLineCount === 1 ? '' : 's'} matched to a real pack cost.{usesFallbackCOGS ? ` ${unmatchedLineCount} unmatched line${unmatchedLineCount === 1 ? '' : 's'} still use the temporary ${cogsPercent}% fallback.` : ' No percentage estimate is being used.'}</p>
+                {usesFallbackCOGS && <div className="flex items-center gap-3 mt-2"><label className="text-xs font-semibold" style={{ color: '#1a1008' }}>Temporary unmatched-item fallback</label><input type="range" min="10" max="80" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} className="w-36" /><span className="font-bold text-sm" style={{ color: '#1a1008' }}>{cogsPercent}%</span></div>}
               </div>
               <table className="w-full text-sm">
                 <tbody>
@@ -211,8 +216,8 @@ export default function FinancePage() {
                     { label: 'Discounts Given',      value: -totalDiscount,             color: '#ef4444', prefix: '' },
                     { label: 'Refunds',              value: -totalRefunds,              color: '#ef4444', prefix: '' },
                     { label: 'Net Revenue',          value: netRevenue,                 color: '#3b82f6', prefix: '' },
-                    { label: matchedCOGS ? 'Actual product COGS' : `Fallback COGS (${cogsPercent}%)`, value: -estimatedCOGS, color: '#ef4444', prefix: '' },
-                    { label: matchedCOGS ? 'Gross Profit' : 'Estimated Gross Profit', value: grossProfit, color: '#10b981', prefix: '' },
+                    { label: usesFallbackCOGS ? `Product COGS + fallback for ${unmatchedLineCount} line${unmatchedLineCount === 1 ? '' : 's'}` : 'Actual product COGS', value: -estimatedCOGS, color: '#ef4444', prefix: '' },
+                    { label: usesFallbackCOGS ? 'Gross Profit (partly estimated)' : 'Gross Profit', value: grossProfit, color: '#10b981', prefix: '' },
                   ].map(row => (
                     <tr key={row.label} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td className="py-3" style={{ color: '#1a1008' }}>{row.label}</td>
@@ -411,23 +416,13 @@ export default function FinancePage() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {[
-                  { label: 'Avg Order Value ()',  val: avgOrderValue, set: setAvgOrderValue },
-                  { label: 'COGS % of revenue',    val: cogsPercent,   set: setCogsPercent },
-                ].map(field => (
-                  <div key={field.label}>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: '#1a1008' }}>
-                      {field.label}
-                    </label>
-                    <input
-                      type="number"
-                      value={field.val}
-                      onChange={e => field.set(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                      style={{ color: '#111827' }}
-                    />
-                  </div>
-                ))}
+                <div>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#1a1008' }}>Avg Order Value (₹)</label>
+                  <input type="number" value={avgOrderValue} onChange={e => setAvgOrderValue(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ color: '#111827' }} />
+                </div>
+                <div className="rounded-lg px-3 py-2 text-xs" style={{ background: '#f8f5ef', color: '#6b7280' }}>
+                  Break-even uses the current actual COGS rate of <strong style={{ color: '#1a1008' }}>{Math.round(cogs * 100)}%</strong> from {SHEET_COGS_SOURCE}{usesFallbackCOGS ? ', including the temporary unmatched-item fallback.' : '.'}
+                </div>
               </div>
             </div>
 
