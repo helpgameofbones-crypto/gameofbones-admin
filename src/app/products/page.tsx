@@ -70,8 +70,8 @@ export default function ProductsPage() {
   }
 
 async function compressImage(file: File): Promise<Blob> {
-    const MAX_DIM = 1600;
-    const QUALITY = 0.85;
+    const MAX_DIM = 1400;
+    const QUALITY = 0.82;
     const bitmap = await createImageBitmap(file);
     let width = bitmap.width;
     let height = bitmap.height;
@@ -84,11 +84,10 @@ async function compressImage(file: File): Promise<Blob> {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
     ctx.drawImage(bitmap, 0, 0, width, height);
-    const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', QUALITY));
-    return blob.size < file.size ? blob : file;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', QUALITY));
+    if (!blob) throw new Error('This browser could not create a WebP image.');
+    return blob;
 }
 
   function getManagedStoragePath(url?: string) {
@@ -125,7 +124,7 @@ async function compressImage(file: File): Promise<Blob> {
           if (type === 'image') {
                   try {
                             uploadBlob = await compressImage(file);
-                            if (uploadBlob !== file) ext = 'jpg';
+                            ext = 'webp';
                   } catch (e) {
                             console.error('Image compression failed, uploading original:', e);
                   }
@@ -135,7 +134,7 @@ async function compressImage(file: File): Promise<Blob> {
                             return;
                   }
           }
-          const data = new FormData(); data.append('productId', editing.id); data.append('type', type); data.append('slot', String(slotIdx)); data.append('file', new File([uploadBlob], `upload.${ext}`, { type: type === 'image' ? 'image/jpeg' : file.type }));
+          const data = new FormData(); data.append('productId', editing.id); data.append('type', type); data.append('slot', String(slotIdx)); data.append('file', new File([uploadBlob], `upload.${ext}`, { type: type === 'image' ? 'image/webp' : file.type }));
           const response = await authedFetch('/api/admin/products', { method: 'POST', body: data });
           setUploading(false);
           const responsePayload = await response.json().catch(() => ({}));
@@ -274,6 +273,7 @@ async function compressImage(file: File): Promise<Blob> {
                 </div>
               ))}
             </div>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: '#6b7280' }}>Click an image tile to upload or replace it. Images are resized and converted to WebP before upload; the limit after optimisation is 2 MB.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
               {[0, 1].map(i => (
                 <div key={i} onClick={() => vidRefs[i]?.current?.click()}
@@ -288,7 +288,7 @@ async function compressImage(file: File): Promise<Blob> {
               ))}
             </div>
 
-            {uploading && <div style={{ textAlign: 'center', padding: 8, color: '#c8973a', fontWeight: 600, fontSize: 13 }}>⏳ Uploading...</div>}
+            {uploading && <div style={{ textAlign: 'center', padding: 8, color: '#c8973a', fontWeight: 600, fontSize: 13 }}>⏳ Optimising to WebP and uploading...</div>}
 
             <div style={{ ...label, fontSize: 12, color: '#c8973a', marginBottom: 12, letterSpacing: '.1em' }}>PRODUCT DETAILS</div>
 
