@@ -49,6 +49,7 @@ export async function createDelhiveryShipment(input: {
   addressDetails?: AddressDetails
 }) {
   const token = process.env.DELHIVERY_API_TOKEN
+  const pickupLocation = process.env.DELHIVERY_PICKUP_LOCATION?.trim() || 'game of bones'
   if (!token) return { ok: false as const, skipped: true as const, error: 'DELHIVERY_API_TOKEN is not configured.' }
 
   const { order, orderId } = input
@@ -84,7 +85,7 @@ export async function createDelhiveryShipment(input: {
     seller_gst_tin: '',
     shipping_mode: 'Surface',
     pre_picked_up: '0',
-    pickup_location: 'game of bones',
+    pickup_location: pickupLocation,
     comment: items.map((item: any) => `${quantity(item)}x ${item.name || item.product_name || 'Treat'}`).join(', '),
     products_desc: items.map((item: any) => item.name || item.product_name || 'Treat').join(', '),
     hsn_code: '',
@@ -93,7 +94,7 @@ export async function createDelhiveryShipment(input: {
     waybill: '',
     quantity: totalQty,
   }
-  const formData = new URLSearchParams({ format: 'json', data: JSON.stringify({ shipments: [shipment], pickup_location: { name: 'game of bones' } }) })
+  const formData = new URLSearchParams({ format: 'json', data: JSON.stringify({ shipments: [shipment], pickup_location: { name: pickupLocation } }) })
 
   let response: Response
   try {

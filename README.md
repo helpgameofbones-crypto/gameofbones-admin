@@ -18,7 +18,7 @@ The protected operations dashboard for orders, products, fulfilment, finance, co
 | Stored customer data | `GOB_DATA_ENCRYPTION_KEY` |
 | Scheduled jobs | `CRON_SECRET` |
 | Payments | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
-| Delivery | `DELHIVERY_API_TOKEN` |
+| Delivery | `DELHIVERY_API_TOKEN`, plus `DELHIVERY_PICKUP_LOCATION` set to the exact pickup name in Delhivery One |
 | Email | `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, or the Gmail fallback variables |
 
 `ADMIN_EMAILS` is a comma-separated allowlist, for example:
