@@ -18,8 +18,24 @@ export async function GET(req: NextRequest) {
     }
 
   try {
-        const res = await fetch(`${SUPABASE_FN_URL}/sync-delhivery-status`, { method: 'POST' })
-        const data = await res.json()
+        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!serviceRole) {
+          return NextResponse.json({ error: 'Server misconfiguration: Supabase service role is not configured.' }, { status: 500 })
+        }
+
+        const res = await fetch(`${SUPABASE_FN_URL}/sync-delhivery-status`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${serviceRole}`,
+            apikey: serviceRole,
+          },
+          cache: 'no-store',
+        })
+        const data = await res.json().catch(() => ({ error: `Sync service returned an invalid response (HTTP ${res.status}).` }))
+        if (!res.ok) {
+          console.error('[delhivery-sync] Edge Function request failed', { status: res.status, data })
+          return NextResponse.json({ ok: false, ...data }, { status: 502 })
+        }
         return NextResponse.json({ ok: true, ...data })
   } catch (e: any) {
         return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
