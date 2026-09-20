@@ -1,307 +1,76 @@
-'use client';
-import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
+'use client'
 
-type Order = {
-  id: string; ref?: string; created_at?: string; status?: string; payment_status?: string; payment_method?: string;
-  customer_name?: string; customer_phone?: string; grand_total?: number; total_amount?: number;
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ArrowRight, CheckCircle2, ClipboardList, PackageCheck, TriangleAlert, Truck, WalletCards } from 'lucide-react'
+
+type TrendPoint = { date: string; revenue: number; orders: number }
+type RecentOrder = { id: string; ref: string; created_at: string | null; status: string; payment_status: string; payment_method: string; total: number; customer_name: string; customer_phone: string; has_awb: boolean }
+type DashboardData = {
+  generated_at: string
+  metrics: { today_revenue: number; today_orders: number; week_revenue: number; week_orders: number; month_revenue: number; month_orders: number; average_order_value: number; cod_rate: number; total_orders: number }
+  queues: { ready_to_book: number; failed_payments: number; missing_addresses: number; delivery_exceptions: number }
+  status_counts: Record<string, number>
+  trend: TrendPoint[]
+  recent_orders: RecentOrder[]
 }
 
-function RevenueChart({ data }: { data: { date: string; revenue: number; orders: number }[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const money = (value: number) => `₹${value.toLocaleString('en-IN')}`
+const statusColors: Record<string, { foreground: string; background: string }> = {
+  delivered: { foreground: '#17603a', background: '#e8f6ed' }, confirmed: { foreground: '#1d4f91', background: '#eaf2fd' },
+  dispatched: { foreground: '#6b3fa0', background: '#f2ebfb' }, shipped: { foreground: '#6b3fa0', background: '#f2ebfb' },
+  cancelled: { foreground: '#a02823', background: '#ffebe8' },
+}
+const panelStyle = { background: '#fffdf9', border: '1px solid #ded3c2', borderRadius: 10, boxShadow: '0 8px 22px rgba(59,37,12,.045)' }
+const panelHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '18px 20px 8px' }
+const eyebrowStyle = { margin: '0 0 5px', color: '#9a6514', fontSize: 10, fontWeight: 900, letterSpacing: '.13em', textTransform: 'uppercase' as const }
+const sectionTitleStyle = { margin: 0, color: '#1a1008', fontFamily: 'Georgia, serif', fontSize: 22, letterSpacing: '-.03em' }
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || data.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+function RevenueChart({ points }: { points: TrendPoint[] }) {
+  const [period, setPeriod] = useState<7 | 14 | 30>(14)
+  const data = points.slice(-period)
+  const max = Math.max(...data.map(point => point.revenue), 1)
+  const width = 760, height = 248, pad = { top: 18, right: 16, bottom: 34, left: 62 }
+  const chartWidth = width - pad.left - pad.right, chartHeight = height - pad.top - pad.bottom
+  const path = data.map((point, index) => {
+    const x = pad.left + (index / Math.max(data.length - 1, 1)) * chartWidth
+    const y = pad.top + chartHeight - (point.revenue / max) * chartHeight
+    return `${index ? 'L' : 'M'} ${x} ${y}`
+  }).join(' ')
+  const area = `${path} L ${pad.left + chartWidth} ${pad.top + chartHeight} L ${pad.left} ${pad.top + chartHeight} Z`
+  const labelEvery = period === 30 ? 5 : period === 14 ? 3 : 1
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.scale(dpr, dpr);
-
-    const padL = 60, padR = 20, padT = 20, padB = 40;
-    const cw = w - padL - padR, ch = h - padT - padB;
-
-    const maxRev = Math.max(...data.map(d => d.revenue), 100);
-    const yScale = ch / maxRev;
-    const xStep = cw / Math.max(data.length - 1, 1);
-
-    // Background
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, w, h);
-
-    // Grid lines
-    ctx.strokeStyle = '#f3f4f6';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = padT + ch - (ch / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padL, y);
-      ctx.lineTo(w - padR, y);
-      ctx.stroke();
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('₹' + Math.round(maxRev / 4 * i).toLocaleString('en-IN'), padL - 8, y + 4);
-    }
-
-    // Area fill
-    ctx.beginPath();
-    ctx.moveTo(padL, padT + ch);
-    data.forEach((d, i) => {
-      const x = padL + i * xStep;
-      const y = padT + ch - d.revenue * yScale;
-      if (i === 0) ctx.lineTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.lineTo(padL + (data.length - 1) * xStep, padT + ch);
-    ctx.closePath();
-    const grad = ctx.createLinearGradient(0, padT, 0, padT + ch);
-    grad.addColorStop(0, 'rgba(200, 151, 58, 0.25)');
-    grad.addColorStop(1, 'rgba(200, 151, 58, 0.02)');
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Line
-    ctx.beginPath();
-    ctx.strokeStyle = '#c8973a';
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    data.forEach((d, i) => {
-      const x = padL + i * xStep;
-      const y = padT + ch - d.revenue * yScale;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Dots
-    data.forEach((d, i) => {
-      const x = padL + i * xStep;
-      const y = padT + ch - d.revenue * yScale;
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#c8973a';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    });
-
-    // X-axis labels
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    const labelStep = data.length > 14 ? 3 : data.length > 7 ? 2 : 1;
-    data.forEach((d, i) => {
-      if (i % labelStep !== 0 && i !== data.length - 1) return;
-      const x = padL + i * xStep;
-      const parts = d.date.split('-');
-      ctx.fillText(`${parseInt(parts[2])}/${parseInt(parts[1])}`, x, padT + ch + 20);
-    });
-  }, [data]);
-
-  return <canvas ref={canvasRef} style={{ width: '100%', height: 280, display: 'block' }} />;
+  return <section aria-labelledby="revenue-heading" style={panelStyle}>
+    <div style={panelHeaderStyle}><div><p style={eyebrowStyle}>Revenue pulse</p><h2 id="revenue-heading" style={sectionTitleStyle}>Sales over time</h2></div><div role="group" aria-label="Revenue period" style={{ display: 'flex', gap: 4, background: '#f2ede3', padding: 3, borderRadius: 6 }}>{([7, 14, 30] as const).map(days => <button key={days} type="button" onClick={() => setPeriod(days)} aria-pressed={period === days} style={{ minHeight: 32, padding: '0 10px', border: 0, borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 800, background: period === days ? '#153c31' : 'transparent', color: period === days ? '#fff' : '#625548' }}>{days}D</button>)}</div></div>
+    <div style={{ height: 250 }}><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${period}-day revenue chart`} style={{ width: '100%', height: '100%', display: 'block', overflow: 'visible' }}>
+      {[0, .25, .5, .75, 1].map(tick => { const y = pad.top + chartHeight - tick * chartHeight; return <g key={tick}><line x1={pad.left} y1={y} x2={width - pad.right} y2={y} stroke="#ebe3d6" strokeWidth="1" /><text x={pad.left - 9} y={y + 4} textAnchor="end" fill="#7d7062" fontSize="10">{money(Math.round(max * tick))}</text></g> })}
+      <path d={area} fill="url(#revenue-fill)" /><path d={path} fill="none" stroke="#b7761e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      {data.map((point, index) => { if (index % labelEvery !== 0 && index !== data.length - 1) return null; const x = pad.left + (index / Math.max(data.length - 1, 1)) * chartWidth; const y = pad.top + chartHeight - (point.revenue / max) * chartHeight; return <g key={point.date}><circle cx={x} cy={y} r="3.5" fill="#b7761e" stroke="#fffdf8" strokeWidth="2" /><text x={x} y={height - 10} textAnchor="middle" fill="#7d7062" fontSize="10">{point.date.slice(8, 10)}/{point.date.slice(5, 7)}</text></g> })}
+      <defs><linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#d9ae6a" stopOpacity=".38" /><stop offset="1" stopColor="#d9ae6a" stopOpacity=".03" /></linearGradient></defs>
+    </svg></div><p style={{ margin: '10px 20px 18px', color: '#75685a', fontSize: 11 }}>Confirmed order value. Cancelled and failed-payment orders are excluded.</p>
+  </section>
 }
 
 export default function DashboardPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [chartDays, setChartDays] = useState(7);
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  useEffect(() => { let active = true; async function load() { try { const response = await fetch('/api/admin/dashboard', { credentials: 'same-origin', cache: 'no-store' }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Unable to load dashboard data.'); if (active) setData(payload as DashboardData) } catch (loadError) { if (active) setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.') } finally { if (active) setLoading(false) } } void load(); return () => { active = false } }, [])
+  const attention = useMemo(() => data ? [
+    { label: 'Ready to book', detail: 'Paid or COD-confirmed orders without a Delhivery AWB.', count: data.queues.ready_to_book, href: '/delhivery', icon: PackageCheck, tone: '#9b5c08', background: '#fff3dc' },
+    { label: 'Payment failures', detail: 'Payments marked failed — verify these before fulfilment.', count: data.queues.failed_payments, href: '/orders', icon: WalletCards, tone: '#a12823', background: '#ffebe8' },
+    { label: 'Address gaps', detail: 'Confirmed orders with no usable delivery address.', count: data.queues.missing_addresses, href: '/orders', icon: ClipboardList, tone: '#7a4b11', background: '#f8edd9' },
+    { label: 'Delivery exceptions', detail: 'Returns, RTOs, or delivery failures that need a decision.', count: data.queues.delivery_exceptions, href: '/returns', icon: Truck, tone: '#69429a', background: '#f3edfb' },
+  ] : [], [data])
+  const activeAttention = attention.filter(item => item.count > 0)
+  if (error) return <div className="gob-dashboard" style={{ padding: '30px 28px' }}><section style={{ ...panelStyle, maxWidth: 620, padding: 24, borderColor: '#e7c2bd' }}><TriangleAlert size={24} color="#a12823" /><h1 style={{ ...sectionTitleStyle, marginTop: 12 }}>Dashboard unavailable</h1><p style={{ color: '#6b5d4f', lineHeight: 1.5 }}>{error}</p><button type="button" onClick={() => window.location.reload()} style={{ minHeight: 40, padding: '0 14px', color: '#fff', background: '#153c31', border: 0, borderRadius: 5, fontWeight: 800, cursor: 'pointer' }}>Try again</button></section></div>
+  const metrics = data?.metrics
+  const kpis = [{ label: 'Today’s sales', value: money(metrics?.today_revenue || 0), detail: `${metrics?.today_orders || 0} orders`, accent: '#17603a' }, { label: '7-day sales', value: money(metrics?.week_revenue || 0), detail: `${metrics?.week_orders || 0} orders`, accent: '#b7761e' }, { label: '30-day sales', value: money(metrics?.month_revenue || 0), detail: `${metrics?.month_orders || 0} orders`, accent: '#153c31' }, { label: 'Ready for shipping', value: String(data?.queues.ready_to_book || 0), detail: 'Orders missing an AWB', accent: (data?.queues.ready_to_book || 0) ? '#a12823' : '#17603a' }]
 
-  useEffect(() => {
-    let active = true;
-    async function loadDashboard() {
-      setLoading(true);
-      const response = await fetch('/api/admin/orders?limit=500', { credentials: 'same-origin' });
-      const payload = response.ok ? await response.json() : { orders: [] };
-      if (active) { setOrders((payload.orders || []) as Order[]); setLoading(false); }
-    }
-    void loadDashboard();
-    return () => { active = false; };
-  }, []);
-
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const todayOrders = orders.filter(o => o.created_at?.startsWith(today));
-  const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
-  const monthAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
-  const weekOrders = orders.filter(o => Boolean(o.created_at && o.created_at >= weekAgo) && o.status !== 'cancelled');
-  const monthOrders = orders.filter(o => Boolean(o.created_at && o.created_at >= monthAgo) && o.status !== 'cancelled');
-
-  const todayRevenue = todayOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
-  const weekRevenue = weekOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
-  const monthRevenue = monthOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0);
-  const pendingDispatch = orders.filter(o => ['placed', 'confirmed'].includes(o.status || '')).length;
-  const uniqueCustomers = new Set(orders.map(o => (o.customer_phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean)).size;
-  const avgOrderValue = monthOrders.length > 0 ? Math.round(monthRevenue / monthOrders.length) : 0;
-  const codCount = monthOrders.filter(o => o.payment_method === 'cod').length;
-  const codRate = monthOrders.length > 0 ? Math.round(codCount / monthOrders.length * 100) : 0;
-
-  // Chart data
-  const chartData = [];
-  for (let i = chartDays - 1; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86400000);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayOrders = orders.filter(o => o.created_at?.startsWith(dateStr) && o.status !== 'cancelled');
-    chartData.push({
-      date: dateStr,
-      revenue: dayOrders.reduce((s, o) => s + (o.grand_total || o.total_amount || 0), 0),
-      orders: dayOrders.length
-    });
-  }
-
-  // Status breakdown
-  const statusCounts = orders.reduce((acc, o) => {
-    const status = o.status || 'unknown'; acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const attentionItems = [
-    { key: 'dispatch', label: 'Orders ready to dispatch', detail: 'Confirmed orders waiting for an AWB or handover.', count: pendingDispatch, href: '/delhivery', tone: '#a16207', background: '#fff7df' },
-    { key: 'cod', label: 'COD orders to confirm', detail: 'Confirm address and customer intent before dispatch.', count: orders.filter(o => o.payment_method === 'cod' && ['pending_cod', 'placed', 'confirmed'].includes(o.payment_status || o.status || '')).length, href: '/cod-tracker', tone: '#9a3412', background: '#fff0e8' },
-    { key: 'payment', label: 'Payment exceptions', detail: 'Failed or incomplete payments that need follow-up.', count: orders.filter(o => ['failed', 'pending_payment'].includes(o.payment_status || '')).length, href: '/orders', tone: '#b91c1c', background: '#fff0f0' },
-    { key: 'delivery', label: 'Delivery exceptions', detail: 'RTO, return, or delivery-failed orders need a decision.', count: orders.filter(o => ['rto', 'returned', 'delivery_failed'].includes(o.status || '')).length, href: '/rto', tone: '#7e22ce', background: '#f8f0ff' },
-  ].filter(item => item.count > 0);
-
-  const workspaces = [
-    { label: 'Take orders', detail: 'Orders, manual orders and payment checks', href: '/orders', links: [['Manual order', '/manual-order'], ['Razorpay', '/razorpay'], ['COD queue', '/cod-tracker']] },
-    { label: 'Fulfil orders', detail: 'Dispatch, shipment status, returns and RTO', href: '/delhivery', links: [['Fulfilment', '/delhivery'], ['Shipment tracking', '/shipment-tracker'], ['Returns & RTO', '/returns']] },
-    { label: 'Manage catalogue', detail: 'Products, inventory and production', href: '/products', links: [['Products', '/products'], ['Inventory', '/inventory'], ['Production', '/production']] },
-    { label: 'Grow revenue', detail: 'Meta spend, campaigns, coupons and leads', href: '/marketing', links: [['Marketing & ad spend', '/marketing'], ['Campaigns', '/campaigns'], ['Coupons', '/coupons'], ['Spin & leads', '/email-captures']] },
-  ];
-
-  return (
-    <div className="gob-dashboard" style={{ padding: '30px 28px 48px', maxWidth: 1360, margin: '0 auto' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #e6dccb' }}>
-        <div><p style={{ margin: '0 0 5px', color: '#9a6514', fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase' }}>Game of Bones · Operations desk</p><h1 style={{ fontSize: 32, lineHeight: 1, letterSpacing: '-.04em', fontWeight: 800, margin: 0, fontFamily: 'Georgia, serif' }}>Today’s work</h1></div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'end' }}><Link href="/tools" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', border: '1px solid #bfae97', color: '#1a1008', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>All tools</Link><Link href="/orders" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 14px', background: '#1a1008', color: '#fff', borderRadius: 5, fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textDecoration: 'none' }}>Open order queue →</Link></div>
-      </div>
-
-      <section aria-labelledby="workspace-heading" style={{ marginBottom: 24, border: '1px solid #ddd1bf', background: '#fffdf9', boxShadow: '0 8px 24px rgba(59,37,12,.05)' }}>
-        <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #eee4d7' }}><h2 id="workspace-heading" style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>Jump into a workspace</h2><p style={{ margin: '3px 0 0', color: '#746759', fontSize: 12 }}>Every previous admin tool remains available here or in the left navigation.</p></div>
-        <div className="gob-dashboard-workspaces" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          {workspaces.map((space, index) => <div key={space.label} style={{ padding: 18, borderLeft: index ? '1px solid #eee4d7' : 'none', minWidth: 0 }}>
-            <Link href={space.href} style={{ display: 'block', color: '#1a1008', textDecoration: 'none', fontSize: 15, fontWeight: 800, marginBottom: 5 }}>{space.label} →</Link>
-            <p style={{ margin: '0 0 12px', minHeight: 32, color: '#746759', fontSize: 12, lineHeight: 1.35 }}>{space.detail}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 10px' }}>{space.links.map(([name, href]) => <Link key={href} href={href} style={{ color: '#875b1e', textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 11, fontWeight: 700 }}>{name}</Link>)}</div>
-          </div>)}
-        </div>
-      </section>
-
-      <section aria-labelledby="attention-heading" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 24, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '15px 18px', borderBottom: attentionItems.length ? '1px solid #eee7db' : 'none' }}>
-          <div><h2 id="attention-heading" style={{ margin: 0, fontSize: 16 }}>Needs attention</h2><p style={{ margin: '3px 0 0', color: '#6b7280', fontSize: 12 }}>Work through these before moving to reporting.</p></div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 28, height: 28, borderRadius: 14, background: attentionItems.length ? '#1a1008' : '#eaf5ee', color: attentionItems.length ? '#fff' : '#17603a', fontWeight: 800, fontSize: 12 }}>{loading ? '…' : attentionItems.length}</span>
-        </div>
-        {loading ? <div style={{ padding: 18, color: '#6b7280', fontSize: 13 }}>Checking today’s operational queues…</div> : attentionItems.length ? <div>{attentionItems.map(item => <Link key={item.key} href={item.href} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', gap: 14, alignItems: 'center', padding: '14px 18px', textDecoration: 'none', color: '#1a1008', borderTop: '1px solid #f4efe7' }}><span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 99, background: item.tone }} /><span><strong style={{ display: 'block', fontSize: 13 }}>{item.label}</strong><span style={{ color: '#6b7280', fontSize: 12 }}>{item.detail}</span></span><span style={{ background: item.background, color: item.tone, borderRadius: 14, padding: '5px 9px', minWidth: 26, textAlign: 'center', fontSize: 12, fontWeight: 800 }}>{item.count} →</span></Link>)}</div> : <div style={{ padding: 18, color: '#17603a', fontSize: 13, fontWeight: 600 }}>All clear — no operational exceptions in the loaded order range.</div>}
-      </section>
-
-      {/* KPI Cards */}
-      <div className="gob-dashboard-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {[
-          { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString('en-IN')}`, sub: `${todayOrders.length} orders`, color: '#16a34a' },
-          { label: '7-Day Revenue', value: `₹${weekRevenue.toLocaleString('en-IN')}`, sub: `${weekOrders.length} orders`, color: '#c8973a' },
-          { label: '30-Day Revenue', value: `₹${monthRevenue.toLocaleString('en-IN')}`, sub: `${monthOrders.length} orders`, color: '#1a1008' },
-          { label: 'Pending Dispatch', value: String(pendingDispatch), sub: 'Need action', color: pendingDispatch > 0 ? '#ef4444' : '#16a34a' },
-        ].map((kpi, i) => (
-          <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9ca3af', marginBottom: 8 }}>{kpi.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: kpi.color, fontFamily: 'Georgia, serif' }}>{kpi.value}</div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{kpi.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Second row KPIs */}
-      <div className="gob-dashboard-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {[
-          { label: 'Total Customers', value: String(uniqueCustomers) },
-          { label: 'Avg Order Value', value: `₹${avgOrderValue.toLocaleString('en-IN')}` },
-          { label: 'COD Rate', value: `${codRate}%` },
-          { label: 'Total Orders', value: String(orders.length) },
-        ].map((kpi, i) => (
-          <div key={i} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#9ca3af', marginBottom: 6 }}>{kpi.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{kpi.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Revenue Chart */}
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Revenue Trend</h2>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[7, 14, 30].map(d => (
-              <button key={d} onClick={() => setChartDays(d)}
-                style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600,
-                  background: chartDays === d ? '#1a1008' : '#f3f4f6',
-                  color: chartDays === d ? '#fff' : '#6b7280',
-                  border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                {d}D
-              </button>
-            ))}
-          </div>
-        </div>
-        {!loading && <RevenueChart data={chartData} />}
-      </div>
-
-      {/* Status breakdown + Recent orders */}
-      <div className="gob-dashboard-split" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20 }}>
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Order Status</h3>
-          {Object.entries(statusCounts).sort(([, a], [, b]) => (b as number) - (a as number)).map(([status, count]) => {
-            const colors: Record<string, string> = { placed: '#f59e0b', confirmed: '#3b82f6', dispatched: '#8b5cf6', shipped: '#8b5cf6', delivered: '#16a34a', cancelled: '#ef4444' };
-            const pct = orders.length > 0 ? Math.round((count as number) / orders.length * 100) : 0;
-            return (
-              <div key={status} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{status}</span>
-                  <span style={{ color: '#6b7280' }}>{count as number} ({pct}%)</span>
-                </div>
-                <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3 }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: colors[status] || '#9ca3af', borderRadius: 3 }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Recent Orders</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ padding: '6px 8px', textAlign: 'left' }}>Ref</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left' }}>Customer</th>
-                <th style={{ padding: '6px 8px', textAlign: 'right' }}>Amount</th>
-                <th style={{ padding: '6px 8px', textAlign: 'center' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 10).map(o => (
-                <tr key={o.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '8px', fontWeight: 600 }}>{o.ref}</td>
-                  <td style={{ padding: '8px', color: '#6b7280' }}>{o.customer_name || o.customer_phone}</td>
-                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>₹{(o.grand_total || o.total_amount || 0).toLocaleString('en-IN')}</td>
-                  <td style={{ padding: '8px', textAlign: 'center' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', padding: '2px 6px', borderRadius: 10,
-                      background: o.status === 'delivered' ? '#dcfce7' : o.status === 'cancelled' ? '#fee2e2' : '#fef3c7',
-                      color: o.status === 'delivered' ? '#16a34a' : o.status === 'cancelled' ? '#ef4444' : '#92400e' }}>
-                      {o.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="gob-dashboard" style={{ padding: '28px 28px 48px', maxWidth: 1380, margin: '0 auto' }}>
+    <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #ded3c2' }}><div><p style={eyebrowStyle}>Game of Bones · Operations</p><h1 style={{ margin: 0, color: '#153c31', fontFamily: 'Georgia, serif', fontSize: 'clamp(30px, 4vw, 44px)', letterSpacing: '-.05em' }}>Run today with clarity.</h1><p style={{ margin: '8px 0 0', color: '#75685a', fontSize: 13 }}>Your orders, fulfilment risks and sales pulse in one place.</p></div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}><Link href="/orders" style={{ minHeight: 40, display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 14px', background: '#153c31', borderRadius: 5, color: '#fff', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>Open order queue <ArrowRight size={15} /></Link><Link href="/manual-order" style={{ minHeight: 40, display: 'inline-flex', alignItems: 'center', padding: '0 14px', border: '1px solid #bfae97', borderRadius: 5, color: '#1a1008', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>Create manual order</Link></div></header>
+    <section aria-label="Key performance indicators" className="gob-dashboard-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 20 }}>{kpis.map(kpi => <article key={kpi.label} style={{ ...panelStyle, padding: 17, borderTop: `3px solid ${kpi.accent}` }}><p style={{ margin: 0, color: '#75685a', fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>{kpi.label}</p><strong style={{ display: 'block', marginTop: 9, color: '#1a1008', fontFamily: 'Georgia, serif', fontSize: 28, letterSpacing: '-.03em' }}>{loading ? '—' : kpi.value}</strong><span style={{ display: 'block', marginTop: 5, color: '#75685a', fontSize: 12 }}>{loading ? 'Loading…' : kpi.detail}</span></article>)}</section>
+    <section aria-labelledby="attention-heading" style={{ ...panelStyle, marginBottom: 20, overflow: 'hidden' }}><div style={panelHeaderStyle}><div><p style={eyebrowStyle}>Work queue</p><h2 id="attention-heading" style={sectionTitleStyle}>What needs a decision</h2></div><span aria-label={`${activeAttention.length} active operational queues`} style={{ minWidth: 30, height: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 15, background: activeAttention.length ? '#153c31' : '#e8f6ed', color: activeAttention.length ? '#fff' : '#17603a', fontSize: 12, fontWeight: 900 }}>{loading ? '…' : activeAttention.length}</span></div>{loading ? <p style={{ margin: 0, padding: '8px 20px 20px', color: '#75685a', fontSize: 13 }}>Checking your order queues…</p> : activeAttention.length ? <div className="gob-dashboard-attention" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', borderTop: '1px solid #eee4d7' }}>{activeAttention.map(item => { const Icon = item.icon; return <Link key={item.label} href={item.href} style={{ padding: 16, borderRight: '1px solid #eee4d7', color: '#1a1008', textDecoration: 'none' }}><span style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16, background: item.background, color: item.tone }}><Icon size={16} /></span><strong style={{ display: 'block', marginTop: 11, fontSize: 13 }}>{item.label} <span style={{ color: item.tone }}>{item.count}</span></strong><span style={{ display: 'block', marginTop: 4, color: '#75685a', fontSize: 12, lineHeight: 1.4 }}>{item.detail}</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 11, color: item.tone, fontSize: 11, fontWeight: 900 }}>Review <ArrowRight size={13} /></span></Link> })}</div> : <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px 20px', color: '#17603a', fontSize: 13, fontWeight: 700 }}><CheckCircle2 size={18} /> No active fulfilment, payment, address or delivery exceptions.</div>}</section>
+    <div className="gob-dashboard-split" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(320px, .9fr)', gap: 20 }}><RevenueChart points={data?.trend || []} /><section aria-labelledby="recent-orders-heading" style={{ ...panelStyle, overflow: 'hidden' }}><div style={panelHeaderStyle}><div><p style={eyebrowStyle}>Latest activity</p><h2 id="recent-orders-heading" style={sectionTitleStyle}>Recent orders</h2></div><Link href="/orders" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#9a6514', fontSize: 11, fontWeight: 900, textDecoration: 'none' }}>See all <ArrowRight size={13} /></Link></div><div style={{ borderTop: '1px solid #eee4d7' }}>{(data?.recent_orders || []).slice(0, 6).map(order => { const color = statusColors[order.status] || { foreground: '#635547', background: '#f2ede3' }; return <Link key={order.id} href="/orders" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, padding: '12px 18px', color: '#1a1008', textDecoration: 'none', borderBottom: '1px solid #f2ece2' }}><span style={{ minWidth: 0 }}><strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{order.ref}</strong><span style={{ display: 'block', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#75685a', fontSize: 11 }}>{order.customer_name || order.customer_phone || 'Customer details pending'}</span></span><span style={{ textAlign: 'right' }}><strong style={{ display: 'block', fontSize: 12 }}>{money(order.total)}</strong><span style={{ display: 'inline-block', marginTop: 4, padding: '3px 6px', borderRadius: 9, color: color.foreground, background: color.background, fontSize: 9, fontWeight: 900, letterSpacing: '.05em', textTransform: 'uppercase' }}>{order.status.replaceAll('_', ' ')}</span></span></Link> })}{!loading && !data?.recent_orders.length && <p style={{ margin: 0, padding: 20, color: '#75685a', fontSize: 13 }}>No orders yet.</p>}</div></section></div>
+  </div>
 }
