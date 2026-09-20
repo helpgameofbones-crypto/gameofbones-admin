@@ -60,19 +60,32 @@ export default function FinancePage() {
   const netRevenue      = totalRevenue - totalRefunds
   let matchedLineCount = 0
   let unmatchedLineCount = 0
+  let incompleteLegacyLineCount = 0
   let unmatchedRevenue = 0
   const matchedCOGS = orders.reduce((total, order) => total + (order.items || []).reduce((sum: number, item: any) => {
     const name = String(item.name ?? item.product_name ?? '').trim().toLowerCase()
     const packLabel = String(item.size ?? item.pack_label ?? '').trim().toLowerCase()
     const product = products.find((product: any) => String(product.name || '').trim().toLowerCase() === name)
-    const pack = Array.isArray(product?.sizes) ? product.sizes.find((size: any) => String(size.label || '').trim().toLowerCase() === packLabel) : null
-    const databaseCost = Number(pack?.cogs ?? product?.cost_price ?? 0)
+    const unitPrice = Number(item.price ?? item.pack_price ?? 0)
+    const packByLabel = Array.isArray(product?.sizes) ? product.sizes.find((size: any) => String(size.label || '').trim().toLowerCase() === packLabel) : null
+    // Some older checkout rows saved “Pack of 1” (or no label) instead of the
+    // real pack label. Price is the reliable historical key, so use it before
+    // falling back to a product-wide base cost.
+    const packByPrice = !packByLabel && unitPrice > 0 && Array.isArray(product?.sizes)
+      ? product.sizes.find((size: any) => Number(size.price) === unitPrice)
+      : null
+    const databaseCost = Number(packByLabel?.cogs ?? packByPrice?.cogs ?? product?.cost_price ?? 0)
     const unitCost = databaseCost > 0 ? databaseCost : getSheetCogs(name, packLabel)
     const quantity = Number(item.qty ?? item.quantity ?? 1)
     if (unitCost && unitCost > 0) matchedLineCount += 1
-    else {
+    else if (name && unitPrice > 0) {
       unmatchedLineCount += 1
-      unmatchedRevenue += Number(item.price ?? item.pack_price ?? 0) * quantity
+      unmatchedRevenue += unitPrice * quantity
+    } else {
+      // Legacy payment imports occasionally have blank item objects. They
+      // carry neither a sell price nor product identity, so treating them as
+      // a percentage COGS estimate would make the P&L misleading.
+      incompleteLegacyLineCount += 1
     }
     return sum + Number(unitCost || 0) * quantity
   }, 0), 0)
@@ -206,7 +219,7 @@ export default function FinancePage() {
               <h3 className="font-bold mb-4" style={{ color: '#111827' }}>P&L Summary</h3>
               <div className="mb-4 rounded-lg px-4 py-3" style={{ background: '#f8f5ef', border: '1px solid #e8dfce' }}>
                 <p className="text-xs font-semibold" style={{ color: '#1a1008' }}>COGS source: {SHEET_COGS_SOURCE}</p>
-                <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{matchedLineCount} order line{matchedLineCount === 1 ? '' : 's'} matched to a real pack cost.{usesFallbackCOGS ? ` ${unmatchedLineCount} unmatched line${unmatchedLineCount === 1 ? '' : 's'} still use the temporary ${cogsPercent}% fallback.` : ' No percentage estimate is being used.'}</p>
+                <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{matchedLineCount} order line{matchedLineCount === 1 ? '' : 's'} matched to a real pack cost.{usesFallbackCOGS ? ` ${unmatchedLineCount} unmatched line${unmatchedLineCount === 1 ? '' : 's'} still use the temporary ${cogsPercent}% fallback.` : ' No percentage estimate is being used.'}{incompleteLegacyLineCount > 0 ? ` ${incompleteLegacyLineCount} blank legacy line${incompleteLegacyLineCount === 1 ? '' : 's'} with no sale value ${incompleteLegacyLineCount === 1 ? 'is' : 'are'} excluded from COGS.` : ''}</p>
                 {usesFallbackCOGS && <div className="flex items-center gap-3 mt-2"><label className="text-xs font-semibold" style={{ color: '#1a1008' }}>Temporary unmatched-item fallback</label><input type="range" min="10" max="80" value={cogsPercent} onChange={e => setCogsPercent(e.target.value)} className="w-36" /><span className="font-bold text-sm" style={{ color: '#1a1008' }}>{cogsPercent}%</span></div>}
               </div>
               <table className="w-full text-sm">
