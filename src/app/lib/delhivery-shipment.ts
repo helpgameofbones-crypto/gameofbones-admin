@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
-import { revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { encryptPii, protectLegacyPiiValue, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { sendDispatchEmail } from '@/app/lib/lifecycle-emails'
 
 const DELHIVERY_BASE = 'https://track.delhivery.com'
@@ -38,6 +38,38 @@ function addressFrom(order: ShipmentOrder, provided?: AddressDetails): { line1: 
   }
 }
 
+function addressFromCheckoutAttempt(value: unknown): { street: string; city: string; state: string; pincode: string } | null {
+  const parts = text(value, 500).split(',').map(part => part.trim()).filter(Boolean)
+  const pincodeIndex = parts.findLastIndex(part => /^\d{6}$/.test(part))
+  if (pincodeIndex < 2) return null
+  const street = parts.slice(0, pincodeIndex - 2).join(', ')
+  const city = parts[pincodeIndex - 2]
+  const state = parts[pincodeIndex - 1]
+  const pincode = parts[pincodeIndex]
+  return street && city && state ? { street, city, state, pincode } : null
+}
+
+async function recoverAddressFromCheckoutAttempt(order: ShipmentOrder) {
+  if (!order?.id || !order.ref) return order
+  const current = addressFrom(order)
+  if (current.line1 && current.city && current.state && /^\d{6}$/.test(current.pincode)) return order
+  try {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data: attempt } = await supabase.from('order_attempts').select('shipping_address').eq('ref', String(order.ref)).limit(1).maybeSingle()
+    const address = addressFromCheckoutAttempt(attempt?.shipping_address)
+    if (!address) return order
+    const { data: repaired, error } = await supabase.from('orders').update({
+      shipping_address: protectLegacyPiiValue(address),
+      pii_address_ciphertext: encryptPii(address),
+    }).eq('id', order.id).select('*').maybeSingle()
+    if (error) throw error
+    return repaired || order
+  } catch (error) {
+    console.error('[delhivery] checkout-address recovery failed', { orderId: order.id, error })
+    return order
+  }
+}
+
 /**
  * Books one order with Delhivery and persists its AWB. It is deliberately
  * idempotent: retries after a network timeout never create another booking
@@ -52,8 +84,11 @@ export async function createDelhiveryShipment(input: {
   const pickupLocation = process.env.DELHIVERY_PICKUP_LOCATION?.trim() || 'game of bones'
   if (!token) return { ok: false as const, skipped: true as const, error: 'DELHIVERY_API_TOKEN is not configured.' }
 
-  const { order, orderId } = input
+  let { order } = input
+  const { orderId } = input
   if (!orderId || order.delhivery_awb) return { ok: true as const, awb: String(order.delhivery_awb || ''), existing: true as const }
+
+  order = await recoverAddressFromCheckoutAttempt(order)
 
   const address = addressFrom(order, input.addressDetails)
   const name = revealLegacyPii(order.customer_name)

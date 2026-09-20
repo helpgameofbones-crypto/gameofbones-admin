@@ -2,137 +2,188 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
-import { protectLegacyPii } from '@/app/lib/pii-crypto'
+import { encryptPii, protectLegacyPii, protectLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 
 export const maxDuration = 20
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID!, key_secret: process.env.RAZORPAY_KEY_SECRET! })
 
-function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+type Attempt = { items?: unknown; subtotal?: unknown; shipping_address?: unknown }
+
+function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) }
+
+function paymentPhone(value: unknown) {
+  return String(value || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '')
 }
 
-// The payment payload does not reliably include the order notes. Fetch the
-// Razorpay order when necessary so its receipt (our GOB reference) is used
-// instead of Razorpay's own order_… ID. This keeps the webhook and browser
-// save on one database row.
+// Checkout stores its display address as "line 1, line 2, city, state, PIN".
+// Only the final three segments are structurally significant, so commas in a
+// building address remain safe.
+function structuredAddress(value: unknown) {
+  const parts = String(value || '').split(',').map(part => part.trim()).filter(Boolean)
+  const pincodeIndex = parts.findLastIndex(part => /^\d{6}$/.test(part))
+  if (pincodeIndex < 2) return null
+  const street = parts.slice(0, pincodeIndex - 2).join(', ')
+  const city = parts[pincodeIndex - 2]
+  const state = parts[pincodeIndex - 1]
+  const pincode = parts[pincodeIndex]
+  return street && city && state ? { street, city, state, pincode } : null
+}
+
+function recoveredItemsFromNotes(notes: Record<string, unknown> | undefined) {
+  try {
+    const source = ['items_1', 'items_2', 'items_3'].map(key => String(notes?.[key] || '')).join('')
+    const parsed = source ? JSON.parse(source) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.map(item => ({
+      product_name: item?.name || item?.product_name || item?.n || '',
+      pack_label: item?.pack_label || item?.packLabel || item?.size || item?.s || null,
+      pack_price: item?.pack_price ?? item?.price ?? item?.p ?? null,
+      quantity: item?.quantity || item?.qty || item?.q || 1,
+    })).filter(item => Boolean(item.product_name))
+  } catch { return [] }
+}
+
+function recoveredItemsFromAttempt(items: unknown) {
+  if (!Array.isArray(items)) return []
+  return items.map((item: any) => ({
+    product_name: item?.name || item?.product_name || '',
+    pack_label: item?.size || item?.pack_label || null,
+    pack_price: item?.unit_price ?? item?.pack_price ?? null,
+    quantity: item?.qty || item?.quantity || 1,
+  })).filter(item => Boolean(item.product_name))
+}
+
 async function checkoutReference(payment: { notes?: Record<string, unknown>; order_id?: string }) {
   const notes = payment.notes || {}
-  const fromPayment = typeof notes.order_ref === 'string' ? notes.order_ref : typeof notes.ref === 'string' ? notes.ref : ''
-  if (fromPayment) return fromPayment
+  const direct = typeof notes.order_ref === 'string' ? notes.order_ref : typeof notes.ref === 'string' ? notes.ref : ''
+  if (direct) return direct
   if (!payment.order_id) return ''
   try {
     const order = await razorpay.orders.fetch(payment.order_id) as { receipt?: string; notes?: Record<string, unknown> }
     const orderNotes = order.notes || {}
     return typeof orderNotes.order_ref === 'string' ? orderNotes.order_ref : typeof orderNotes.ref === 'string' ? orderNotes.ref : order.receipt || payment.order_id
   } catch (error) {
-    console.error('Unable to read Razorpay checkout receipt; using its order ID as a fallback.', error)
+    console.error('[razorpay-webhook] Could not fetch checkout receipt', error)
     return payment.order_id
   }
 }
 
+async function matchingAttempt(ref: string): Promise<Attempt | null> {
+  for (const delay of [0, 1500, 2500]) {
+    if (delay) await sleep(delay)
+    const { data } = await supabase.from('order_attempts').select('items, subtotal, shipping_address').eq('ref', ref).limit(1).maybeSingle()
+    if (data) return data
+  }
+  return null
+}
+
+async function bookWhenComplete(order: Record<string, any> | null | undefined) {
+  if (!order?.id || order.delhivery_awb) return
+  try {
+    const shipment = await createDelhiveryShipment({ order, orderId: order.id })
+    if (!shipment.ok && !shipment.skipped) console.error('[razorpay-webhook] Delhivery booking failed', { orderId: order.id, error: shipment.error })
+  } catch (error) {
+    console.error('[razorpay-webhook] Delhivery booking threw', { orderId: order.id, error })
+  }
+}
+
 export async function POST(req: NextRequest) {
-    try {
-          const body = await req.text()
-          const signature = req.headers.get('x-razorpay-signature')
-          const secret = process.env.RAZORPAY_WEBHOOK_SECRET!
+  try {
+    const body = await req.text()
+    const signature = req.headers.get('x-razorpay-signature') || ''
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || ''
+    const expected = crypto.createHmac('sha256', secret).update(body).digest('hex')
+    const valid = signature.length === expected.length && crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    if (!valid) return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
 
-      const expectedSignature = crypto
-            .createHmac('sha256', secret)
-            .update(body)
-            .digest('hex')
+    const event = JSON.parse(body)
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity
+      const ref = await checkoutReference(payment)
+      if (!ref) return NextResponse.json({ received: true })
 
-      const sigBuf = Buffer.from(signature || '', 'utf8')
-          const expectedBuf = Buffer.from(expectedSignature, 'utf8')
-          const isValid = sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)
-          if (!isValid) {
-                  return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+      let existing: { id: string } | null = null
+      for (const delay of [0, 1000, 2000, 3000, 3000]) {
+        if (delay) await sleep(delay)
+        const { data } = await supabase.from('orders').select('id').eq('ref', ref).limit(1).maybeSingle()
+        if (data) { existing = data; break }
+      }
+
+      if (existing) {
+        const { data: updatedOrder, error } = await supabase.from('orders')
+          .update({ payment_status: 'paid', status: 'confirmed', transaction_id: payment.id })
+          .eq('id', existing.id).select('*').maybeSingle()
+        if (error) throw error
+        await bookWhenComplete(updatedOrder)
+      } else {
+        const attempt = await matchingAttempt(ref)
+        const notes = payment.notes as Record<string, unknown> | undefined
+        let items = recoveredItemsFromNotes(notes)
+        let subtotal = Number(payment.amount || 0) / 100
+        let source = items.length ? 'razorpay_notes' : ''
+        if (!items.length && attempt) {
+          items = recoveredItemsFromAttempt(attempt.items)
+          subtotal = Number(attempt.subtotal) || subtotal
+          source = items.length ? 'order_attempts' : ''
+        }
+        if (!items.length) {
+          const phone = paymentPhone(payment.contact)
+          if (phone) {
+            const since = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+            const { data: carts } = await supabase.from('abandoned_carts').select('items,total').eq('customer_phone', phone).gte('abandoned_at', since).order('abandoned_at', { ascending: false }).limit(1)
+            if (Array.isArray(carts?.[0]?.items)) { items = carts[0].items; subtotal = Number(carts[0].total) || subtotal; source = 'abandoned_carts' }
           }
+        }
 
-      const event = JSON.parse(body)
-
-      if (event.event === 'payment.captured') {
-              const payment = event.payload.payment.entity
-              // Storefront checkouts use `ref` as the Game of Bones order
-              // reference.  Older checkouts used `order_ref`; support both so
-              // a captured payment updates its original order instead of being
-              // incorrectly inserted as a second, incomplete fallback order.
-              const orderId = await checkoutReference(payment)
-
-            // RACE-CONDITION GUARD: this webhook can arrive before the browser's
-            // own order-save request (with the real cart items) has landed --
-            // e.g. slow mobile network, or the tab backgrounded during a UPI
-            // app-switch. Retry the lookup a few times with short delays before
-            // falling back to the item-less placeholder insert below; most
-            // "missing" orders are only a few seconds late, not actually lost.
-            // (2026-08-04: GOB-E992CY and GOB-EBUBMI both hit this race and were
-            // auto-recovered with empty items -- this loop is meant to stop that
-            // from recurring.)
-            let existing: { id: string }[] | null = null
-              const retryDelaysMs = [1000, 2000, 3000, 3000]
-              for (const delay of retryDelaysMs) {
-                        const { data } = await supabase.from('orders').select('id').eq('ref', orderId).limit(1)
-                        if (data && data.length > 0) { existing = data; break }
-                        await sleep(delay)
-              }
-              if (!existing) {
-                        const { data } = await supabase.from('orders').select('id').eq('ref', orderId).limit(1)
-                        existing = data
-              }
-
-            if (existing && existing.length > 0) {
-                      await supabase.from('orders').update({ payment_status: 'paid', status: 'confirmed' }).eq('ref', orderId)
-            } else {
-                      // SAFETY NET: previously this branch didn't exist, so a captured
-                // Razorpay payment whose client-side order save never landed (tab
-                // closed / network blip / JS error right after payment) silently
-                // vanished -- the UPDATE above matched zero rows and nobody was
-                // ever notified the customer had been charged with no order on
-                // file. Create a minimal placeholder order instead so the payment
-                // can never be lost, clearly flagged for manual review since
-                // Razorpay's payload doesn't carry the full cart the client-side
-                // save would have included.
-                const addressNote = payment.notes?.address || ''
-                      const customerNoteName = payment.notes?.customer_name || ''
-                      const amountRupees = (payment.amount || 0) / 100
-                      const contact = payment.contact ? String(payment.contact).replace(/^\+?91/, '') : ''; let recoveredItems: any[] = []; let recoveredSubtotal: number | null = null; let recoveredAddress: string | null = null; let recoverySource: string | null = null; if (payment.notes) { try { const notesItemsRaw = ['items_1','items_2','items_3'].map(function(k){ return (payment.notes as any)[k] || '' }).join(''); if (notesItemsRaw) { const notesItems = JSON.parse(notesItemsRaw); if (Array.isArray(notesItems) && notesItems.length > 0) { recoveredItems = notesItems.map(function(i: any){ return { product_name: i.name || i.product_name || i.n || '', pack_label: i.pack_label || i.packLabel || i.size || i.s || null, pack_price: (i.pack_price != null ? i.pack_price : (i.price != null ? i.price : (i.p != null ? i.p : null))), quantity: i.quantity || i.qty || i.q || 1 } }).filter(function(i: any){ return Boolean(i.product_name) }); if (recoveredItems.length) recoverySource = 'razorpay_notes'; } } } catch (e) {} } if (recoveredItems.length === 0 && orderId) { const attemptRetryDelaysMs = [0, 1500, 2500]; for (const attemptDelay of attemptRetryDelaysMs) { if (attemptDelay) await sleep(attemptDelay); const { data: attemptMatch } = await supabase.from('order_attempts').select('items, subtotal, shipping_address, customer_phone, customer_email').eq('ref', orderId).limit(1).maybeSingle(); if (attemptMatch && Array.isArray(attemptMatch.items) && attemptMatch.items.length > 0) { recoveredItems = attemptMatch.items.map(function(i: any){ return { product_name: i.name || i.product_name, pack_label: i.size || i.pack_label || null, pack_price: (i.unit_price != null ? i.unit_price : (i.pack_price != null ? i.pack_price : null)), quantity: i.qty || i.quantity || 1 } }); recoveredSubtotal = Number(attemptMatch.subtotal) || null; recoveredAddress = attemptMatch.shipping_address || null; recoverySource = 'order_attempts'; break } } } if (recoveredItems.length === 0 && contact) { const windowStart = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); const { data: cartMatches } = await supabase.from('abandoned_carts').select('items, total, abandoned_at').eq('customer_phone', contact).gte('abandoned_at', windowStart).order('abandoned_at', { ascending: false }).limit(1); if (cartMatches && cartMatches.length > 0 && Array.isArray(cartMatches[0].items) && cartMatches[0].items.length > 0) { recoveredItems = cartMatches[0].items; recoveredSubtotal = Number(cartMatches[0].total) || null; recoverySource = 'abandoned_carts'; } } const itemsRecovered = recoveredItems.length > 0; const subtotalRupees = recoveredSubtotal ?? amountRupees; const discountRupees = itemsRecovered ? Math.max(0, subtotalRupees - amountRupees) : 0;
-                      await supabase.from('orders').insert({
-                                  ref: orderId || ('RZP-' + payment.id),
-                                  customer_name: customerNoteName || null,
-                                  customer_email: payment.email ? protectLegacyPii(payment.email) : null,
-                                  customer_phone: contact ? protectLegacyPii(contact) : null,
-                                  shipping_address: { street: protectLegacyPii(recoveredAddress || addressNote), city: '', state: '', pincode: '' },
-                                  items: recoveredItems,
-                                  subtotal: subtotalRupees,
-                                  discount: discountRupees,
-                                  shipping: 0,
-                                  packaging: 0,
-                                  grand_total: amountRupees,
-                                  total_amount: amountRupees,
-                                  payment_method: 'razorpay',
-                                  payment_status: 'paid',
-                                  transaction_id: payment.id,
-                                  status: 'placed',
-                                  notes: itemsRecovered ? ('⚠️ AUTO-RECOVERED from Razorpay webhook — the client-side order save never completed after payment. Items were recovered from ' + (recoverySource === 'order_attempts' ? 'the exact checkout-attempt record (ref match)' : 'a matching abandoned-cart record (phone match, within 3h)') + '; please double-check against the customer before shipping.') : '⚠️ AUTO-RECOVERED from Razorpay webhook — the client-side order save never completed after payment (even after retrying). Item details unavailable here (no matching checkout-attempt or abandoned-cart record found); verify with the customer (phone/email above, or Razorpay payment ' + payment.id + ') before shipping.',
-                                  created_at: new Date().toISOString()
-                      })
-            }
+        const rawAddress = typeof attempt?.shipping_address === 'string' ? attempt.shipping_address : typeof notes?.address === 'string' ? notes.address : ''
+        const address = structuredAddress(rawAddress)
+        const addressForStorage = address || (rawAddress ? { street: rawAddress, city: '', state: '', pincode: '' } : null)
+        const amount = Number(payment.amount || 0) / 100
+        const name = typeof notes?.customer_name === 'string' ? notes.customer_name : ''
+        const phone = paymentPhone(payment.contact)
+        const recovered = items.length > 0
+        const notesText = recovered
+          ? `Auto-recovered from Razorpay webhook; checkout details sourced from ${source || 'payment data'}.`
+          : 'Auto-recovered from Razorpay webhook; item details were not available. Verify with the customer before shipping.'
+        const { data: insertedOrder, error } = await supabase.from('orders').insert({
+          ref,
+          customer_name: name ? protectLegacyPii(name) : null,
+          customer_email: payment.email ? protectLegacyPii(String(payment.email)) : null,
+          customer_phone: phone ? protectLegacyPii(phone) : null,
+          shipping_address: addressForStorage ? protectLegacyPiiValue(addressForStorage) : {},
+          pii_address_ciphertext: addressForStorage ? encryptPii(addressForStorage) : null,
+          items,
+          subtotal,
+          discount: recovered ? Math.max(0, subtotal - amount) : 0,
+          shipping: 0,
+          packaging: 0,
+          grand_total: amount,
+          total_amount: amount,
+          payment_method: 'razorpay',
+          payment_status: 'paid',
+          transaction_id: payment.id,
+          status: 'confirmed',
+          notes: notesText,
+          created_at: new Date().toISOString(),
+        }).select('*').maybeSingle()
+        if (error) throw error
+        await bookWhenComplete(insertedOrder)
       }
-
-      if (event.event === 'payment.failed') {
-              const payment = event.payload.payment.entity
-              const orderId = payment.notes?.order_ref || payment.notes?.ref
-              if (orderId) {
-                        await supabase.from('orders').update({ payment_status: 'failed' }).eq('ref', orderId)
-              }
-      }
-
-      return NextResponse.json({ received: true })
-    } catch (error: any) {
-          return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    if (event.event === 'payment.failed') {
+      const payment = event.payload.payment.entity
+      const ref = typeof payment.notes?.order_ref === 'string' ? payment.notes.order_ref : typeof payment.notes?.ref === 'string' ? payment.notes.ref : ''
+      // A stale failed attempt must never overwrite a subsequent capture.
+      if (ref) await supabase.from('orders').update({ payment_status: 'failed' }).eq('ref', ref).in('payment_status', ['pending', 'pending_payment'])
+    }
+
+    return NextResponse.json({ received: true })
+  } catch (error: any) {
+    console.error('[razorpay-webhook] failed', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

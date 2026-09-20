@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import Razorpay from 'razorpay'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
+import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const statusValues = new Set(['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'])
@@ -9,9 +11,50 @@ function database() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 }
 
+async function reconcileReadyShipments() {
+  const token = process.env.DELHIVERY_API_TOKEN
+  const keyId = process.env.RAZORPAY_KEY_ID
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (!token) return
+
+  const db = database()
+  const { data: candidates } = await db.from('orders').select('*')
+    .is('delhivery_awb', null)
+    .in('status', ['confirmed'])
+    .order('created_at', { ascending: true })
+    .limit(20)
+
+  for (const candidate of candidates || []) {
+    let order = candidate
+    try {
+      if (order.payment_method === 'razorpay') {
+        if (!order.transaction_id || !keyId || !keySecret) continue
+        const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })
+        const payment = await razorpay.payments.fetch(order.transaction_id) as { status?: string }
+        if (payment.status !== 'captured') continue
+        const { data: paidOrder, error } = await db.from('orders')
+          .update({ payment_status: 'paid', status: 'confirmed' })
+          .eq('id', order.id).select('*').maybeSingle()
+        if (error || !paidOrder) continue
+        order = paidOrder
+      } else if (order.payment_method !== 'cod' || !['pending_cod', 'confirmed'].includes(String(order.payment_status || ''))) {
+        continue
+      }
+      await createDelhiveryShipment({ order, orderId: order.id })
+    } catch (error) {
+      // One delayed or malformed order must never block the remaining queue.
+      console.error('[admin-orders] automatic shipment reconciliation failed', { orderId: order.id, error })
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request)
   if (authError) return authError
+
+  // Reconcile a small, safe queue before rendering. This repairs a rare
+  // Razorpay-webhook/browser race while preserving Delhivery idempotency.
+  await reconcileReadyShipments()
 
   const rawLimit = Number(request.nextUrl.searchParams.get('limit') || '200')
   const limit = Number.isInteger(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200
