@@ -47,4 +47,11 @@ alter function public.update_customer_contact(text,text,text) set search_path = 
 alter function public.upsert_customer_dog(uuid,text,text,text,text,text,text,date) set search_path = pg_catalog, public;
 alter function public.upsert_customer_profile(text,text,text,text,text,text,text,text,date) set search_path = pg_catalog, public;
 
+alter function public.generate_blog_slug() set search_path = pg_catalog, public;
+alter function public.increment_customer_stats(text,numeric) set search_path = pg_catalog, public;
+alter function public.update_updated_at() set search_path = pg_catalog, public;
+alter function public.gob_xor_decrypt(text) set search_path = pg_catalog, public;
+alter function public.gob_decrypt_phone(text) set search_path = pg_catalog, public;
+alter function public.gob_normalize_phone(text) set search_path = pg_catalog, public;
+
 commit;
