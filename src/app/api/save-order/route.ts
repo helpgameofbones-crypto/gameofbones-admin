@@ -7,6 +7,7 @@ import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
+import { sendMetaPurchase } from '@/app/lib/meta-capi'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -128,6 +129,12 @@ export async function POST(req: NextRequest) {
       // Checkout already succeeded; do not turn an email-provider hiccup into a failed order.
       console.error('Order confirmation email failed', emailError)
     }
+  }
+  // COD is a confirmed order at save time. Prepaid purchases are sent only by
+  // the signed Razorpay webhook below, never from an unverified browser call.
+  if (shouldFinalizeOrder && data?.[0] && order.payment_method === 'cod') {
+    sendMetaPurchase({ ref: order.ref, value: quote.grand_total, items: quote.items, email, phone,
+      clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim(), userAgent: req.headers.get('user-agent') }).catch(error => console.error('Meta CAPI COD event failed', error))
   }
   // Book delivery only after the order is safely persisted. A Delhivery
   // problem is recorded server-side but can never turn a paid checkout into a

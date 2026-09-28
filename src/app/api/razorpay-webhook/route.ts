@@ -4,6 +4,7 @@ import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
 import { encryptPii, protectLegacyPii, protectLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
+import { sendMetaPurchase } from '@/app/lib/meta-capi'
 
 export const maxDuration = 20
 
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
           .eq('id', existing.id).select('*').maybeSingle()
         if (error) throw error
         await bookWhenComplete(updatedOrder)
+        sendMetaPurchase({ ref, value: Number(updatedOrder?.grand_total || payment.amount || 0) / (updatedOrder?.grand_total ? 1 : 100), items: updatedOrder?.items, email: payment.email, phone: payment.contact }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       } else {
         const attempt = await matchingAttempt(ref)
         const notes = payment.notes as Record<string, unknown> | undefined
@@ -171,6 +173,7 @@ export async function POST(req: NextRequest) {
         }).select('*').maybeSingle()
         if (error) throw error
         await bookWhenComplete(insertedOrder)
+        sendMetaPurchase({ ref, value: amount, items, email: payment.email, phone }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       }
     }
 
