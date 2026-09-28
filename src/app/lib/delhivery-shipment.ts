@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { createClient } from '@supabase/supabase-js'
-import { encryptPii, protectLegacyPiiValue, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { encryptPii, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { sendDispatchEmail } from '@/app/lib/lifecycle-emails'
 
 const DELHIVERY_BASE = 'https://track.delhivery.com'
@@ -27,7 +27,10 @@ function quantity(item: any): number {
 }
 
 function addressFrom(order: ShipmentOrder, provided?: AddressDetails): { line1: string; line2: string; city: string; state: string; pincode: string } {
-  const stored = order.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : {}
+  const encrypted = revealLegacyPiiValue(order.pii_address_ciphertext)
+  const stored = encrypted && typeof encrypted === 'object'
+    ? encrypted as AddressDetails
+    : order.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : {}
   const source = provided && typeof provided === 'object' ? provided : stored
   return {
     line1: text(source.line1 || source.street || source.address || stored.line1 || stored.street || stored.address),
@@ -59,7 +62,6 @@ async function recoverAddressFromCheckoutAttempt(order: ShipmentOrder) {
     const address = addressFromCheckoutAttempt(attempt?.shipping_address)
     if (!address) return order
     const { data: repaired, error } = await supabase.from('orders').update({
-      shipping_address: protectLegacyPiiValue(address),
       pii_address_ciphertext: encryptPii(address),
     }).eq('id', order.id).select('*').maybeSingle()
     if (error) throw error

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const originError = rejectUnexpectedOrigin(req)
     if (originError) return originError
-    const limitError = rateLimit(req, 'order-attempt', 6, 10 * 60 * 1000)
+    const limitError = await rateLimit(req, 'order-attempt', 6, 10 * 60 * 1000)
     if (limitError) return limitError
     const body = await req.json()
     const ref = cleanText(body.ref, 40)

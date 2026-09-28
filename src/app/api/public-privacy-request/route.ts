@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const headers = corsHeaders(request)
   try {
     const originError = rejectUnexpectedOrigin(request); if (originError) return originError
-    const limitError = rateLimit(request, 'public-privacy-request', 3, 24 * 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(request, 'public-privacy-request', 3, 24 * 60 * 60 * 1000); if (limitError) return limitError
     const body = await request.json().catch(() => ({}))
     const action = cleanText(body.action, 40), email = cleanText(body.email, 254).toLowerCase()
     const phone = normalizePhoneForHash(cleanText(body.phone, 20)), details = cleanText(body.details, 1000)

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-order-tracking', 10, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-order-tracking', 10, 60 * 60 * 1000); if (limitError) return limitError
     const ref = cleanText((await req.json()).ref, 40).toUpperCase()
     if (!REF_RE.test(ref)) return NextResponse.json({ found: false }, { headers })
     // Customers may use the order reference from their confirmation or the AWB

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
+import { encryptPii, normalizePhoneForHash, piiHash, decryptPii, revealLegacyPii } from '@/app/lib/pii-crypto'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 
 const statuses = new Set(['requested', 'approved', 'rejected', 'completed'])
@@ -15,7 +16,17 @@ export async function GET(request: NextRequest) {
     database().from('orders').select('*').order('created_at', { ascending: false }).limit(500),
   ])
   if (returns.error || orders.error) return NextResponse.json({ error: 'Unable to load return data.' }, { status: 500 })
-  try { return NextResponse.json({ returns: returns.data || [], orders: (orders.data || []).map(revealOrderForAdmin) }) }
+  try {
+    const safeReturns = (returns.data || []).map(record => ({
+      ...record,
+      customer_name: decryptPii(record.pii_name_ciphertext) || revealLegacyPii(record.customer_name),
+      customer_phone: decryptPii(record.pii_phone_ciphertext) || revealLegacyPii(record.customer_phone),
+      pii_name_ciphertext: undefined,
+      pii_phone_ciphertext: undefined,
+      pii_phone_hash: undefined,
+    }))
+    return NextResponse.json({ returns: safeReturns, orders: (orders.data || []).map(revealOrderForAdmin) })
+  }
   catch { return NextResponse.json({ error: 'Customer-data encryption is not configured correctly.' }, { status: 500 }) }
 }
 
@@ -32,7 +43,7 @@ export async function POST(request: NextRequest) {
   const refundAmount = typeof body.refund_amount === 'number' ? body.refund_amount : Number(body.refund_amount || 0)
   if (!Number.isFinite(refundAmount) || refundAmount < 0) return NextResponse.json({ error: 'Refund amount must be valid.' }, { status: 400 })
   const { error } = await database().from('returns').insert({
-    order_id: order?.id || null, order_ref: ref, customer_name: order?.customer_name || '', customer_phone: order?.customer_phone || '',
+    order_id: order?.id || null, order_ref: ref, pii_name_ciphertext: encryptPii(String(order?.customer_name || '')), pii_phone_ciphertext: encryptPii(String(order?.customer_phone || '')), pii_phone_hash: piiHash(normalizePhoneForHash(order?.customer_phone || '')), pii_key_version: 1,
     reason: body.reason.trim().slice(0, 500), refund_amount: refundAmount, notes: typeof body.notes === 'string' ? body.notes.slice(0, 2000) : '',
     items: order?.items || [], status: 'requested', source: 'admin', is_exception: isException,
   })

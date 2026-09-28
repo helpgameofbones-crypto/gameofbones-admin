@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-referral-validate', 10, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-referral-validate', 10, 60 * 60 * 1000); if (limitError) return limitError
     const code = cleanText((await req.json()).code, 40).toUpperCase()
     if (!CODE_RE.test(code)) return NextResponse.json({ valid: false }, { headers })
     const { data, error } = await supabase.from('customers').select('id').eq('referral_code', code).limit(1)

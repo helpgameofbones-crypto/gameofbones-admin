@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const headers = corsHeaders(request)
   try {
     const originError = rejectUnexpectedOrigin(request); if (originError) return originError
-    const limitError = rateLimit(request, 'contact-inquiry', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(request, 'contact-inquiry', 5, 60 * 60 * 1000); if (limitError) return limitError
     const body = await request.json().catch(() => ({}))
     const name = cleanText(body.name, 100)
     const email = cleanText(body.email, 254).toLowerCase()

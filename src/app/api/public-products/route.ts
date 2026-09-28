@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   const originError = rejectUnexpectedOrigin(request)
   if (originError) return originError
 
-  const limited = rateLimit(request, 'public-products', 120, 60_000)
+  const limited = await rateLimit(request, 'public-products', 120, 60_000)
   if (limited) return limited
 
   const client = database()

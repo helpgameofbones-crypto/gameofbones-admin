@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
-import { encryptPii, protectLegacyPii, protectLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { sendMetaPurchase } from '@/app/lib/meta-capi'
 
@@ -152,11 +152,13 @@ export async function POST(req: NextRequest) {
           : 'Auto-recovered from Razorpay webhook; item details were not available. Verify with the customer before shipping.'
         const { data: insertedOrder, error } = await supabase.from('orders').insert({
           ref,
-          customer_name: name ? protectLegacyPii(name) : null,
-          customer_email: payment.email ? protectLegacyPii(String(payment.email)) : null,
-          customer_phone: phone ? protectLegacyPii(phone) : null,
-          shipping_address: addressForStorage ? protectLegacyPiiValue(addressForStorage) : {},
+          pii_name_ciphertext: name ? encryptPii(name) : null,
+          pii_email_ciphertext: payment.email ? encryptPii(String(payment.email)) : null,
+          pii_phone_ciphertext: phone ? encryptPii(phone) : null,
           pii_address_ciphertext: addressForStorage ? encryptPii(addressForStorage) : null,
+          pii_email_hash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null,
+          pii_phone_hash: phone ? piiHash(normalizePhoneForHash(phone)) : null,
+          pii_key_version: 1,
           items,
           subtotal,
           discount: recovered ? Math.max(0, subtotal - amount) : 0,

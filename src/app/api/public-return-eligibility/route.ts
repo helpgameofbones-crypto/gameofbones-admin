@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-return-eligibility', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-return-eligibility', 5, 60 * 60 * 1000); if (limitError) return limitError
     const body = await req.json()
     const ref = cleanText(body.ref, 40).toUpperCase()
     const phone = normalizePhoneForHash(cleanText(body.phone, 20))

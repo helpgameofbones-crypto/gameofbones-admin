@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
-import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, protectLegacyPii, protectLegacyPiiValue, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
+import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
  const headers = corsHeaders(req)
  try {
   const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-  const limitError = rateLimit(req, 'save-order', 5, 10 * 60 * 1000); if (limitError) return limitError
+  const limitError = await rateLimit(req, 'save-order', 5, 10 * 60 * 1000); if (limitError) return limitError
   const order = await req.json(), phone = revealLegacyPii(order.customer_phone), email = revealLegacyPii(order.customer_email), name = revealLegacyPii(order.customer_name)
   if (!order.ref || !phone) return NextResponse.json({ error:'Missing required fields: ref, customer_phone' }, { status:400, headers })
   if (!REF_RE.test(order.ref) || !PHONE_RE.test(phone) || !['cod','razorpay'].includes(order.payment_method)) return NextResponse.json({ error:'Invalid order details' }, { status:400, headers })
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   const addressDetails = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
   const structuredAddress = Object.keys(addressDetails).length ? addressDetails : address
   const marketingConsent = order.marketing_consent === true, policyAcknowledged = order.checkout_policy_acknowledged === true
-  const insertData: Record<string, unknown> = { ref:order.ref, customer_id:customerRecord.id, customer_name:protectLegacyPii(name), customer_phone:protectLegacyPii(phone), customer_email:protectLegacyPii(email), pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(structuredAddress), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_key_version:1, items:storedItems, subtotal:quote.subtotal, total_amount:quote.subtotal, shipping:0, discount:quote.discount + quote.points_discount, coupon_code:quote.coupon_code, packaging:quote.packaging, grand_total:quote.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, shipping_address:protectLegacyPiiValue(structuredAddress), notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:quote.points_redeemed, marketing_consent: marketingConsent, marketing_consent_at: marketingConsent ? new Date().toISOString() : null, privacy_notice_version: typeof order.privacy_notice_version === 'string' ? order.privacy_notice_version.slice(0, 40) : null, checkout_policy_acknowledged_at: policyAcknowledged ? new Date().toISOString() : null, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
+  const insertData: Record<string, unknown> = { ref:order.ref, customer_id:customerRecord.id, pii_name_ciphertext:encryptPii(name), pii_phone_ciphertext:encryptPii(phone), pii_email_hash:piiHash(normalizeEmailForHash(email)), pii_email_ciphertext:encryptPii(email), pii_address_ciphertext:encryptPii(structuredAddress), pii_phone_hash:piiHash(normalizePhoneForHash(phone)), pii_key_version:1, items:storedItems, subtotal:quote.subtotal, total_amount:quote.subtotal, shipping:0, discount:quote.discount + quote.points_discount, coupon_code:quote.coupon_code, packaging:quote.packaging, grand_total:quote.grand_total, payment_method:order.payment_method, transaction_id:typeof order.transaction_id === 'string' ? order.transaction_id : null, notes:order.notes, referrer_code:typeof order.referrer_code === 'string' ? order.referrer_code : null, referrer_phone:null, referrer_points_credited:false, loyalty_points_redeemed:quote.points_redeemed, marketing_consent: marketingConsent, marketing_consent_at: marketingConsent ? new Date().toISOString() : null, privacy_notice_version: typeof order.privacy_notice_version === 'string' ? order.privacy_notice_version.slice(0, 40) : null, checkout_policy_acknowledged_at: policyAcknowledged ? new Date().toISOString() : null, payment_status:order.payment_method === 'cod' ? 'pending_cod' : 'pending', status:order.payment_method === 'cod' ? 'confirmed' : 'pending_payment' }
   const updateData = { ...insertData }
   delete updateData.ref
   delete updateData.payment_status
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   const { error, data } = existing
     ? await supabase.from('orders').update(updateData).eq('id', existing.id).select()
     : await supabase.from('orders').insert([insertData]).select()
-  if (error) return NextResponse.json({ error:error.message }, { status:400, headers })
+  if (error) { console.error('[save-order] persistence failed', error); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:400, headers }) }
   const shouldFinalizeOrder = !existing || webhookPlaceholder
   if (shouldFinalizeOrder) await supabase.from('customers').update({ total_orders: Number(customerRecord.total_orders || 0) + 1, total_spent: Number(customerRecord.total_spent || 0) + quote.grand_total }).eq('id', customerRecord.id)
   // Reserve redeemed points at the same moment the successful order is saved.
@@ -148,5 +148,5 @@ export async function POST(req: NextRequest) {
     }
   }
   return NextResponse.json({ success:true, profile_created: customerCreated, order:data }, { status:201, headers })
- } catch (e: unknown) { return NextResponse.json({ error:e instanceof Error ? e.message : 'Unable to save order' }, { status:500, headers }) }
+ } catch (e: unknown) { console.error('[save-order] unexpected failure', e); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:500, headers }) }
 }

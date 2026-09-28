@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-loyalty-summary', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-loyalty-summary', 5, 60 * 60 * 1000); if (limitError) return limitError
     const phone = normalizePhoneForHash(cleanText((await req.json()).phone, 20))
     if (!/^\d{10}$/.test(phone)) return NextResponse.json({ points: 0 }, { headers })
     const phoneHash = piiHash(phone)

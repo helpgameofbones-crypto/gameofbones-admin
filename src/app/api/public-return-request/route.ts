@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsHeaders } from '@/app/lib/cors'
 import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
-import { decryptPii, normalizePhoneForHash, piiHash, protectLegacyPii, revealLegacyPii } from '@/app/lib/pii-crypto'
+import { decryptPii, encryptPii, normalizePhoneForHash, piiHash, revealLegacyPii } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Z0-9-]{3,40}$/
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-return-request', 3, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-return-request', 3, 60 * 60 * 1000); if (limitError) return limitError
     const body = await req.json()
     const ref = cleanText(body.ref, 40).toUpperCase()
     const phone = normalizePhoneForHash(cleanText(body.phone, 20))
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     if (existingError) throw existingError
     if (existing?.length) return NextResponse.json({ error: 'A return request already exists for this order' }, { status: 409, headers })
     const name = decryptPii(order.pii_name_ciphertext) || revealLegacyPii(order.customer_name)
-    const { error: insertError } = await supabase.from('returns').insert({ order_id: order.id, order_ref: order.ref, customer_name: protectLegacyPii(name), customer_phone: protectLegacyPii(phone), reason, notes: notes || null, status: 'requested', source: 'customer' })
+    const { error: insertError } = await supabase.from('returns').insert({ order_id: order.id, order_ref: order.ref, pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_phone_hash: piiHash(phone), pii_key_version: 1, reason, notes: notes || null, status: 'requested', source: 'customer' })
     if (insertError) throw insertError
     return NextResponse.json({ success: true }, { status: 201, headers })
   } catch { return NextResponse.json({ error: 'Unable to submit return request' }, { status: 500, headers }) }

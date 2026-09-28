@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'pincode-check', 30, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'pincode-check', 30, 60 * 60 * 1000); if (limitError) return limitError
     const pin = new URL(req.url).searchParams.get('pin') || ''
     if (!/^[1-9]\d{5}$/.test(pin)) return NextResponse.json({ error: 'Enter a valid six-digit Indian PIN code.' }, { status: 400, headers })
     const token = process.env.DELHIVERY_API_TOKEN

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-review-purchase', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-review-purchase', 5, 60 * 60 * 1000); if (limitError) return limitError
     const body = await req.json()
     const phone = normalizePhoneForHash(cleanText(body.phone, 20))
     const productName = cleanText(body.productName, 160).toLowerCase()

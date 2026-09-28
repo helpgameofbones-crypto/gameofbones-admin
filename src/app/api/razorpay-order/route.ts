@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const originError = rejectUnexpectedOrigin(req)
     if (originError) return originError
-    const limitError = rateLimit(req, 'razorpay-order', 5, 10 * 60 * 1000)
+    const limitError = await rateLimit(req, 'razorpay-order', 5, 10 * 60 * 1000)
     if (limitError) return limitError
     const { items, payment_method, coupon_code, loyalty_points_redeemed, receipt, notes } = await req.json()
     const customer = await customerCheckoutState(req)
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       order_id: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID, quote,
     }, { headers })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500, headers })
+  } catch (error: unknown) {
+    console.error('[razorpay-order] failed to create payment order', error)
+    return NextResponse.json({ error: 'Unable to start payment. Please try again.' }, { status: 500, headers })
   }
 }

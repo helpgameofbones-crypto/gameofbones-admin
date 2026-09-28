@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'public-email-capture', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'public-email-capture', 5, 60 * 60 * 1000); if (limitError) return limitError
     const body = await req.json()
     const email = cleanText(body.email, 254).toLowerCase(), name = cleanText(body.name, 100), phone = cleanText(body.phone, 20), source = cleanText(body.source, 40)
     const marketingConsent = body.marketing_consent === true

@@ -14,10 +14,13 @@ export async function sendCustomerLoginCode(email: string, code: string) {
   // existing Gmail setup is a deliberate fallback so account access does not
   // silently break while Resend is being configured or verified.
   if (apiKey && from) {
-    return new Resend(apiKey).emails.send({ from, ...message })
+    const result = await new Resend(apiKey).emails.send({ from, ...message })
+    if (result.error) throw new Error('Email delivery provider rejected the sign-in code')
+    return
   }
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    return gmail.emails.send(message)
+    await gmail.emails.send(message)
+    return
   }
   throw new Error('Email delivery is not configured')
 }

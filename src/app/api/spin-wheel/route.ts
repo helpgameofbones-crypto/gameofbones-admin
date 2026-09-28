@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const headers = corsHeaders(req)
   try {
     const originError = rejectUnexpectedOrigin(req); if (originError) return originError
-    const limitError = rateLimit(req, 'spin-wheel', 5, 60 * 60 * 1000); if (limitError) return limitError
+    const limitError = await rateLimit(req, 'spin-wheel', 5, 60 * 60 * 1000); if (limitError) return limitError
     const body = await req.json()
     const name = cleanText(body.name, 100), email = normalizeEmailForHash(cleanText(body.email, 254)), phone = normalizePhoneForHash(cleanText(body.phone, 20))
     if (!name || !emailPattern.test(email) || !/^\d{10}$/.test(phone)) return NextResponse.json({ error: 'Enter a name, valid email, and 10-digit mobile number.' }, { status: 400, headers })

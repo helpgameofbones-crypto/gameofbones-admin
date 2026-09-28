@@ -58,11 +58,15 @@ export function protectLegacyPiiValue(value: unknown): unknown {
 }
 
 export function revealLegacyPii(value: unknown): string {
-  return typeof value === 'string' ? decryptLegacyXor(value).trim() : ''
+  if (typeof value !== 'string') return ''
+  // Transitional reader: old rows may use XOR, while all new writes use the
+  // authenticated AES-GCM envelope. Keeping compatibility here avoids a
+  // plaintext fallback during the completed database migration.
+  return decryptPii(value).trim()
 }
 
 export function revealLegacyPiiValue(value: unknown): unknown {
-  if (typeof value === 'string') return decryptLegacyXor(value)
+  if (typeof value === 'string') return decryptPii(value)
   if (Array.isArray(value)) return value.map(revealLegacyPiiValue)
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, revealLegacyPiiValue(item)]))
