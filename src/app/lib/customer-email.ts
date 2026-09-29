@@ -7,17 +7,26 @@ function displaySender(from: string) {
 }
 
 export async function sendCustomerLoginCode(email: string, code: string) {
+  return sendCustomerCode(email, code, 'sign-in')
+}
+
+export async function sendCustomerAccountCreationCode(email: string, code: string) {
+  return sendCustomerCode(email, code, 'account verification')
+}
+
+async function sendCustomerCode(email: string, code: string, purpose: 'sign-in' | 'account verification') {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL
   const unsubscribeUrl = marketingUnsubscribeUrl(email)
+  const accountCreation = purpose === 'account verification'
   const message = {
     to: email,
-    subject: 'Your Game of Bones sign-in code',
-    text: `Your Game of Bones sign-in code: ${code}\n\nUse this code to securely access your account. It expires in 10 minutes. If you did not request it, you can ignore this email.\n\nTo stop marketing emails only: ${unsubscribeUrl}`,
+    subject: accountCreation ? 'Your Game of Bones account verification code' : 'Your Game of Bones sign-in code',
+    text: `Your Game of Bones ${purpose} code: ${code}\n\nUse this code to securely ${accountCreation ? 'create your account' : 'access your account'}. It expires in 10 minutes. If you did not request it, you can ignore this email.\n\nTo stop marketing emails only: ${unsubscribeUrl}`,
     html: `<!doctype html>
 <html lang="en">
   <body style="margin:0;padding:0;background:#f5f1e9;color:#173c2d;font-family:Arial,Helvetica,sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Your secure Game of Bones sign-in code is ready.</div>
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Your secure Game of Bones ${purpose} code is ready.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1e9;padding:28px 12px;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:18px;overflow:hidden;">
@@ -25,8 +34,8 @@ export async function sendCustomerLoginCode(email: string, code: string) {
             <img src="https://gameofbones.in/assets/gob-logo.png" width="160" alt="Game of Bones" style="display:block;width:160px;max-width:100%;height:auto;border:0;" />
           </td></tr>
           <tr><td style="padding:34px 32px 14px;">
-            <h1 style="margin:0 0 16px;font-size:28px;line-height:34px;color:#173c2d;">Your sign-in code</h1>
-            <p style="margin:0;font-size:16px;line-height:24px;color:#315246;">Use this code to securely access your Game of Bones account.</p>
+            <h1 style="margin:0 0 16px;font-size:28px;line-height:34px;color:#173c2d;">Your ${purpose} code</h1>
+            <p style="margin:0;font-size:16px;line-height:24px;color:#315246;">Use this code to securely ${accountCreation ? 'create your Game of Bones account' : 'access your Game of Bones account'}.</p>
           </td></tr>
           <tr><td style="padding:10px 32px 26px;">
             <div style="background:#f1eadc;border-radius:12px;padding:20px 12px;text-align:center;font-size:34px;line-height:40px;font-weight:700;letter-spacing:8px;color:#173c2d;">${code}</div>
