@@ -95,6 +95,25 @@ function orderSavings(order: any) {
   }
 }
 
+// Checkout gives prepaid orders a fixed ₹30 saving and adds the COD handling
+// fee as `packaging`.  These values are reflected in grand_total but older
+// rows did not store a separate adjustment field, which made the admin total
+// look unexplained. Derive only the known prepaid saving from the persisted
+// accounting values; never invent a label for legacy/manual differences.
+function onlinePaymentSaving(order: any) {
+  if (String(order?.payment_method || '').toLowerCase() !== 'razorpay') return 0
+  const subtotal = Number(order?.subtotal)
+  const discount = moneyValue(order?.discount)
+  const shipping = moneyValue(order?.shipping)
+  const packaging = moneyValue(order?.packaging)
+  const total = Number(order?.grand_total ?? order?.total_amount)
+  if (!Number.isFinite(subtotal) || !Number.isFinite(total)) return 0
+  const difference = Math.round(subtotal - discount + shipping + packaging - total)
+  // ₹30 is the current prepaid saving. Keeping the bound exact prevents a
+  // historic manual adjustment from being presented as a checkout offer.
+  return difference === 30 ? 30 : 0
+}
+
 function StatusDropdown({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -541,6 +560,12 @@ export default function OrdersPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#7c3aed' }}>
                     <span>Rewards points used ({orderSavings(selected).pointsUsed})</span>
                     <span style={{ fontWeight: 700 }}>-₹{orderSavings(selected).pointsDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {onlinePaymentSaving(selected) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#166534' }}>
+                    <span>Online payment saving</span>
+                    <span style={{ fontWeight: 700 }}>-₹{onlinePaymentSaving(selected).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {orderSavings(selected).totalDiscount > 0 && (

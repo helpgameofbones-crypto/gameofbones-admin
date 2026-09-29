@@ -30,6 +30,7 @@ async function migrate(request: NextRequest) {
     if (error) throw error
 
     let migrated = 0
+    let customersMigrated = 0
     const failures: string[] = []
     for (const row of rows || []) {
       try {
@@ -60,7 +61,46 @@ async function migrate(request: NextRequest) {
         console.error('PII migration failed for order', row.id, error)
       }
     }
-    return NextResponse.json({ ok: true, scanned: rows?.length || 0, migrated, failedIds: failures, remainingMayExist: (rows?.length || 0) === BATCH_SIZE })
+
+    // Customer profiles were missed by the original order-only migration.
+    // Without this pass, the public columns can contain old ciphertext and a
+    // legitimate customer cannot be located by their verified email. Keep the
+    // legacy columns untouched for rollback, but add authenticated ciphertext
+    // and deterministic lookup hashes for all readable profiles.
+    const { data: customers, error: customersError } = await supabase.from('customers')
+      .select('id,name,phone,email,address_line1,address_line2,city,state,pincode,pii_name_ciphertext,pii_phone_ciphertext,pii_email_ciphertext,pii_address_ciphertext,pii_phone_hash,pii_email_hash')
+      .or('pii_name_ciphertext.is.null,pii_phone_ciphertext.is.null,pii_email_ciphertext.is.null,pii_address_ciphertext.is.null,pii_phone_hash.is.null,pii_email_hash.is.null')
+      .limit(BATCH_SIZE)
+    if (customersError) throw customersError
+    for (const customer of customers || []) {
+      try {
+        const name = revealLegacyPii(customer.name)
+        const phone = revealLegacyPii(customer.phone)
+        const email = revealLegacyPii(customer.email)
+        const address = [customer.address_line1, customer.address_line2, customer.city, customer.state, customer.pincode]
+          .map(revealLegacyPii).filter(Boolean).join(', ')
+        if ((phone && !validPhone(phone)) || (email && !validEmail(email))) {
+          failures.push(`customer:${customer.id}`)
+          continue
+        }
+        const update = {
+          pii_name_ciphertext: customer.pii_name_ciphertext || encryptPii(name),
+          pii_phone_ciphertext: customer.pii_phone_ciphertext || encryptPii(phone),
+          pii_email_ciphertext: customer.pii_email_ciphertext || encryptPii(email),
+          pii_address_ciphertext: customer.pii_address_ciphertext || encryptPii(address),
+          pii_phone_hash: customer.pii_phone_hash || piiHash(normalizePhoneForHash(phone)),
+          pii_email_hash: customer.pii_email_hash || piiHash(normalizeEmailForHash(email)),
+          pii_key_version: 1,
+        }
+        const { error: updateError } = await supabase.from('customers').update(update).eq('id', customer.id)
+        if (updateError) throw updateError
+        customersMigrated += 1
+      } catch (error) {
+        failures.push(`customer:${customer.id}`)
+        console.error('PII migration failed for customer', customer.id, error)
+      }
+    }
+    return NextResponse.json({ ok: true, scanned: rows?.length || 0, migrated, customersScanned: customers?.length || 0, customersMigrated, failedIds: failures, remainingMayExist: (rows?.length || 0) === BATCH_SIZE || (customers?.length || 0) === BATCH_SIZE })
   } catch (error) {
     console.error('Legacy PII migration failed', error)
     return NextResponse.json({ error: 'Unable to migrate historical customer data.' }, { status: 500 })

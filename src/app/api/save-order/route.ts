@@ -20,22 +20,31 @@ export async function POST(req: NextRequest) {
   if (!order.ref || !phone) return NextResponse.json({ error:'Missing required fields: ref, customer_phone' }, { status:400, headers })
   if (!REF_RE.test(order.ref) || !PHONE_RE.test(phone) || !['cod','razorpay'].includes(order.payment_method)) return NextResponse.json({ error:'Invalid order details' }, { status:400, headers })
   const session = customerSessionFromRequest(req)
-  const { data: existingCustomer, error: customerLookupError } = await supabase.from('customers').select('id,name,email,phone,loyalty_points,total_orders,total_spent').eq('phone', phone).maybeSingle()
-  if (customerLookupError) throw customerLookupError
+  const customerFields = 'id,name,email,phone,loyalty_points,total_orders,total_spent'
+  const phoneHash = piiHash(normalizePhoneForHash(phone))
+  const { data: secureCustomer, error: secureLookupError } = phoneHash
+    ? await supabase.from('customers').select(customerFields).eq('pii_phone_hash', phoneHash).maybeSingle()
+    : { data: null, error: null }
+  if (secureLookupError) throw secureLookupError
+  const { data: legacyCustomer, error: legacyLookupError } = secureCustomer
+    ? { data: null, error: null }
+    : await supabase.from('customers').select(customerFields).eq('phone', phone).maybeSingle()
+  if (legacyLookupError) throw legacyLookupError
+  const existingCustomer = secureCustomer || legacyCustomer
   let customerRecord = existingCustomer
   const customerCreated = !customerRecord
   if (!customerRecord) {
     const { data: createdCustomer, error: createCustomerError } = await supabase.from('customers')
-      .insert({ name: name || 'Game of Bones customer', phone, email: email || null, total_orders: 0, total_spent: 0, loyalty_points: 0 })
+      .insert({ name: name || 'Game of Bones customer', phone, email: email || null, pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_ciphertext: encryptPii(email), pii_phone_hash: phoneHash, pii_email_hash: piiHash(normalizeEmailForHash(email)), pii_key_version: 1, total_orders: 0, total_spent: 0, loyalty_points: 0 })
       .select('id,name,email,phone,loyalty_points,total_orders,total_spent').single()
     if (createCustomerError) throw createCustomerError
     customerRecord = createdCustomer
   }
   if (!customerRecord?.id) return NextResponse.json({ error:'Unable to create your customer profile.' }, { status:500, headers })
   if (existingCustomer && (name || email)) {
-    const profileUpdate: Record<string, string> = {}
-    if (name) profileUpdate.name = name
-    if (email) profileUpdate.email = email
+    const profileUpdate: Record<string, string | null> = {}
+    if (name) { profileUpdate.name = name; profileUpdate.pii_name_ciphertext = encryptPii(name) }
+    if (email) { profileUpdate.email = email; profileUpdate.pii_email_ciphertext = encryptPii(email); profileUpdate.pii_email_hash = piiHash(normalizeEmailForHash(email)) }
     if (Object.keys(profileUpdate).length) await supabase.from('customers').update(profileUpdate).eq('id', customerRecord.id)
   }
   let canUseWelcome = false
