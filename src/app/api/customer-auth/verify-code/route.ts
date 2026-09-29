@@ -3,16 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { corsHeaders } from '@/app/lib/cors'
 import { createCustomerSession, customerOtpHash } from '@/app/lib/customer-session'
 import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
-import { revealLegacyPii } from '@/app/lib/pii-crypto'
+import { findCustomerLoginIdentity } from '@/app/lib/customer-login-identity'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-async function customerForEmail(email: string) {
-  const { data, error } = await supabase.from('customers').select('id,email,phone').limit(1000)
-  if (error) return { customer: null, error }
-  const matches = (data || []).filter(customer => revealLegacyPii(customer.email).toLowerCase() === email)
-  return { customer: matches.length === 1 ? matches[0] : null, error: null }
-}
 
 export async function OPTIONS(request: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(request) }) }
 
@@ -26,8 +19,8 @@ export async function POST(request: NextRequest) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(code)) return NextResponse.json({ error: 'Enter the six-digit code.' }, { status: 400, headers })
     const ipLimitError = await rateLimit(request, 'customer-otp-verify-ip', 10, 15 * 60 * 1000); if (ipLimitError) return ipLimitError
     const emailLimitError = await rateLimit(request, 'customer-otp-verify-email', 5, 15 * 60 * 1000, email); if (emailLimitError) return emailLimitError
-    const { customer, error: customerError } = await customerForEmail(email)
-    const phone = revealLegacyPii(customer?.phone).replace(/\D/g, '').slice(-10)
+    const { identity, error: customerError } = await findCustomerLoginIdentity(email)
+    const phone = identity?.phone || ''
     if (customerError || !/^\d{10}$/.test(phone)) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
     const { data: otp, error } = await supabase.from('customer_email_otps').select('id').eq('phone', phone).eq('code_hash', customerOtpHash(phone, code)).is('used_at', null).gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (error || !otp) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
