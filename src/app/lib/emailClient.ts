@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 
 export const resend = {
   emails: {
-    send: (opts: { from?: string; to: string | string[]; subject: string; html: string }) => {
+    send: (opts: { from?: string; to: string | string[]; subject: string; html: string; text?: string }) => {
       const apiKey = process.env.RESEND_API_KEY
       const from = process.env.RESEND_FROM_EMAIL
 
@@ -29,6 +29,7 @@ export const resend = {
         to: opts.to,
         subject: opts.subject,
         html: opts.html,
+        text: opts.text,
       })
     },
   },

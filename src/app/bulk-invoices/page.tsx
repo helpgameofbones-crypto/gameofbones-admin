@@ -32,7 +32,7 @@ export default function BulkInvoicesPage() {
 
   function generateInvoiceHTML(order: any) {
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
-    let addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
+    const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
     const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || ''
     const street = streetRaw
     const subtotal = parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || i.qty || 1), 0)

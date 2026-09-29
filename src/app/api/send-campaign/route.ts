@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resend } from '@/app/lib/emailClient'
+import { marketingUnsubscribeUrl } from '@/app/lib/marketing-unsubscribe'
+import { piiHash } from '@/app/lib/pii-crypto'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 
@@ -15,22 +17,28 @@ export async function POST(req: NextRequest) {
 
     const { customers, campaign } = await req.json()
     if (!customers?.length) return NextResponse.json({ error: 'No customers', sent: 0 })
+    const eligibleCustomers = await optedInCustomers(customers)
+    const skipped = customers.length - eligibleCustomers.length
+    if (!eligibleCustomers.length) {
+      return NextResponse.json({ ok: true, sent: 0, skipped, errors: [] })
+    }
 
     let sent = 0
     const errors: string[] = []
 
-    for (const customer of customers) {
-      if (!customer.email) continue
+    for (const customer of eligibleCustomers) {
       try {
         const html = campaign.useHtml && campaign.htmlTemplate
           ? campaign.htmlTemplate.replace(/\{\{name\}\}/g, customer.name || 'Friend')
           : buildDefaultHtml(customer.name || 'Friend', campaign)
+        const unsubscribeUrl = marketingUnsubscribeUrl(customer.email)
 
         await resend.emails.send({
           from:    'onboarding@resend.dev',
           to:      customer.email,
           subject: campaign.subject,
-          html,
+          html: `${html}${marketingFooter(unsubscribeUrl)}`,
+          text: marketingText(customer.name || 'Friend', campaign, unsubscribeUrl),
         })
         sent++
         await new Promise(r => setTimeout(r, 100))
@@ -43,13 +51,56 @@ export async function POST(req: NextRequest) {
       action:      'campaign sent',
       entity_type: 'campaign',
       entity_name: campaign.type,
-      details:     `Sent to ${sent} customers. Subject: ${campaign.subject}`,
+      details:     `Sent to ${sent} opted-in customers; skipped ${skipped} without recorded consent. Subject: ${campaign.subject}`,
     })
 
-    return NextResponse.json({ ok: true, sent, errors })
+    return NextResponse.json({ ok: true, sent, skipped, errors })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+}
+
+async function optedInCustomers(customers: unknown[]) {
+  const candidates = customers
+    .filter((customer): customer is { email: string; name?: string } => Boolean(customer && typeof customer === 'object' && typeof (customer as { email?: unknown }).email === 'string'))
+    .map(customer => ({ ...customer, email: customer.email.trim().toLowerCase() }))
+    .filter(customer => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))
+  const hashes = Array.from(new Set(candidates.map(customer => piiHash(customer.email)).filter((hash): hash is string => Boolean(hash))))
+  const optedIn = new Set<string>()
+
+  // PostgREST URLs have practical size limits, so check recipients in small
+  // batches rather than allowing an admin-selected audience to bypass consent.
+  for (let index = 0; index < hashes.length; index += 100) {
+    const batch = hashes.slice(index, index + 100)
+    const [orders, captures] = await Promise.all([
+      supabase.from('orders').select('pii_email_hash').in('pii_email_hash', batch).eq('marketing_consent', true),
+      supabase.from('email_captures').select('pii_email_hash').in('pii_email_hash', batch).eq('marketing_consent', true),
+    ])
+    if (orders.error) throw orders.error
+    if (captures.error) throw captures.error
+    for (const row of [...(orders.data || []), ...(captures.data || [])]) {
+      if (typeof row.pii_email_hash === 'string') optedIn.add(row.pii_email_hash)
+    }
+  }
+  return candidates.filter(customer => {
+    const hash = piiHash(customer.email)
+    return Boolean(hash && optedIn.has(hash))
+  })
+}
+
+function marketingFooter(unsubscribeUrl: string) {
+  return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#173c2d;padding:18px 24px;text-align:center"><p style="color:rgba(255,255,255,.7);margin:0;font-size:12px;line-height:18px">Game of Bones · gameofbones.in</p><p style="margin:8px 0 0;font-size:12px;line-height:18px"><a href="${unsubscribeUrl}" style="color:#ffffff;text-decoration:underline">Unsubscribe from marketing emails</a></p></div>`
+}
+
+function marketingText(name: string, campaign: { headline?: string; body?: string; coupon?: string; cta?: string }, unsubscribeUrl: string) {
+  return [
+    'Game of Bones',
+    campaign.headline || '',
+    `Hi ${name}! ${campaign.body || ''}`,
+    campaign.coupon ? `Use code at checkout: ${campaign.coupon}` : '',
+    campaign.cta ? `${campaign.cta}: https://gameofbones.in` : 'Explore treats: https://gameofbones.in',
+    `Unsubscribe from marketing emails: ${unsubscribeUrl}`,
+  ].filter(Boolean).join('\\n\\n')
 }
 
 function buildDefaultHtml(name: string, campaign: any) {

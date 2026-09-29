@@ -5,7 +5,7 @@ import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-r
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const actions = new Set(['correct', 'delete', 'withdraw_marketing'])
+const actions = new Set(['access', 'correct', 'delete', 'withdraw_marketing'])
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function OPTIONS(request: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(request) }) }
