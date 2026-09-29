@@ -17,21 +17,28 @@ export async function GET(request: NextRequest) {
   const session = customerSessionFromRequest(request); if (!session) return unauthorized(request)
   try {
     const phone = session.phone
-    const [profileResult, addressesResult, dogsResult, rewardsResult, referralResult, ordersResult] = await Promise.all([
+    const [profileResult, addressesResult, dogsResult, rewardsResult, referralResult, ordersResult, activityResult] = await Promise.all([
       supabase.rpc('get_customer_profile', { p_phone: phone }),
       supabase.rpc('get_customer_addresses', { p_phone: phone }),
       supabase.rpc('get_customer_dogs', { p_phone: phone }),
       supabase.rpc('get_customer_rewards', { p_phone: phone }),
       supabase.rpc('get_or_create_referral_code', { p_phone: phone, p_name: '' }),
       supabase.rpc('get_customer_order_history', { p_phone: phone }),
+      // Server-only query following session validation. Never return customer
+      // IDs, phone numbers, or any other customer's activity to the browser.
+      supabase.from('loyalty_ledger')
+        .select('type,points,balance_after,order_ref,description,created_at')
+        .eq('customer_phone', phone)
+        .order('created_at', { ascending: false })
+        .limit(20),
     ])
-    if (profileResult.error || addressesResult.error || dogsResult.error || rewardsResult.error || referralResult.error || ordersResult.error) throw new Error('Account data unavailable')
+    if (profileResult.error || addressesResult.error || dogsResult.error || rewardsResult.error || referralResult.error || ordersResult.error || activityResult.error) throw new Error('Account data unavailable')
     const rewards = (rewardsResult.data || []) as Array<{ loyalty_points?: number; reward_id?: string; description?: string; coupon_code?: string }>
     const orders = (ordersResult.data || []) as Array<{ loyalty_points_redeemed?: number }>
     const pointsRedeemed = orders.reduce((total: number, order: { loyalty_points_redeemed?: number }) => total + Number(order.loyalty_points_redeemed || 0), 0)
     return NextResponse.json({
       profile: first(profileResult.data), addresses: addressesResult.data || [], dogs: dogsResult.data || [], orders,
-      rewards, referral: first(referralResult.data),
+      rewards, referral: first(referralResult.data), reward_activity: activityResult.data || [],
       points: { available: Number(first(rewards)?.loyalty_points || 0), redeemed: pointsRedeemed, earnWays: ['Earn 1 point for every ₹10 spent', 'Earn 300 points when a referred friend completes their first order', 'Earn points when you leave a verified review'] },
     }, { headers })
   } catch (error) { console.error('Customer account load failed', error); return NextResponse.json({ error: 'Unable to load your account.' }, { status: 500, headers }) }
