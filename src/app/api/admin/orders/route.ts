@@ -4,6 +4,7 @@ import Razorpay from 'razorpay'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 
 const statusValues = new Set(['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'])
 
@@ -67,19 +68,22 @@ export async function GET(request: NextRequest) {
     // only when the order value is clearly not usable; never overwrite data.
     const customerIds = [...new Set((data || []).map(row => typeof row.customer_id === 'string' ? row.customer_id : '').filter(Boolean))]
     const { data: customerRows } = customerIds.length
-      ? await database().from('customers').select('id,name,phone,email').in('id', customerIds)
-      : { data: [] as Array<{ id: string; name: string | null; phone: string | null; email: string | null }> }
+      ? await database().from('customers').select('id,name,phone,email,pii_name_ciphertext,pii_phone_ciphertext,pii_email_ciphertext').in('id', customerIds)
+      : { data: [] as Array<{ id: string; name: string | null; phone: string | null; email: string | null; pii_name_ciphertext: string | null; pii_phone_ciphertext: string | null; pii_email_ciphertext: string | null }> }
     const customers = new Map((customerRows || []).map(customer => [customer.id, customer]))
     const validPhone = (value: unknown) => /^\+?\d{10,13}$/.test(String(value || '').replace(/[\s-]/g, ''))
     const validEmail = (value: unknown) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
     const orders = (data || []).map(row => {
       const readable = revealOrderForAdmin(row)
       const customer = typeof row.customer_id === 'string' ? customers.get(row.customer_id) : undefined
+      const customerName = revealLegacyPii(customer?.pii_name_ciphertext || customer?.name)
+      const customerPhone = revealLegacyPii(customer?.pii_phone_ciphertext || customer?.phone)
+      const customerEmail = revealLegacyPii(customer?.pii_email_ciphertext || customer?.email)
       return {
         ...readable,
-        customer_name: String(readable.customer_name || '').trim() || customer?.name || '',
-        customer_phone: validPhone(readable.customer_phone) ? readable.customer_phone : (customer?.phone || ''),
-        customer_email: validEmail(readable.customer_email) ? readable.customer_email : (customer?.email || ''),
+        customer_name: String(readable.customer_name || '').trim() || customerName || '',
+        customer_phone: validPhone(readable.customer_phone) ? readable.customer_phone : customerPhone,
+        customer_email: validEmail(readable.customer_email) ? readable.customer_email : customerEmail,
       }
     })
     return NextResponse.json({ orders })
