@@ -8,7 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const RS_PER_POINT = 10
 const POINTS_EXPIRY_DAYS = 60
 
 export async function GET(req: NextRequest) {
@@ -19,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const { data: deliveredOrders, error: fetchError } = await supabase
     .from('orders')
-    .select('id, ref, customer_name, customer_email, customer_phone, grand_total, delivered_at, points_awarded')
+    .select('id, ref, customer_id, customer_name, customer_email, customer_phone, pii_name_ciphertext, pii_email_ciphertext, pii_phone_ciphertext, grand_total, delivered_at, points_awarded')
     .eq('status', 'delivered')
     .or('points_awarded.is.null,points_awarded.eq.false')
     .limit(200)
@@ -33,51 +32,47 @@ export async function GET(req: NextRequest) {
 
   for (const order of (deliveredOrders || [])) {
     try {
-      const phone = revealLegacyPii(order.customer_phone)
-      if (!phone) {
-        results.push({ ref: order.ref, skipped: 'no phone on order' })
-        continue
+      const phone = revealLegacyPii(order.pii_phone_ciphertext) || revealLegacyPii(order.customer_phone)
+      let customer: { id: string; name: string | null; email: string | null; phone: string | null; loyalty_points: number | null } | null = null
+      if (typeof order.customer_id === 'string' && order.customer_id) {
+        const { data } = await supabase.from('customers').select('id, name, email, phone, loyalty_points').eq('id', order.customer_id).maybeSingle()
+        customer = data
       }
-
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id, name, email, phone, loyalty_points')
-        .eq('phone', phone)
-        .maybeSingle()
+      // Legacy rows may pre-date a customer_id. Retain a phone-based fallback
+      // only for them; new secure orders always use their immutable relation.
+      if (!customer && phone) {
+        const { data } = await supabase.from('customers').select('id, name, email, phone, loyalty_points').eq('phone', phone).maybeSingle()
+        customer = data
+      }
 
       if (!customer) {
-        results.push({ ref: order.ref, skipped: 'no matching customer row for phone' })
+        results.push({ ref: order.ref, skipped: 'no linked customer record' })
         continue
       }
 
-      const pointsEarned = Math.floor((order.grand_total || 0) / RS_PER_POINT)
-
-      if (pointsEarned <= 0) {
-        await supabase.from('orders').update({ points_awarded: true }).eq('id', order.id)
-        results.push({ ref: order.ref, skipped: 'grand_total too low to earn points' })
+      const { data: award, error: awardError } = await supabase.rpc('credit_delivery_loyalty_points', {
+        p_order_id: order.id,
+        p_customer_id: customer.id,
+      })
+      if (awardError) throw awardError
+      const credit = award as { credited?: boolean; reason?: string; points_earned?: number; balance_after?: number; customer_email?: string; customer_name?: string } | null
+      if (!credit?.credited) {
+        results.push({ ref: order.ref, skipped: credit?.reason || 'not_eligible' })
         continue
       }
 
-      const newBalance = (customer.loyalty_points || 0) + pointsEarned
+      const pointsEarned = Number(credit.points_earned || 0)
+      const newBalance = Number(credit.balance_after || 0)
       const expiresAt = new Date(Date.now() + POINTS_EXPIRY_DAYS * 86400000)
 
-      await supabase.from('customers').update({
-        loyalty_points: newBalance,
-        loyalty_points_expire_at: expiresAt.toISOString(),
-      }).eq('id', customer.id); await supabase.from('loyalty_ledger').insert({ customer_id: customer.id, customer_name: customer.name, customer_phone: customer.phone, type: 'earned', points: pointsEarned, balance_after: newBalance, order_ref: order.ref, description: `Earned on delivery of order ${order.ref}` })
-
-      await supabase.from('orders').update({ points_awarded: true }).eq('id', order.id)
-
-      await supabase.from('activity_log').insert({
-        action:      'loyalty points added',
-        entity_type: 'customer',
-        entity_id:   customer.id,
-        entity_name: customer.name,
-        details:     `+${pointsEarned} points — auto-credited on delivery of order ${order.ref}`,
-      })
-
-      const toEmail = revealLegacyPii(order.customer_email) || customer.email
-      const customerName = revealLegacyPii(order.customer_name) || customer.name
+      const toEmail = revealLegacyPii(order.pii_email_ciphertext)
+        || revealLegacyPii(order.customer_email)
+        || revealLegacyPii(credit.customer_email)
+        || revealLegacyPii(customer.email)
+      const customerName = revealLegacyPii(order.pii_name_ciphertext)
+        || revealLegacyPii(order.customer_name)
+        || revealLegacyPii(credit.customer_name)
+        || revealLegacyPii(customer.name)
       if (toEmail) {
         const expiryLabel = expiresAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
         await resend.emails.send({
