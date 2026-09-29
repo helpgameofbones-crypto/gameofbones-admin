@@ -34,9 +34,11 @@ export async function POST(request: NextRequest) {
 
     const { data: available, error: availabilityError } = await supabase.rpc('customer_registration_available', { p_email: email, p_phone: phone })
     if (availabilityError) throw availabilityError
-    // Do not reveal whether an email or phone number has an account. That
-    // information is private, and a generic response prevents enumeration.
-    if (!available) return NextResponse.json({ ok: true }, { status: 202, headers })
+    // A registration cannot replace or merge an existing account. Tell a
+    // customer how to proceed rather than showing a verification step for
+    // which no code can be sent. Endpoint-level rate limits still limit
+    // account-discovery abuse.
+    if (!available) return NextResponse.json({ error: 'An account is already linked to these details. Please sign in instead.' }, { status: 409, headers })
 
     const emailHash = piiHash(normalizeEmailForHash(email))
     const phoneHash = piiHash(phone)
