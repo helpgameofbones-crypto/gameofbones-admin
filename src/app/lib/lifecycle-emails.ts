@@ -1,6 +1,7 @@
 import { resend } from '@/app/lib/emailClient'
 import { revealLegacyPii } from '@/app/lib/pii-crypto'
 import { couponCard, emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
+import { marketingUnsubscribeUrl } from '@/app/lib/marketing-unsubscribe'
 
 type OrderItem = { product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown; pack_label?: unknown; pack_price?: unknown; price?: unknown }
 type CustomerOrder = {
@@ -87,7 +88,7 @@ export async function sendWheelWelcomeEmail(input: { name: string; email: string
       detailHtml: couponCard(coupon),
       ctaLabel: 'Shop treats',
       ctaUrl: 'https://gameofbones.in/products',
-      noteHtml: `Hi ${firstName}, one spin per person. Your reward will be checked at checkout.`,
+      noteHtml: `Hi ${firstName}, one spin per person. Your reward is valid for seven days and will be checked at checkout.<br><br><a href="${marketingUnsubscribeUrl(input.email)}" style="color:#254a42;text-decoration:underline">Unsubscribe from marketing emails</a>`,
     }),
   })
 }
