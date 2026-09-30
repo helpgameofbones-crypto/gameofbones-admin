@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendDeliveredEmail, sendDispatchEmail, sendOrderPlacedEmail, sendOutForDeliveryEmail } from '@/app/lib/lifecycle-emails'
+import { requireAdmin } from '@/app/lib/requireAdmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,10 +9,7 @@ export const dynamic = 'force-dynamic'
 // never creates or changes an order or customer record.
 const TEST_RECIPIENT = 'sahuanjan6@gmail.com'
 
-export async function GET(request: NextRequest) {
-  if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+async function sendPreview() {
   const order = {
     customer_email: TEST_RECIPIENT,
     customer_name: 'Anjan Sahu',
@@ -29,16 +27,37 @@ export async function GET(request: NextRequest) {
       { product_name: 'Whole Mackerel', pack_label: '100g', pack_price: 300, quantity: 1 },
     ],
   }
+  const results = await Promise.all([
+    sendOrderPlacedEmail(order),
+    sendDispatchEmail(order, order.delhivery_awb),
+    sendOutForDeliveryEmail(order),
+    sendDeliveredEmail(order),
+  ])
+  return results.filter(Boolean).length
+}
+
+export async function GET(request: NextRequest) {
+  if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
-    const results = await Promise.all([
-      sendOrderPlacedEmail(order),
-      sendDispatchEmail(order, order.delhivery_awb),
-      sendOutForDeliveryEmail(order),
-      sendDeliveredEmail(order),
-    ])
-    return NextResponse.json({ ok: true, sent: results.filter(Boolean).length })
+    return NextResponse.json({ ok: true, sent: await sendPreview() })
   } catch (error) {
     console.error('[test-order-lifecycle-emails] failed', error)
+    return NextResponse.json({ error: 'Preview delivery failed.' }, { status: 502 })
+  }
+}
+
+// The manual path is deliberately restricted to an authenticated, configured
+// admin. It lets the owner run the same preview immediately when a Hobby-plan
+// cron is delayed; it always sends to the fixed owner address above.
+export async function POST(request: NextRequest) {
+  const authError = await requireAdmin(request)
+  if (authError) return authError
+  try {
+    return NextResponse.json({ ok: true, sent: await sendPreview() })
+  } catch (error) {
+    console.error('[test-order-lifecycle-emails] manual preview failed', error)
     return NextResponse.json({ error: 'Preview delivery failed.' }, { status: 502 })
   }
 }

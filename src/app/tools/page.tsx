@@ -76,6 +76,7 @@ const groups: ToolGroup[] = [
     { name: 'Audit trail', href: '/audit-trail', description: 'Changes and accountability' },
     { name: 'Team access', href: '/team-access', description: 'Team members and permissions' },
     { name: 'Notifications', href: '/notifications', description: 'Administrative notifications' },
+    { name: 'Owner email preview', href: '/email-preview-send', description: 'Send the four lifecycle templates to the owner inbox' },
     { name: 'Delhivery sync', href: '/delhivery-sync', description: 'Delivery-data sync controls' },
   ] },
 ]
