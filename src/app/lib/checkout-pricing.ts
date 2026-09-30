@@ -79,13 +79,15 @@ export async function checkoutQuote(
     const today = new Date().toISOString().slice(0, 10)
     const valid = Boolean(birthdayCoupon?.is_active)
       && birthdayCoupon?.type === 'percent'
-      && Number(birthdayCoupon?.value) === 15
+      && Number.isInteger(Number(birthdayCoupon?.value))
+      && Number(birthdayCoupon?.value) > 0
+      && Number(birthdayCoupon?.value) <= 100
       && Number(birthdayCoupon?.min_order || 0) <= subtotal
       && (!birthdayCoupon?.valid_from || String(birthdayCoupon.valid_from) <= today)
       && (!birthdayCoupon?.valid_until || String(birthdayCoupon.valid_until) >= today)
       && (birthdayCoupon?.max_uses == null || Number(birthdayCoupon.uses_count || 0) < Number(birthdayCoupon.max_uses))
-    if (!valid) throw new Error('This birthday reward has expired, was already used, or needs a ₹499 treat subtotal.')
-    couponRate = .15
+    if (!valid) throw new Error('This birthday reward has expired, was already used, or is not valid for this treat subtotal.')
+    couponRate = Number(birthdayCoupon?.value) / 100
     birthdayCouponId = String(birthdayCoupon.id)
   }
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))

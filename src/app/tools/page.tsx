@@ -46,6 +46,7 @@ const groups: ToolGroup[] = [
     { name: 'NPS feedback', href: '/nps', description: 'Customer satisfaction and feedback' },
     { name: 'Birthday tools', href: '/birthday', description: 'Birthday customers and offers' },
     { name: 'Dog birthday club', href: '/dog-birthday-club', description: 'Dog birthdays and campaigns' },
+    { name: 'October birthday offer', href: '/october-birthday-offers', description: 'Send private 25% birthday offers for October pets' },
     { name: 'Dog gallery', href: '/dog-gallery', description: 'Customer pet gallery' },
     { name: 'Stray support', href: '/strays', description: 'Stray-support administration' },
   ] },
