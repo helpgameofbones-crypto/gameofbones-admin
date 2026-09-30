@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { sendMetaPurchase } from '@/app/lib/meta-capi'
+import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 
 export const maxDuration = 20
 
@@ -91,6 +92,18 @@ async function bookWhenComplete(order: Record<string, any> | null | undefined) {
   }
 }
 
+async function confirmEmailWhenPaid(order: Record<string, any> | null | undefined) {
+  if (!order?.id || order.confirmation_email_sent_at) return
+  try {
+    if (await sendOrderPlacedEmail(order)) {
+      await supabase.from('orders').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', order.id)
+    }
+  } catch (error) {
+    // Payment and fulfilment remain valid if the provider is temporarily down.
+    console.error('[razorpay-webhook] confirmation email failed', { orderId: order.id, error })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
@@ -118,6 +131,7 @@ export async function POST(req: NextRequest) {
           .update({ payment_status: 'paid', status: 'confirmed', transaction_id: payment.id })
           .eq('id', existing.id).select('*').maybeSingle()
         if (error) throw error
+        await confirmEmailWhenPaid(updatedOrder)
         await bookWhenComplete(updatedOrder)
         sendMetaPurchase({ ref, value: Number(updatedOrder?.grand_total || payment.amount || 0) / (updatedOrder?.grand_total ? 1 : 100), items: updatedOrder?.items, email: payment.email, phone: payment.contact }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       } else {
@@ -174,6 +188,7 @@ export async function POST(req: NextRequest) {
           created_at: new Date().toISOString(),
         }).select('*').maybeSingle()
         if (error) throw error
+        await confirmEmailWhenPaid(insertedOrder)
         await bookWhenComplete(insertedOrder)
         sendMetaPurchase({ ref, value: amount, items, email: payment.email, phone }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       }

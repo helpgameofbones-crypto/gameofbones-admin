@@ -129,7 +129,9 @@ export async function POST(req: NextRequest) {
       if (!credited?.length) await supabase.from('referrals').insert({ referrer_phone: referrerPhone, referred_phone: referredPhone, order_id: orderId, points_awarded: 300 })
     }
   }
-  if (shouldFinalizeOrder && data?.[0]) {
+  // COD is confirmed at checkout. Razorpay confirmations are intentionally
+  // sent from the signed payment webhook, never from the browser request.
+  if (shouldFinalizeOrder && data?.[0] && order.payment_method === 'cod') {
     try {
       if (await sendOrderPlacedEmail(data[0])) {
         await supabase.from('orders').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', data[0].id)
