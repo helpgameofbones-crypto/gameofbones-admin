@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/internal/test-order-lifecycle-emails", "schedule": "45 4 30 9 *" },
     { "path": "/api/daily-report",         "schedule": "0 15 * * *" },
     { "path": "/api/low-stock",            "schedule": "0 3 * * *"  },
     { "path": "/api/birthday-emails",      "schedule": "0 4 * * *"  },
