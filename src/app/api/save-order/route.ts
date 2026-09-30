@@ -101,6 +101,17 @@ export async function POST(req: NextRequest) {
       console.error('Checkout loyalty redemption needs reconciliation', pointsError)
     }
   }
+  // Birthday rewards are personal, single-use offers. The price is always
+  // quoted server-side above; after the order is safely saved, exhaust the
+  // matching private code so it cannot be used on a second order.
+  if (shouldFinalizeOrder && quote.birthday_coupon_id) {
+    const { error: birthdayRedeemError } = await supabase.from('coupons')
+      .update({ uses_count: 1, is_active: false })
+      .eq('id', quote.birthday_coupon_id)
+      .eq('uses_count', 0)
+      .eq('is_active', true)
+    if (birthdayRedeemError) console.error('Birthday reward redemption needs reconciliation', birthdayRedeemError)
+  }
   // Store the first checkout's delivery and pet details in the account as well.
   // These writes are best-effort: an order must never be lost if optional profile
   // fields are unavailable, and the customer can always edit them in My Account.

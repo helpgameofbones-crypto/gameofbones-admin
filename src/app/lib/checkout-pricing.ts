@@ -23,6 +23,7 @@ export type CheckoutQuote = {
   sale_items_present: boolean
   points_redeemed: number
   points_discount: number
+  birthday_coupon_id: string | null
 }
 
 // The browser may display a quote, but it must never be allowed to set the
@@ -66,7 +67,27 @@ export async function checkoutQuote(
   // and continue to work on sale baskets.
   const bulkRate = sale_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
-  const couponRate = sale_items_present ? 0 : coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
+  let couponRate = sale_items_present ? 0 : coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
+  let birthdayCouponId: string | null = null
+  if (!sale_items_present && !couponRate && /^BDAY[A-Z0-9]+$/.test(coupon)) {
+    const { data: birthdayCoupon, error: birthdayCouponError } = await database
+      .from('coupons')
+      .select('id,type,value,min_order,max_uses,uses_count,valid_from,valid_until,is_active')
+      .eq('code', coupon)
+      .maybeSingle()
+    if (birthdayCouponError) throw new Error('Unable to verify your birthday reward. Please try again.')
+    const today = new Date().toISOString().slice(0, 10)
+    const valid = Boolean(birthdayCoupon?.is_active)
+      && birthdayCoupon?.type === 'percent'
+      && Number(birthdayCoupon?.value) === 15
+      && Number(birthdayCoupon?.min_order || 0) <= subtotal
+      && (!birthdayCoupon?.valid_from || String(birthdayCoupon.valid_from) <= today)
+      && (!birthdayCoupon?.valid_until || String(birthdayCoupon.valid_until) >= today)
+      && (birthdayCoupon?.max_uses == null || Number(birthdayCoupon.uses_count || 0) < Number(birthdayCoupon.max_uses))
+    if (!valid) throw new Error('This birthday reward has expired, was already used, or needs a ₹499 treat subtotal.')
+    couponRate = .15
+    birthdayCouponId = String(birthdayCoupon.id)
+  }
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
   // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
   // which rounds to ₹100; the money cap below remains authoritative.
@@ -75,5 +96,5 @@ export async function checkoutQuote(
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
-  return { items, subtotal, discount, packaging, points_redeemed, points_discount, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
+  return { items, subtotal, discount, packaging, points_redeemed, points_discount, birthday_coupon_id: birthdayCouponId, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
 }

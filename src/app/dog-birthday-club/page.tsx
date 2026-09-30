@@ -10,8 +10,13 @@ function getDayMonth(birthday: string): { day: number | null; month: number | nu
   return { day: parseInt(parts[2]), month: parseInt(parts[1]), year: year === 2000 ? null : year };
 }
 
-function birthdayEmailBody(dogName: string, ownerName: string): string {
-  return `Hi ${ownerName || 'there'},\n\nHappy Birthday to ${dogName}! 🎂🐾\n\nAs a special treat from Game of Bones, we'd love to send a birthday surprise. Check out our latest treats at gameofbones.in — free shipping on all orders!\n\nWishing ${dogName} many more years of happy tail wags.\n\n— Team Game of Bones`;
+function birthdayOfferCode(id: string): string {
+  return `BDAY${String(id || '').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase()}${new Date().getFullYear()}`;
+}
+
+function whatsappBirthdayMessage(b: any) {
+  const code = birthdayOfferCode(b.id);
+  return `Hi ${b.customer_name || 'there'}! 🎂🐾 Happy Birthday to ${b.dog_name}! Your private Game of Bones birthday reward is 15% off orders of ₹499+ for 48 hours. Use code ${code} once at checkout: https://gameofbones.in/checkout`;
 }
 
 export default function DogBirthdayClubPage() {
@@ -72,7 +77,7 @@ export default function DogBirthdayClubPage() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {b.customer_phone && (
-                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Happy Birthday to ${b.dog_name}! 🎂🐾 As a special treat from Game of Bones, we'd love to send a birthday surprise. Check out gameofbones.in for our latest treats!`)}`}
+                  <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(whatsappBirthdayMessage(b))}`}
                     target="_blank" rel="noopener" style={{ padding: '6px 14px', background: '#25d366', color: '#fff', borderRadius: 4, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                     💬 WhatsApp
                   </a>
@@ -164,7 +169,7 @@ export default function DogBirthdayClubPage() {
                 <td style={{ padding: 12, textAlign: 'center' }}>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                     {b.customer_phone ? (
-                      <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(`Hi ${b.customer_name || ''}! 🐾 Just a reminder that ${b.dog_name}'s birthday is coming up on ${b.day}/${b.month}. We have a special birthday surprise at gameofbones.in!`)}`}
+                      <a href={`https://wa.me/91${b.customer_phone}?text=${encodeURIComponent(whatsappBirthdayMessage(b))}`}
                         target="_blank" rel="noopener" style={{ fontSize: 11, color: '#25d366', fontWeight: 700, textDecoration: 'none' }}>
                         💬 WhatsApp
                       </a>

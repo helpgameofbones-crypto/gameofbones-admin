@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { resend } from '@/app/lib/emailClient'
+import { birthdayOfferEmail, ensureBirthdayOffer } from '@/app/lib/birthday-offer'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,24 +35,13 @@ export async function GET(req: NextRequest) {
     const alreadySentThisYear = lastSent && lastSent.getFullYear() === today.getFullYear()
     if (alreadySentThisYear) continue
 
-    const couponCode = 'BDAY' + (b.dog_name || 'DOG').toUpperCase().slice(0, 4) + today.getFullYear()
-
-    await supabase.from('coupons').insert({
-      code: couponCode,
-      type: 'percent',
-      value: 15,
-      min_order: 499,
-      max_uses: 1,
-      valid_from: today.toISOString().split('T')[0],
-      valid_until: new Date(today.getTime() + 48 * 60 * 60 * 1000).toISOString().split('T')[0],
-      is_active: true,
-    })
-
+    const offer = await ensureBirthdayOffer(supabase, b, today)
+    const email = birthdayOfferEmail(b, offer.code)
     await resend.emails.send({
-      from: 'onboarding@resend.dev',
       to: b.customer_email,
-      subject: 'Happy Birthday ' + b.dog_name + '! A special treat awaits',
-      html: '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#1a1008;padding:24px;text-align:center"><h1 style="color:#c8973a;margin:0">Game of Bones</h1></div><div style="background:#f9f6f2;padding:32px;text-align:center"><h2 style="color:#1a1008">Happy Birthday ' + b.dog_name + '!</h2><p style="color:#6b7280">Hi ' + b.customer_name + ', here is a birthday gift for ' + b.dog_name + '</p><div style="background:white;border-radius:12px;padding:20px;margin:20px auto;max-width:300px;border:2px dashed #c8973a"><div style="font-size:32px;font-weight:bold;color:#1a1008">15% OFF</div><div style="font-size:14px;color:#6b7280;margin:8px 0">on orders above Rs 499</div><div style="background:#1a1008;color:#c8973a;padding:10px 20px;border-radius:6px;font-family:monospace;font-size:18px;font-weight:bold">' + couponCode + '</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Valid 48 hours only</div></div><a href="https://gameofbones.in" style="background:#c8973a;color:#1a1008;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block">Shop Now</a></div></div>'
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
     })
 
     await supabase
