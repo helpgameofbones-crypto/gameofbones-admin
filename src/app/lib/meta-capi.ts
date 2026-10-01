@@ -3,9 +3,16 @@ import crypto from 'crypto'
 const PIXEL_ID = '2097278950833218'
 const API_VERSION = 'v21.0'
 
-type PurchaseItem = { product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown; pack_price?: unknown; price?: unknown }
+type PurchaseItem = { catalog_id?: unknown; product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown; pack_price?: unknown; price?: unknown }
 
 const hash = (value: string) => crypto.createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
+const catalogSlug = (value: unknown) => String(value || '')
+  .replace(/\s+—\s+.+$/, '')
+  .toLowerCase()
+  .replace(/&/g, 'and')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/(^-|-$)/g, '')
+const catalogId = (item: PurchaseItem) => catalogSlug(item.catalog_id || item.product_name || item.name)
 
 export async function sendMetaPurchase(input: {
   ref: string
@@ -28,6 +35,11 @@ export async function sendMetaPurchase(input: {
   }
   if (input.clientIp) userData.client_ip_address = input.clientIp
   if (input.userAgent) userData.client_user_agent = input.userAgent
+  const contents = (input.items || []).map(item => ({
+    id: catalogId(item),
+    quantity: Number(item.quantity || item.qty || 1),
+    item_price: Number(item.pack_price || item.price || 0),
+  })).filter(item => item.id)
 
   const response = await fetch(`https://graph.facebook.com/${API_VERSION}/${PIXEL_ID}/events?access_token=${token}`, {
     method: 'POST',
@@ -37,11 +49,8 @@ export async function sendMetaPurchase(input: {
       action_source: 'website', event_source_url: 'https://gameofbones.in/', user_data: userData,
       custom_data: {
         currency: 'INR', value: Number(input.value || 0), content_type: 'product',
-        contents: (input.items || []).map(item => ({
-          id: String(item.product_name || item.name || ''),
-          quantity: Number(item.quantity || item.qty || 1),
-          item_price: Number(item.pack_price || item.price || 0),
-        })),
+        content_ids: contents.map(item => item.id),
+        contents,
       },
     }] }),
   })
