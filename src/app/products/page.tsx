@@ -217,7 +217,6 @@ async function compressImage(file: File): Promise<Blob> {
   }
 
   async function applyCatalogueSale() {
-    if (!window.confirm('Apply 10% off to every active product and 15% off to Whole Mackerel? Each current MRP will be retained as the crossed-out original price.')) return;
     setApplyingSale(true);
     try {
       const response = await authedFetch('/api/admin/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalogue-sale' }) });
