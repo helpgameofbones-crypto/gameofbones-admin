@@ -1,8 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { decryptPii, revealLegacyPii } from '@/app/lib/pii-crypto'
 
 function database() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
+
+function readable(ciphertext: unknown, legacy: unknown): string {
+  if (typeof ciphertext === 'string' && ciphertext) return decryptPii(ciphertext)
+  return revealLegacyPii(legacy)
+}
 
 export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request)
@@ -15,7 +21,21 @@ export async function GET(request: NextRequest) {
   }
   const { data, error } = await database().from('customers').select('*').order('loyalty_points', { ascending: false }).limit(5000)
   if (error) return NextResponse.json({ error: 'Unable to load customers.' }, { status: 500 })
-  return NextResponse.json({ customers: data || [] })
+  // The loyalty dashboard is an authenticated admin view, so return readable
+  // customer contact values while never exposing the encrypted source columns.
+  const customers = (data || []).map(customer => ({
+    ...customer,
+    name: readable(customer.pii_name_ciphertext, customer.name),
+    phone: readable(customer.pii_phone_ciphertext, customer.phone),
+    email: readable(customer.pii_email_ciphertext, customer.email),
+    pii_name_ciphertext: undefined,
+    pii_phone_ciphertext: undefined,
+    pii_email_ciphertext: undefined,
+    pii_name_hash: undefined,
+    pii_phone_hash: undefined,
+    pii_email_hash: undefined,
+  }))
+  return NextResponse.json({ customers })
 }
 
 export async function PATCH(request: NextRequest) {
