@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/app/lib/requireAdmin'
-import { decryptPii, revealLegacyPii } from '@/app/lib/pii-crypto'
+import { decryptPii, normalizePhoneForHash, revealLegacyPii } from '@/app/lib/pii-crypto'
 
 function database() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
 
@@ -15,9 +15,33 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
   const customerId = request.nextUrl.searchParams.get('customerId')
   if (customerId) {
-    const { data, error } = await database().from('loyalty_ledger').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(500)
-    if (error) return NextResponse.json({ error: 'Unable to load loyalty history.' }, { status: 500 })
-    return NextResponse.json({ ledger: data || [] })
+    const db = database()
+    const { data: customer, error: customerError } = await db.from('customers').select('id,phone,pii_phone_ciphertext').eq('id', customerId).maybeSingle()
+    if (customerError || !customer) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 })
+    const phone = normalizePhoneForHash(readable(customer.pii_phone_ciphertext, customer.phone))
+    const [ledgerResult, reviewRewardsResult] = await Promise.all([
+      db.from('loyalty_ledger').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(500),
+      phone ? db.from('rewards').select('id,type,description,discount_value,created_at,expires_at').eq('customer_phone', phone).eq('type', 'review').order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [], error: null }),
+    ])
+    if (ledgerResult.error || reviewRewardsResult.error) return NextResponse.json({ error: 'Unable to load loyalty history.' }, { status: 500 })
+    const ledger = ledgerResult.data || []
+    // A handful of previously approved reviews credited the balance and reward
+    // record but missed their optional ledger insert. Surface those points in
+    // history without duplicating newer reviews that have both records.
+    const reviewRows = (reviewRewardsResult.data || []).filter(reward => !ledger.some(entry => {
+      if (entry.type !== 'review' || Number(entry.points || 0) !== Number(reward.discount_value || 0)) return false
+      return Math.abs(new Date(entry.created_at).getTime() - new Date(reward.created_at).getTime()) < 60_000
+    })).map(reward => ({
+      id: `review-${reward.id}`,
+      type: 'review',
+      points: Number(reward.discount_value || 0),
+      balance_after: null,
+      order_ref: null,
+      description: reward.description || 'Points for an approved review',
+      created_at: reward.created_at,
+      expires_at: reward.expires_at,
+    }))
+    return NextResponse.json({ ledger: [...ledger, ...reviewRows].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) })
   }
   const { data, error } = await database().from('customers').select('*').order('loyalty_points', { ascending: false }).limit(5000)
   if (error) return NextResponse.json({ error: 'Unable to load customers.' }, { status: 500 })

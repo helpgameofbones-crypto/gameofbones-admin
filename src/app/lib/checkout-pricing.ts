@@ -67,13 +67,15 @@ export async function checkoutQuote(
   // and continue to work on sale baskets.
   const bulkRate = sale_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
-  let couponRate = sale_items_present ? 0 : coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
+  // Sale prices are the starting price, not an exclusion. A customer may
+  // still apply an eligible code and redeem points against a sale basket.
+  let couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   let singleUseCouponId: string | null = null
   // Private offers are created in the admin coupon table and deliberately do
   // not need to be listed anywhere on the storefront.  Always validate the
   // entered code against that table instead of granting a discount merely
   // because its name matches a prefix.
-  if (!sale_items_present && !couponRate && coupon) {
+  if (!couponRate && coupon) {
     const { data: singleUseCoupon, error: singleUseCouponError } = await database
       .from('coupons')
       .select('id,type,value,min_order,max_uses,uses_count,valid_from,valid_until,is_active')

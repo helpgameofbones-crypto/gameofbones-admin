@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const [filter, setFilter] = useState('all');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [applyingSale, setApplyingSale] = useState(false);
   const [replacedStoragePaths, setReplacedStoragePaths] = useState<string[]>([]);
   const [draftUploadPaths, setDraftUploadPaths] = useState<string[]>([]);
   // The product API supports up to six images; expose every supported slot here
@@ -215,6 +216,22 @@ async function compressImage(file: File): Promise<Blob> {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p));
   }
 
+  async function applyCatalogueSale() {
+    if (!window.confirm('Apply 10% off to every active product and 15% off to Whole Mackerel? Each current MRP will be retained as the crossed-out original price.')) return;
+    setApplyingSale(true);
+    try {
+      const response = await authedFetch('/api/admin/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalogue-sale' }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to apply the sale.');
+      await fetchProducts();
+      alert(`Sale applied to ${payload.updated || 0} active products.`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to apply the sale.');
+    } finally {
+      setApplyingSale(false);
+    }
+  }
+
   const filtered = products.filter(p => {
     if (filter === 'active' && !p.is_active) return false;
     if (filter === 'hidden' && p.is_active) return false;
@@ -234,6 +251,9 @@ async function compressImage(file: File): Promise<Blob> {
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Products</h1>
           <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>{products.length} products</p>
         </div>
+        <button onClick={applyCatalogueSale} disabled={applyingSale} style={{ padding: '10px 16px', background: '#1f6b4d', color: '#fff', border: 0, borderRadius: 5, cursor: applyingSale ? 'wait' : 'pointer', fontWeight: 700 }}>
+          {applyingSale ? 'Applying sale…' : 'Apply 10% sale · Mackerel 15%'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>

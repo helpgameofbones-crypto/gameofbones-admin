@@ -33,11 +33,46 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const authError = await requireAdmin(request); if (authError) return authError
   const body = (await request.json().catch(() => null) || {}) as Record<string, unknown>
-  const id = cleanText(body.id, 100); if (!id) return NextResponse.json({ error: 'Product id is required.' }, { status: 400 })
+  const id = cleanText(body.id, 100); if (!id && body.action !== 'catalogue-sale') return NextResponse.json({ error: 'Product id is required.' }, { status: 400 })
   const db = database()
   if (body.action === 'status') {
     const { error } = await db.from('products').update({ is_active: Boolean(body.is_active) }).eq('id', id)
     if (error) return NextResponse.json({ error: 'Unable to update product status.' }, { status: 500 }); return NextResponse.json({ ok: true })
+  }
+  if (body.action === 'catalogue-sale') {
+    // This is intentionally restricted to the approved storewide promotion,
+    // rather than accepting arbitrary prices from the browser. Existing MRP /
+    // compare prices are used as the source of truth, preventing discounts
+    // from being compounded every time the promotion is applied.
+    const { data: products, error: loadError } = await db.from('products')
+      .select('id,name,price,compare_price,mrp,sizes')
+      .eq('is_active', true)
+      .limit(2000)
+    if (loadError) return NextResponse.json({ error: 'Unable to load products for the sale.' }, { status: 500 })
+
+    const salePrice = (original: unknown, rate: number) => {
+      const price = numeric(original, 0, 1_000_000)
+      return price ? Math.max(1, Math.round(price * (1 - rate))) : 0
+    }
+    const updates = (products || []).map(product => {
+      const rate = String(product.name || '').trim().toLowerCase() === 'whole mackerel' ? .15 : .10
+      const rawSizes = Array.isArray(product.sizes) ? product.sizes : []
+      const sizes = rawSizes.map(raw => {
+        const size = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+        const original = numeric(size.compare_price, 0, 1_000_000) || numeric(product.compare_price, 0, 1_000_000) || numeric(product.mrp, 0, 1_000_000) || numeric(size.price, 0, 1_000_000) || numeric(product.price, 0, 1_000_000)
+        return { ...size, price: salePrice(original, rate), compare_price: original }
+      })
+      const first = sizes[0] || null
+      const original = first?.compare_price || numeric(product.compare_price, 0, 1_000_000) || numeric(product.mrp, 0, 1_000_000) || numeric(product.price, 0, 1_000_000)
+      return { id: product.id, name: product.name, price: first?.price || salePrice(original, rate), compare_price: original, mrp: original, sizes }
+    })
+
+    for (const product of updates) {
+      const { error } = await db.from('products').update({ price: product.price, compare_price: product.compare_price, mrp: product.mrp, sizes: product.sizes }).eq('id', product.id)
+      if (error) return NextResponse.json({ error: 'The sale could not be applied to every product. No further products were changed.' }, { status: 500 })
+    }
+    await db.from('activity_log').insert({ action: 'catalogue sale applied', entity_type: 'catalogue', entity_id: 'active-products', entity_name: '10% storewide / 15% Whole Mackerel', details: `${updates.length} active products repriced from their MRP.` })
+    return NextResponse.json({ ok: true, updated: updates.length })
   }
   if (body.action !== 'save') return NextResponse.json({ error: 'Unsupported product update.' }, { status: 400 })
   const rawSizes = Array.isArray(body.sizes) ? body.sizes.slice(0, 20) : []
