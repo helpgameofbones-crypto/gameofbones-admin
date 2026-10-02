@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 
 const TEXT_REVIEW_POINTS = 100
 const PHOTO_REVIEW_POINTS = 150
@@ -37,20 +38,33 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: true, status: 'rejected' })
   }
   if (review.review_points_awarded_at) return NextResponse.json({ ok: true, status: 'published', alreadyAwarded: true, pointsAwarded: 0 })
-  const phone = text(review.customer_phone, 20)
+  // Reviews store the phone from the customer's signed-in session. Customer
+  // records may instead be keyed by the protected phone hash, so normalise the
+  // value before matching. This also handles +91 / 91 prefixes consistently.
+  const phone = normalizePhoneForHash(review.customer_phone)
   if (!phone) return NextResponse.json({ error: 'This review has no customer profile, so points cannot be awarded.' }, { status: 400 })
-  const { data: customer, error: customerError } = await db.from('customers').select('id,name,phone,loyalty_points').eq('phone', phone).maybeSingle()
+  const phoneHash = piiHash(phone)
+  const secureLookup = phoneHash
+    ? await db.from('customers').select('id,name,phone,loyalty_points').eq('pii_phone_hash', phoneHash).maybeSingle()
+    : { data: null, error: null }
+  if (secureLookup.error) return NextResponse.json({ error: 'Unable to match this review to its customer profile.' }, { status: 500 })
+  const legacyLookup = secureLookup.data
+    ? { data: null, error: null }
+    : await db.from('customers').select('id,name,phone,loyalty_points').eq('phone', phone).maybeSingle()
+  const customer = secureLookup.data || legacyLookup.data
+  const customerError = legacyLookup.error
   if (customerError || !customer) return NextResponse.json({ error: 'No customer profile matches this review. Review approval cannot award points yet.' }, { status: 400 })
   const points = review.photo_path ? PHOTO_REVIEW_POINTS : TEXT_REVIEW_POINTS
   const now = new Date().toISOString()
-  const { error: rewardError } = await db.from('rewards').insert({ review_id: String(review.id), customer_phone: phone, customer_name: text(review.customer_name, 120) || customer.name || null, type: 'review', description: `${points} points earned for an approved ${review.photo_path ? 'photo ' : ''}review of ${text(review.product_name, 140)}`, coupon_code: null, discount_value: points, is_used: false, expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() })
+  const customerPhone = normalizePhoneForHash(customer.phone) || phone
+  const { error: rewardError } = await db.from('rewards').insert({ review_id: String(review.id), customer_phone: customerPhone, customer_name: text(review.customer_name, 120) || customer.name || null, type: 'review', description: `${points} points earned for an approved ${review.photo_path ? 'photo ' : ''}review of ${text(review.product_name, 140)}`, coupon_code: null, discount_value: points, is_used: false, expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() })
   if (rewardError && rewardError.code !== '23505') return NextResponse.json({ error: 'Unable to create review points.' }, { status: 500 })
   const alreadyAwarded = rewardError?.code === '23505'
   const balance = Number(customer.loyalty_points || 0) + points
   if (!alreadyAwarded) {
     const update = await db.from('customers').update({ loyalty_points: balance }).eq('id', customer.id)
     if (update.error) return NextResponse.json({ error: 'Review points were created, but the customer balance could not be updated.' }, { status: 500 })
-    const ledger = await db.from('loyalty_ledger').insert({ customer_id: customer.id, customer_name: customer.name || '', customer_phone: customer.phone || phone, type: 'review', points, balance_after: balance, description: `${points} points for an approved ${review.photo_path ? 'dog-photo ' : ''}review of ${text(review.product_name, 140)}` })
+    const ledger = await db.from('loyalty_ledger').insert({ customer_id: customer.id, customer_name: customer.name || '', customer_phone: customerPhone, type: 'review', points, balance_after: balance, description: `${points} points for an approved ${review.photo_path ? 'dog-photo ' : ''}review of ${text(review.product_name, 140)}` })
     if (ledger.error) console.error('Review reward ledger entry failed', ledger.error)
   }
   const approval = await db.from('product_reviews').update({ status: 'published', approved_at: now, approved_by: 'admin', review_points_awarded_at: now, reward_points: alreadyAwarded ? Number(review.reward_points || points) : points }).eq('id', id)
