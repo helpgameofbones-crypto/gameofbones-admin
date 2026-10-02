@@ -41,7 +41,7 @@ export default function AbandonedCartsPage() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Abandoned Carts</h1>
       <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>
-        Customers who added items to cart but didn't complete checkout. Contact info is only captured if they reached the checkout page and started typing — most abandon earlier, so many rows here are anonymous by nature, not a bug.
+        Customers who added items to cart but didn't complete checkout. A shopper can choose to save their bowl with an email or WhatsApp number; checkout entries are also captured. Bags left before either step stay anonymous by design.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>

@@ -23,16 +23,21 @@ export async function POST(req: NextRequest) {
   const originError = rejectUnexpectedOrigin(req); if (originError) return originError
   const limitError = await rateLimit(req, 'abandoned-cart', 10, 60 * 60 * 1000); if (limitError) return limitError
   const { phone, email, name, items, total, cart_token: incomingCartToken } = await req.json()
-  const normalizedPhone = cleanText(phone,20).replace(/^\+?91/, ''), normalizedEmail=cleanText(email,254), normalizedName=cleanText(name,100)
+  const normalizedPhone = cleanText(phone,20).replace(/^\+?91/, ''), normalizedEmail=cleanText(email,254).toLowerCase(), normalizedName=cleanText(name,100)
   const cartToken = validCartToken(incomingCartToken) ? cleanText(incomingCartToken,90) : ''
   const hasPhone = /^\d{10}$/.test(normalizedPhone)
-  // Record a bag immediately. Contact details are optional and are only added
-  // when the shopper has actually entered them at checkout.
-  if ((!hasPhone && !cartToken) || !Array.isArray(items) || items.length < 1 || items.length > 25 || !Number.isFinite(Number(total)) || Number(total) < 1 || Number(total) > 100000) return NextResponse.json({ ok:true }, { headers })
+  const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+  const hasContact = hasPhone || hasEmail
+  // Record a bag immediately. Contact details are only stored after the
+  // shopper explicitly submits them in the cart-save form or checkout.
+  if ((!hasContact && !cartToken) || !Array.isArray(items) || items.length < 1 || items.length > 25 || !Number.isFinite(Number(total)) || Number(total) < 1 || Number(total) > 100000) return NextResponse.json({ ok:true }, { headers })
   let existing: { id:string; coupon_code:string|null }|null = null
-  if (hasPhone) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('customer_phone', normalizedPhone).maybeSingle(); if (current.error) throw current.error; existing=current.data }
-  if (!existing && cartToken) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('cart_token', cartToken).maybeSingle(); if (current.error) throw current.error; existing=current.data }
-  const couponCode = existing?.coupon_code || (hasPhone ? await generateCoupon() : null)
+  // Prefer the browser's cart token: it upgrades the anonymous row rather
+  // than merging separate carts solely because a customer reuses an email.
+  if (cartToken) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('cart_token', cartToken).maybeSingle(); if (current.error) throw current.error; existing=current.data }
+  if (!existing && hasPhone) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('customer_phone', normalizedPhone).maybeSingle(); if (current.error) throw current.error; existing=current.data }
+  if (!existing && hasEmail) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('customer_email', normalizedEmail).maybeSingle(); if (current.error) throw current.error; existing=current.data }
+  const couponCode = existing?.coupon_code || (hasContact ? await generateCoupon() : null)
   // Product events use GA4's item_name, while checkout lines use name or
   // product_name. Store one stable shape so the recovery dashboard and email
   // always show the actual treat instead of the generic fallback “Item”.
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
       price: Math.max(0, Math.min(100000, Number(line.price || 0) || 0)),
     }
   })
-  const payload = { customer_phone:hasPhone?normalizedPhone:null, customer_email:hasPhone?(normalizedEmail||null):null, customer_name:hasPhone?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasPhone?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasPhone?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasPhone?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasPhone?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
+  const payload = { customer_phone:hasPhone?normalizedPhone:null, customer_email:hasEmail?normalizedEmail:null, customer_name:hasContact?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasEmail?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasContact&&normalizedName?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasEmail?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasContact?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
   const result = existing ? await supabase.from('abandoned_carts').update(payload).eq('id',existing.id) : await supabase.from('abandoned_carts').insert(payload)
   if (result.error) throw result.error
   return NextResponse.json({ ok:true, coupon_code:couponCode }, { headers })
