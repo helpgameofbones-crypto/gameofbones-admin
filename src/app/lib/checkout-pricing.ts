@@ -69,7 +69,11 @@ export async function checkoutQuote(
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
   let couponRate = sale_items_present ? 0 : coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   let singleUseCouponId: string | null = null
-  if (!sale_items_present && !couponRate && /^(?:BDAY|SPIN)[A-Z0-9]+$/.test(coupon)) {
+  // Private offers are created in the admin coupon table and deliberately do
+  // not need to be listed anywhere on the storefront.  Always validate the
+  // entered code against that table instead of granting a discount merely
+  // because its name matches a prefix.
+  if (!sale_items_present && !couponRate && coupon) {
     const { data: singleUseCoupon, error: singleUseCouponError } = await database
       .from('coupons')
       .select('id,type,value,min_order,max_uses,uses_count,valid_from,valid_until,is_active')
@@ -86,9 +90,11 @@ export async function checkoutQuote(
       && (!singleUseCoupon?.valid_from || String(singleUseCoupon.valid_from) <= today)
       && (!singleUseCoupon?.valid_until || String(singleUseCoupon.valid_until) >= today)
       && (singleUseCoupon?.max_uses == null || Number(singleUseCoupon.uses_count || 0) < Number(singleUseCoupon.max_uses))
-    if (!valid) throw new Error('This private offer has expired, was already used, or is not valid for this treat subtotal.')
+    if (!valid) throw new Error('This offer is invalid, expired, fully redeemed, or not valid for this treat subtotal.')
     couponRate = Number(singleUseCoupon?.value) / 100
-    singleUseCouponId = String(singleUseCoupon.id)
+    // Existing birthday and spin rewards are intentionally one-time offers.
+    // Do not disable a normal private campaign code after its first order.
+    if (Number(singleUseCoupon?.max_uses) === 1) singleUseCouponId = String(singleUseCoupon.id)
   }
   const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
   // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
