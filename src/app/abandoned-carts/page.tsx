@@ -6,7 +6,12 @@ function parseItems(items: any) {
   if (!items) return []
   if (typeof items === 'string') { try { items = JSON.parse(items) } catch { return [] } }
   if (!Array.isArray(items)) return []
-  return items.map((it: any) => `${it.name || 'Item'}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`)
+  return items.map((it: any) => {
+    const name = it.name || it.product_name || it.item_name || 'Item'
+    const pack = it.sizeLabel || it.packLabel || it.pack_label || ''
+    const quantity = Number(it.qty || it.quantity || 1)
+    return `${name}${pack ? ' (' + pack + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}`
+  })
 }
 
 export default function AbandonedCartsPage() {

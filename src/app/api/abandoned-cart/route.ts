@@ -33,7 +33,19 @@ export async function POST(req: NextRequest) {
   if (hasPhone) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('customer_phone', normalizedPhone).maybeSingle(); if (current.error) throw current.error; existing=current.data }
   if (!existing && cartToken) { const current = await supabase.from('abandoned_carts').select('id,coupon_code').eq('cart_token', cartToken).maybeSingle(); if (current.error) throw current.error; existing=current.data }
   const couponCode = existing?.coupon_code || (hasPhone ? await generateCoupon() : null)
-  const payload = { customer_phone:hasPhone?normalizedPhone:null, customer_email:hasPhone?(normalizedEmail||null):null, customer_name:hasPhone?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasPhone?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasPhone?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasPhone?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasPhone?1:0, cart_token:cartToken||null, items:items.slice(0,25), total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
+  // Product events use GA4's item_name, while checkout lines use name or
+  // product_name. Store one stable shape so the recovery dashboard and email
+  // always show the actual treat instead of the generic fallback “Item”.
+  const cartItems = items.slice(0, 25).map((item: unknown) => {
+    const line = item && typeof item === 'object' ? item as Record<string, unknown> : {}
+    return {
+      name: cleanText(line.name || line.product_name || line.item_name, 160) || 'Game of Bones treat',
+      sizeLabel: cleanText(line.sizeLabel || line.packLabel || line.pack_label, 80),
+      qty: Math.max(1, Math.min(99, Math.floor(Number(line.qty || line.quantity || 1) || 1))),
+      price: Math.max(0, Math.min(100000, Number(line.price || 0) || 0)),
+    }
+  })
+  const payload = { customer_phone:hasPhone?normalizedPhone:null, customer_email:hasPhone?(normalizedEmail||null):null, customer_name:hasPhone?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasPhone?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasPhone?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasPhone?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasPhone?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
   const result = existing ? await supabase.from('abandoned_carts').update(payload).eq('id',existing.id) : await supabase.from('abandoned_carts').insert(payload)
   if (result.error) throw result.error
   return NextResponse.json({ ok:true, coupon_code:couponCode }, { headers })
