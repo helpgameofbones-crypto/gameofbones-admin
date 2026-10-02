@@ -24,6 +24,7 @@ function discountLabel(c: Coupon) {
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   // Live usage counts, keyed by coupon code — computed from actual orders
   // rather than trusting a stored counter, since nothing in this codebase
   // ever incremented one. This also matches how the storefront's checkout
@@ -101,14 +102,30 @@ export default function CouponsPage() {
     }
   };
 
+  // Keep the day-to-day view focused on offers that customers can actually
+  // redeem. Old one-time codes remain available in the archive for order and
+  // support history, rather than being destructively deleted.
+  const today = new Date().toISOString().slice(0, 10);
+  const isLive = (coupon: Coupon) => Boolean(coupon.is_active) && (!coupon.valid_until || coupon.valid_until >= today);
+  const liveCoupons = coupons.filter(isLive);
+  const archivedCoupons = coupons.filter(coupon => !isLive(coupon));
+  const couponRows = showArchived ? archivedCoupons : liveCoupons;
+
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: '32px', color: '#1a1008', margin: 0 }}>Coupons</h1>
-        <button onClick={() => setShowModal(true)} style={{ padding: '10px 24px', background: '#c8973a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-          + Create Coupon
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowArchived(!showArchived)} style={{ padding: '10px 16px', background: '#fff', color: '#1a1008', border: '1px solid #d8cdbd', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+            {showArchived ? 'Show live offers' : `View archived (${archivedCoupons.length})`}
+          </button>
+          <button onClick={() => setShowModal(true)} style={{ padding: '10px 24px', background: '#c8973a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+            + Create Coupon
+          </button>
+        </div>
       </div>
+
+      <p style={{ margin: '-10px 0 20px', color: '#6b6259', fontSize: 14 }}>{showArchived ? 'Inactive and expired codes are kept here for record-keeping only.' : 'Only coupons customers can use now are shown below.'}</p>
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -174,7 +191,7 @@ export default function CouponsPage() {
       </div>
 
       <div style={{ display: 'grid', gap: '12px' }}>
-        {coupons.map((coupon) => (
+        {couponRows.map((coupon) => (
           <div key={coupon.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', alignItems: 'center' }}>
             <div><p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{coupon.code}</p></div>
             <div><p style={{ color: '#c8973a', fontWeight: '600', margin: 0 }}>{discountLabel(coupon)}</p></div>
