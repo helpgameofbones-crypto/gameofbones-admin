@@ -7,7 +7,7 @@ import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
-import { sendMetaPurchase } from '@/app/lib/meta-capi'
+import { clientIpFromRequest, sendMetaPurchase, type MetaBrowserSignals } from '@/app/lib/meta-capi'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -170,8 +170,12 @@ export async function POST(req: NextRequest) {
   // COD is a confirmed order at save time. Prepaid purchases are sent only by
   // the signed Razorpay webhook below, never from an unverified browser call.
   if (shouldFinalizeOrder && data?.[0] && order.payment_method === 'cod') {
-    sendMetaPurchase({ ref: order.ref, value: quote.grand_total, items: quote.items, email, phone,
-      clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim(), userAgent: req.headers.get('user-agent') }).catch(error => console.error('Meta CAPI COD event failed', error))
+    const metaBrowser = order.meta && typeof order.meta === 'object' ? order.meta as MetaBrowserSignals : null
+    sendMetaPurchase({ ref: order.ref, value: quote.grand_total, items: quote.items, email, phone, name,
+      city: typeof addressDetails.city === 'string' ? addressDetails.city : '',
+      state: typeof addressDetails.state === 'string' ? addressDetails.state : '',
+      pincode: typeof addressDetails.pincode === 'string' ? addressDetails.pincode : '',
+      clientIp: clientIpFromRequest(req.headers), userAgent: req.headers.get('user-agent'), browser: metaBrowser }).catch(error => console.error('Meta CAPI COD event failed', error))
   }
   // Book delivery only after the order is safely persisted. A Delhivery
   // problem is recorded server-side but can never turn a paid checkout into a
