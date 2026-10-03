@@ -4,7 +4,7 @@ import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
-import { sendMetaPurchase } from '@/app/lib/meta-capi'
+import { metaSignalsFromNotes, sendMetaPurchase } from '@/app/lib/meta-capi'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 
 export const maxDuration = 20
@@ -73,6 +73,21 @@ async function checkoutReference(payment: { notes?: Record<string, unknown>; ord
   }
 }
 
+// Payment notes normally mirror the order's notes; fall back to the order
+// itself so the Meta signals captured at checkout are never silently lost.
+async function checkoutMetaSignals(payment: { notes?: Record<string, unknown>; order_id?: string }) {
+  let notes = payment.notes || {}
+  if (!notes.meta_fbp && !notes.meta_ip && !notes.meta_url && payment.order_id) {
+    try {
+      const order = await razorpay.orders.fetch(payment.order_id) as { notes?: Record<string, unknown> }
+      notes = { ...(order.notes || {}), ...notes }
+    } catch (error) {
+      console.error('[razorpay-webhook] Could not fetch order notes for Meta signals', error)
+    }
+  }
+  return metaSignalsFromNotes(notes)
+}
+
 async function matchingAttempt(ref: string): Promise<Attempt | null> {
   for (const delay of [0, 1500, 2500]) {
     if (delay) await sleep(delay)
@@ -133,7 +148,8 @@ export async function POST(req: NextRequest) {
         if (error) throw error
         await confirmEmailWhenPaid(updatedOrder)
         await bookWhenComplete(updatedOrder)
-        sendMetaPurchase({ ref, value: Number(updatedOrder?.grand_total || payment.amount || 0) / (updatedOrder?.grand_total ? 1 : 100), items: updatedOrder?.items, email: payment.email, phone: payment.contact }).catch(error => console.error('Meta CAPI Purchase event failed', error))
+        const meta = await checkoutMetaSignals(payment)
+        sendMetaPurchase({ ref, value: Number(updatedOrder?.grand_total || payment.amount || 0) / (updatedOrder?.grand_total ? 1 : 100), items: updatedOrder?.items, email: payment.email, phone: payment.contact, ...meta }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       } else {
         const attempt = await matchingAttempt(ref)
         const notes = payment.notes as Record<string, unknown> | undefined
@@ -190,7 +206,9 @@ export async function POST(req: NextRequest) {
         if (error) throw error
         await confirmEmailWhenPaid(insertedOrder)
         await bookWhenComplete(insertedOrder)
-        sendMetaPurchase({ ref, value: amount, items, email: payment.email, phone }).catch(error => console.error('Meta CAPI Purchase event failed', error))
+        const meta = await checkoutMetaSignals(payment)
+        sendMetaPurchase({ ref, value: amount, items, email: payment.email, phone, ...meta,
+          city: meta.city || address?.city || '', state: meta.state || address?.state || '', pincode: meta.pincode || address?.pincode || '' }).catch(error => console.error('Meta CAPI Purchase event failed', error))
       }
     }
 
