@@ -8,6 +8,7 @@ import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { clientIpFromRequest, sendMetaPurchase, type MetaBrowserSignals } from '@/app/lib/meta-capi'
+import { SPIN_GIFT_MIN_ORDER, claimSpinGift, findSpinGift, releaseSpinGift } from '@/app/lib/spin-gifts'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -79,7 +80,23 @@ export async function POST(req: NextRequest) {
     }
   }
   const webhookPlaceholder = Boolean(existing && !existing.customer_id)
-  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_weight_grams: item.pack_weight_grams, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
+  const storedItems: Array<Record<string, unknown>> = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_weight_grams: item.pack_weight_grams, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
+  // Spin-to-win free gift: added at ₹0 to a new order of ₹499+ placed with the
+  // same mobile number or email. It is not a discount, so it stacks with any
+  // coupon code and reward points. Claimed atomically so it is used once.
+  let claimedGift: { couponId: string; label: string } | null = null
+  if ((!existing || webhookPlaceholder) && quote.subtotal >= SPIN_GIFT_MIN_ORDER) {
+    try {
+      const eligibleGift = await findSpinGift(supabase, { phoneHash, emailHash: piiHash(normalizeEmailForHash(email)) })
+      if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
+        claimedGift = { couponId: eligibleGift.couponId, label: eligibleGift.gift.label }
+        storedItems.push({ product_name: eligibleGift.gift.product_name, pack_label: eligibleGift.gift.pack_label, pack_weight_grams: null, pack_price: 0, compare_price: null, is_sale: false, is_gift: true, gift_code: eligibleGift.code, quantity: eligibleGift.gift.quantity })
+      }
+    } catch (giftError) {
+      // A gift lookup problem must never block a paying customer's order.
+      console.error('[save-order] spin gift lookup failed', giftError)
+    }
+  }
   const address = revealLegacyPiiValue(order.shipping_address)
   const addressDetails = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
   const structuredAddress = Object.keys(addressDetails).length ? addressDetails : address
@@ -96,7 +113,7 @@ export async function POST(req: NextRequest) {
   const { error, data } = existing
     ? await supabase.from('orders').update(updateData).eq('id', existing.id).select()
     : await supabase.from('orders').insert([insertData]).select()
-  if (error) { console.error('[save-order] persistence failed', error); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:400, headers }) }
+  if (error) { if (claimedGift) await releaseSpinGift(supabase, claimedGift.couponId); console.error('[save-order] persistence failed', error); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:400, headers }) }
   const shouldFinalizeOrder = !existing || webhookPlaceholder
   if (shouldFinalizeOrder) await supabase.from('customers').update({ total_orders: Number(customerRecord.total_orders || 0) + 1, total_spent: Number(customerRecord.total_spent || 0) + quote.grand_total }).eq('id', customerRecord.id)
   // Reserve redeemed points at the same moment the successful order is saved.
@@ -188,6 +205,6 @@ export async function POST(req: NextRequest) {
       console.error('[checkout] Delhivery booking failed after order save', shipmentError)
     }
   }
-  return NextResponse.json({ success:true, profile_created: customerCreated, order:data }, { status:201, headers })
+  return NextResponse.json({ success:true, profile_created: customerCreated, order:data, free_gift: claimedGift?.label || null }, { status:201, headers })
  } catch (e: unknown) { console.error('[save-order] unexpected failure', e); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:500, headers }) }
 }
