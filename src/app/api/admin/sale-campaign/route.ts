@@ -47,19 +47,22 @@ async function audience(): Promise<Contact[]> {
 export async function POST(req: NextRequest) {
   const authError = await requireAdmin(req)
   if (authError) return authError
-  const send = (await req.json().catch(() => ({}))).send === true
+  const body = await req.json().catch(() => ({}))
+  const send = body.send === true
+  const prospectsOnly = body.audience === 'prospects'
   const contacts = await audience()
   const buyers = contacts.filter(contact => contact.purchased)
   const prospects = contacts.filter(contact => !contact.purchased)
   if (!send) return NextResponse.json({ buyers: buyers.length, prospects: prospects.length, total: contacts.length })
+  const recipients = prospectsOnly ? prospects : contacts
   let sent = 0
   const errors: string[] = []
-  for (const contact of contacts) {
+  for (const contact of recipients) {
     try {
       await resend.emails.send({ from: 'onboarding@resend.dev', to: contact.email, subject: contact.purchased ? 'Your Game of Bones family sale is on 🐾' : 'Welcome treat: 15% off your first order 🐾', html: emailHtml(contact) })
       sent++
     } catch { errors.push(contact.email) }
   }
-  await database.from('activity_log').insert({ action: 'sale campaign sent', entity_type: 'campaign', entity_name: 'sale-oct-2026', details: `Sent ${sent}; buyers ${buyers.length}; prospects ${prospects.length}; failed ${errors.length}.` })
-  return NextResponse.json({ sent, buyers: buyers.length, prospects: prospects.length, failed: errors.length })
+  await database.from('activity_log').insert({ action: prospectsOnly ? 'sale prospects campaign sent' : 'sale campaign sent', entity_type: 'campaign', entity_name: 'sale-oct-2026', details: `Sent ${sent}; recipients ${recipients.length}; buyers ${buyers.length}; prospects ${prospects.length}; failed ${errors.length}.` })
+  return NextResponse.json({ sent, buyers: buyers.length, prospects: prospects.length, recipients: recipients.length, failed: errors.length })
 }
