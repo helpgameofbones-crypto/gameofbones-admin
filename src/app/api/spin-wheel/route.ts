@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const expires = new Date(Date.now() + SPIN_GIFT_VALID_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const couponInsert = await supabase.from('coupons').insert({ code: couponCode, type: 'free', value: 0, min_order: SPIN_GIFT_MIN_ORDER, max_uses: 1, uses_count: 0, valid_from: today, valid_until: expires, is_active: true })
     if (couponInsert.error) throw couponInsert.error
-    const insert = await supabase.from('email_captures').insert({ email, name, phone, source: 'spin_to_win', status: 'active', prize: prize.label, coupon_code: couponCode, marketing_consent: true, marketing_consent_at: new Date().toISOString(), pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
+    const insert = await supabase.from('email_captures').insert({ source: 'spin_to_win', status: 'active', prize: prize.label, coupon_code: couponCode, marketing_consent: true, marketing_consent_at: new Date().toISOString(), pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
     if (insert.error) throw insert.error
     try {
       await sendWheelWelcomeEmail({ name, email, couponCode, prize: prize.label, gift: true })
