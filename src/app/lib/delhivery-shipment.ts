@@ -26,11 +26,26 @@ function quantity(item: any): number {
   return Math.max(1, Number(item?.quantity ?? item?.qty ?? 1) || 1)
 }
 
+// pii_address_ciphertext decrypts to a JSON string (checkout stores an
+// object), or to the legacy "line, city, state, PIN" text. Parse both; the old
+// code treated the decrypted string as "no address" and fell back to {}.
+function decryptedAddress(order: ShipmentOrder): AddressDetails | null {
+  let decrypted: unknown
+  try { decrypted = revealLegacyPiiValue(order.pii_address_ciphertext) } catch { return null }
+  if (decrypted && typeof decrypted === 'object') return decrypted as AddressDetails
+  if (typeof decrypted !== 'string' || !decrypted.trim()) return null
+  try {
+    const parsed = JSON.parse(decrypted)
+    if (parsed && typeof parsed === 'object') return parsed as AddressDetails
+    if (typeof parsed === 'string') decrypted = parsed
+  } catch { /* not JSON: legacy comma-separated text */ }
+  const structured = addressFromCheckoutAttempt(decrypted)
+  return structured || { line1: String(decrypted) }
+}
+
 function addressFrom(order: ShipmentOrder, provided?: AddressDetails): { line1: string; line2: string; city: string; state: string; pincode: string } {
-  const encrypted = revealLegacyPiiValue(order.pii_address_ciphertext)
-  const stored = encrypted && typeof encrypted === 'object'
-    ? encrypted as AddressDetails
-    : order.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : {}
+  const stored = decryptedAddress(order)
+    || (order.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : {})
   const source = provided && typeof provided === 'object' ? provided : stored
   return {
     line1: text(source.line1 || source.street || source.address || stored.line1 || stored.street || stored.address),
@@ -72,6 +87,29 @@ async function recoverAddressFromCheckoutAttempt(order: ShipmentOrder) {
   }
 }
 
+function safeReveal(value: unknown): string {
+  try { return revealLegacyPii(value) } catch { return '' }
+}
+
+async function shipmentContact(order: ShipmentOrder): Promise<{ name: string; phone: string }> {
+  const cleanPhone = (value: string) => value.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '')
+  let name = safeReveal(order.pii_name_ciphertext) || safeReveal(order.customer_name)
+  let phone = cleanPhone(safeReveal(order.pii_phone_ciphertext) || safeReveal(order.customer_phone))
+  if ((!name || !/^\d{10}$/.test(phone)) && order.customer_id) {
+    try {
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      const { data: customer } = await supabase.from('customers').select('name,phone,pii_name_ciphertext,pii_phone_ciphertext').eq('id', String(order.customer_id)).maybeSingle()
+      if (customer) {
+        name ||= safeReveal(customer.pii_name_ciphertext) || safeReveal(customer.name)
+        if (!/^\d{10}$/.test(phone)) phone = cleanPhone(safeReveal(customer.pii_phone_ciphertext) || safeReveal(customer.phone))
+      }
+    } catch (error) {
+      console.error('[delhivery] customer contact lookup failed', { orderId: order.id, error })
+    }
+  }
+  return { name, phone }
+}
+
 /**
  * Books one order with Delhivery and persists its AWB. It is deliberately
  * idempotent: retries after a network timeout never create another booking
@@ -93,10 +131,15 @@ export async function createDelhiveryShipment(input: {
   order = await recoverAddressFromCheckoutAttempt(order)
 
   const address = addressFrom(order, input.addressDetails)
-  const name = revealLegacyPii(order.customer_name)
-  const phone = revealLegacyPii(order.customer_phone).replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '')
+  // Website checkout and the Razorpay webhook store contact details only in the
+  // encrypted pii_* columns; customer_name / customer_phone are legacy fields
+  // that new orders never fill. Reading only the legacy fields made every
+  // website order look "incomplete", so no AWB was ever requested.
+  const { name, phone } = await shipmentContact(order)
   if (!name || !/^\d{10}$/.test(phone) || !address.line1 || !address.city || !address.state || !/^\d{6}$/.test(address.pincode)) {
-    return { ok: false as const, skipped: true as const, error: 'Order is missing a complete delivery name, phone number, or address.' }
+    const missing = [!name && 'name', !/^\d{10}$/.test(phone) && 'phone', !address.line1 && 'street address', !address.city && 'city', !address.state && 'state', !/^\d{6}$/.test(address.pincode) && 'PIN code'].filter(Boolean).join(', ')
+    console.error('[delhivery] shipment skipped: incomplete order', { orderId, ref: order.ref, missing })
+    return { ok: false as const, skipped: true as const, error: `Order is missing: ${missing}.` }
   }
 
   const items = Array.isArray(order.items) ? order.items : []
