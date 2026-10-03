@@ -23,6 +23,7 @@ const SECTIONS = [
     { name: 'Marketing & Ad Spend', href: '/marketing', icon: Megaphone, desc: 'Meta spend, ROAS, pixels and tracking links' },
     { name: 'Campaign setup', href: '/campaigns', icon: Megaphone, desc: 'Build audiences and send campaigns' },
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
+    { name: 'Prospects', href: '/prospects', icon: Users, desc: 'Captured contacts without a purchase' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Spin & Leads', href: '/email-captures', icon: Mail, desc: 'Spin-to-Win entries and email captures' },
     { name: 'Review approval', href: '/reviews', icon: HeartHandshake, desc: 'Moderate reviews and award points' },
