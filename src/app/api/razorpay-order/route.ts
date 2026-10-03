@@ -5,6 +5,7 @@ import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { createClient } from '@supabase/supabase-js'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
+import { clientIpFromRequest } from '@/app/lib/meta-capi'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -40,7 +41,9 @@ export async function POST(req: NextRequest) {
       amount: quote.grand_total * 100,
       currency: 'INR',
       receipt: receipt || 'GOB-' + Date.now(),
-      notes: notes || {},
+      // The Razorpay webhook has no browser context, so record the shopper's IP
+      // here for the server-side Meta Purchase event (Razorpay allows 15 notes).
+      notes: { ...(notes && typeof notes === 'object' ? notes : {}), ...(clientIpFromRequest(req.headers) ? { meta_ip: clientIpFromRequest(req.headers) } : {}) },
     })
     return NextResponse.json({
       order_id: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID, quote,
