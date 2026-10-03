@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
             <span style="font-weight:700;color:#c8973a">${o.ref}</span>
             <span style="font-weight:700;color:#1a1008">Rs.${o.grand_total?.toLocaleString('en-IN')}</span>
           </div>
-          <div style="color:#8a7a6a;margin-top:2px">${revealLegacyPii(o.customer_name)} · ${revealLegacyPii(o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
+          <div style="color:#8a7a6a;margin-top:2px">${revealLegacyPii(o.pii_name_ciphertext || o.customer_name)} · ${revealLegacyPii(o.pii_phone_ciphertext || o.customer_phone)} · ${o.payment_method?.toUpperCase()}</div>
         </div>`).join('') || ''}
     </div>` : ''}
   </div>
