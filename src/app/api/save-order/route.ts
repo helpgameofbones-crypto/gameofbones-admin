@@ -55,14 +55,14 @@ export async function POST(req: NextRequest) {
   }
   const canRedeemPoints = Boolean(session && normalizePhoneForHash(session.phone) === normalizePhoneForHash(phone))
   const quote = await checkoutQuote(supabase, order.items, order.payment_method, order.coupon_code, canUseWelcome, canRedeemPoints ? Number(customerRecord.loyalty_points || 0) : 0, order.loyalty_points_redeemed)
-  const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id').eq('ref',order.ref).limit(1)
+  const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id,items').eq('ref',order.ref).limit(1)
   const transactionId = typeof order.transaction_id === 'string' ? order.transaction_id.trim() : ''
   // If the webhook got there first under Razorpay's order ID, join that
   // placeholder to the browser's GOB reference instead of inserting a second
   // order for the exact same payment.
   const { data: existingByTransaction } = !existingByRef?.length && transactionId
-    ? await supabase.from('orders').select('id,ref,customer_id').eq('transaction_id', transactionId).limit(1)
-    : { data: [] as Array<{ id: string; ref: string; customer_id: string | null }> }
+    ? await supabase.from('orders').select('id,ref,customer_id,items').eq('transaction_id', transactionId).limit(1)
+    : { data: [] as Array<{ id: string; ref: string; customer_id: string | null; items: unknown }> }
   const existing = existingByRef?.[0] || existingByTransaction?.[0] || null
   // Coupons such as PAWTY25 are configured as one use per customer in the
   // admin table. Enforce that rule server-side at final checkout, rather than
@@ -96,6 +96,11 @@ export async function POST(req: NextRequest) {
       // A gift lookup problem must never block a paying customer's order.
       console.error('[save-order] spin gift lookup failed', giftError)
     }
+  }
+  // If the payment webhook created this order first and already added the gift,
+  // carry that line over instead of dropping it when the full order is saved.
+  if (!claimedGift && webhookPlaceholder && Array.isArray(existing?.items)) {
+    for (const line of existing.items as Array<Record<string, unknown>>) if (line && line.is_gift === true) storedItems.push(line)
   }
   const address = revealLegacyPiiValue(order.shipping_address)
   const addressDetails = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
