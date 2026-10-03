@@ -30,7 +30,12 @@ export function verifyCustomerSession(token: string | null): CustomerSession | n
   if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null
   try {
     const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as CustomerSession
-    return /^\d{10}$/.test(session.phone) && Number.isFinite(session.expiresAt) && session.expiresAt > Date.now() ? session : null
+    // New checkout data always uses a ten-digit mobile number. A small set of
+    // legacy customer profiles, however, contain a short numeric identifier
+    // from the old importer. They may sign in only after proving control of
+    // their email through the one-time code flow, so keep those accounts able
+    // to see their own historical orders and reward balance.
+    return /^\d{3,13}$/.test(session.phone) && Number.isFinite(session.expiresAt) && session.expiresAt > Date.now() ? session : null
   } catch { return null }
 }
 

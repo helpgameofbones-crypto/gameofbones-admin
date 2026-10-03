@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Return the same response for an unknown account. An email address is an
     // identifier, not proof of account ownership, so this must not be an
     // account-enumeration oracle.
-    if (error || !identity || !/^\d{10}$/.test(phone)) return NextResponse.json({ ok: true }, { status: 202, headers })
+    if (error || !identity || !/^\d{3,13}$/.test(phone)) return NextResponse.json({ ok: true }, { status: 202, headers })
     const code = String(randomInt(100000, 1000000))
     // A later code supersedes every earlier code for the same customer. This
     // keeps only the most recently delivered email usable.

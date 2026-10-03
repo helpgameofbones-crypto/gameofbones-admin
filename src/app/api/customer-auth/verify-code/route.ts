@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const emailLimitError = await rateLimit(request, 'customer-otp-verify-email', 5, 15 * 60 * 1000, email); if (emailLimitError) return emailLimitError
     const { identity, error: customerError } = await findCustomerLoginIdentity(email)
     const phone = identity?.phone || ''
-    if (customerError || !/^\d{10}$/.test(phone)) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
+    if (customerError || !/^\d{3,13}$/.test(phone)) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
     const { data: otp, error } = await supabase.from('customer_email_otps').select('id').eq('phone', phone).eq('code_hash', customerOtpHash(phone, code)).is('used_at', null).gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (error || !otp) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
     // The conditional update is the single-use check: two simultaneous
