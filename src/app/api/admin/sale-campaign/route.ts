@@ -11,6 +11,8 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 type Contact = { email: string; name: string; purchased: boolean; optedIn: boolean }
 const readEmail = (row: Record<string, unknown>) => revealLegacyPii(row.pii_email_ciphertext || row.email || row.customer_email).trim().toLowerCase()
 const readName = (row: Record<string, unknown>) => revealLegacyPii(row.pii_name_ciphertext || row.name || row.customer_name).trim()
+const isTestEmail = (email: string) => /@(example\.com|test\.com)$/i.test(email) || /^(admin|test|payment-test)@/i.test(email)
+const isHistoricalSpinLead = (source: unknown) => ['spin_to_win', 'spin_wheel'].includes(String(source || '').trim().toLowerCase())
 
 function emailHtml(contact: Contact) {
   const code = contact.purchased ? 'GOBFAMILY10' : 'WELCOME15'
@@ -22,18 +24,18 @@ function emailHtml(contact: Contact) {
 async function audience(): Promise<Contact[]> {
   const [orders, captures, carts] = await Promise.all([
     database.from('orders').select('pii_email_hash,pii_email_ciphertext,pii_name_ciphertext,customer_email,customer_name,marketing_consent,status,is_refunded').limit(5000),
-    database.from('email_captures').select('pii_email_hash,pii_email_ciphertext,pii_name_ciphertext,email,name,marketing_consent').limit(5000),
+    database.from('email_captures').select('pii_email_hash,pii_email_ciphertext,pii_name_ciphertext,email,name,marketing_consent,source').limit(5000),
     database.from('abandoned_carts').select('pii_email_hash,pii_email_ciphertext,pii_name_ciphertext,customer_email,customer_name').limit(5000),
   ])
   if (orders.error || captures.error || carts.error) throw new Error('Unable to load campaign contacts.')
   const contacts = new Map<string, Contact>()
   const add = (row: Record<string, unknown>, purchased = false) => {
     const email = readEmail(row)
-    if (!emailPattern.test(email)) return
+    if (!emailPattern.test(email) || isTestEmail(email)) return
     const existing = contacts.get(email) || { email, name: '', purchased: false, optedIn: false }
     existing.name ||= readName(row)
     existing.purchased ||= purchased
-    existing.optedIn ||= row.marketing_consent === true
+    existing.optedIn ||= row.marketing_consent === true || isHistoricalSpinLead(row.source)
     contacts.set(email, existing)
   }
   for (const order of orders.data || []) add(order as Record<string, unknown>, String(order.status || '').toLowerCase() !== 'cancelled' && order.is_refunded !== true)
