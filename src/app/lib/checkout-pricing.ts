@@ -24,6 +24,7 @@ export type CheckoutQuote = {
   points_redeemed: number
   points_discount: number
   single_use_coupon_id: string | null
+  coupon_uses_per_customer: number | null
 }
 
 // The browser may display a quote, but it must never be allowed to set the
@@ -71,6 +72,7 @@ export async function checkoutQuote(
   // still apply an eligible code and redeem points against a sale basket.
   let couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
   let singleUseCouponId: string | null = null
+  let couponUsesPerCustomer: number | null = null
   // Private offers are created in the admin coupon table and deliberately do
   // not need to be listed anywhere on the storefront.  Always validate the
   // entered code against that table instead of granting a discount merely
@@ -78,7 +80,7 @@ export async function checkoutQuote(
   if (!couponRate && coupon) {
     const { data: singleUseCoupon, error: singleUseCouponError } = await database
       .from('coupons')
-      .select('id,type,value,min_order,max_uses,uses_count,valid_from,valid_until,is_active')
+      .select('id,type,value,min_order,max_uses,uses_count,usagepercustomer,valid_from,valid_until,is_active')
       .eq('code', coupon)
       .maybeSingle()
     if (singleUseCouponError) throw new Error('Unable to verify your private offer. Please try again.')
@@ -94,6 +96,8 @@ export async function checkoutQuote(
       && (singleUseCoupon?.max_uses == null || Number(singleUseCoupon.uses_count || 0) < Number(singleUseCoupon.max_uses))
     if (!valid) throw new Error('This offer is invalid, expired, fully redeemed, or not valid for this treat subtotal.')
     couponRate = Number(singleUseCoupon?.value) / 100
+    const perCustomer = Number(singleUseCoupon?.usagepercustomer)
+    couponUsesPerCustomer = Number.isInteger(perCustomer) && perCustomer > 0 ? perCustomer : null
     // Existing birthday and spin rewards are intentionally one-time offers.
     // Do not disable a normal private campaign code after its first order.
     if (Number(singleUseCoupon?.max_uses) === 1) singleUseCouponId = String(singleUseCoupon.id)
@@ -106,5 +110,5 @@ export async function checkoutQuote(
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
-  return { items, subtotal, discount, packaging, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
+  return { items, subtotal, discount, packaging, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
 }

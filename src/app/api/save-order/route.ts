@@ -63,6 +63,21 @@ export async function POST(req: NextRequest) {
     ? await supabase.from('orders').select('id,ref,customer_id').eq('transaction_id', transactionId).limit(1)
     : { data: [] as Array<{ id: string; ref: string; customer_id: string | null }> }
   const existing = existingByRef?.[0] || existingByTransaction?.[0] || null
+  // Coupons such as PAWTY25 are configured as one use per customer in the
+  // admin table. Enforce that rule server-side at final checkout, rather than
+  // trusting only the browser's coupon preview.
+  if (!existing && quote.coupon_code && quote.coupon_uses_per_customer) {
+    const { data: priorCouponOrders, error: priorCouponOrdersError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('customer_id', customerRecord.id)
+      .eq('coupon_code', quote.coupon_code)
+      .limit(quote.coupon_uses_per_customer)
+    if (priorCouponOrdersError) throw priorCouponOrdersError
+    if ((priorCouponOrders || []).length >= quote.coupon_uses_per_customer) {
+      return NextResponse.json({ error: 'This offer has already been used on this customer account.' }, { status: 400, headers })
+    }
+  }
   const webhookPlaceholder = Boolean(existing && !existing.customer_id)
   const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
   const address = revealLegacyPiiValue(order.shipping_address)
