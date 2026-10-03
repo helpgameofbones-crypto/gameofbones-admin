@@ -35,8 +35,13 @@ function parseItems(items: any): string[] {
   if (Array.isArray(items)) {
     return items.map((it: any) => {
       if (typeof it === 'string') return it;
-      if (it.name) return `${it.name}${it.sizeLabel ? ' (' + it.sizeLabel + ')' : ''}${it.qty > 1 ? ' x' + it.qty : ''}`;
-      if (it.product_name) return `${it.product_name}${it.pack_label ? ' (' + it.pack_label + ')' : ''}${it.quantity > 1 ? ' x' + it.quantity : ''}`;
+      const name = it.product_name || it.name
+      const label = String(it.pack_label || it.packLabel || it.sizeLabel || it.size || '').trim()
+      const grams = Number(it.pack_weight_grams ?? it.weight_grams)
+      const weight = Number.isFinite(grams) && grams > 0 ? `${grams} g` : ''
+      const pack = [label, weight].filter(Boolean).join(' · ')
+      const quantity = Number(it.quantity ?? it.qty ?? 1)
+      if (name) return `${name}${pack ? ' (' + pack + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}`;
       if (it.product) return it.product;
       // Never expose raw JSON in the workspace. A small number of historic
       // Razorpay recovery records contain only pack metadata, so there is no

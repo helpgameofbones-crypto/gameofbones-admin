@@ -14,7 +14,7 @@ const money = (value: unknown) => {
 }
 
 export type CheckoutQuote = {
-  items: Array<{ name: string; pack_label: string; price: number; compare_price: number; is_sale: boolean; quantity: number }>
+  items: Array<{ name: string; pack_label: string; pack_weight_grams: number | null; price: number; compare_price: number; is_sale: boolean; quantity: number }>
   subtotal: number
   discount: number
   packaging: number
@@ -48,17 +48,22 @@ export async function checkoutQuote(
     const quantity = Math.min(Math.max(Math.floor(Number(line?.quantity) || 0), 1), 99)
     if (!product || !name) throw new Error('One or more treats in your bag are no longer available. Please refresh your bag.')
     const packLabel = cleanLabel(line?.pack_label)
-    const matchedPack = Array.isArray(product.sizes)
-      ? product.sizes.find((pack: unknown) => pack && typeof pack === 'object' && cleanName((pack as Record<string, unknown>).label) === cleanName(packLabel)) as Record<string, unknown> | undefined
-      : undefined
+    const packs = Array.isArray(product.sizes)
+      ? product.sizes.filter((pack: unknown): pack is Record<string, unknown> => Boolean(pack) && typeof pack === 'object')
+      : []
+    const matchedPack = packs.find(pack => cleanName(pack.label) === cleanName(packLabel))
     // Browser carts can retain a pack label from an older catalogue version.
     // Never trust that label or its price; fall back to the current base
     // product when the label no longer exists instead of blocking checkout.
-    const effectivePackLabel = matchedPack ? packLabel : ''
-    const price = money(matchedPack?.price ?? product.price)
-    const compare_price = money(matchedPack?.compare_price ?? product.compare_price)
+    // A one-size product does not need a client-provided label: use the
+    // catalogue's canonical size so legacy carts still create useful orders.
+    const selectedPack = matchedPack || (!packLabel && packs.length === 1 ? packs[0] : undefined)
+    const effectivePackLabel = selectedPack ? cleanLabel(selectedPack.label) : ''
+    const packWeight = selectedPack ? money(selectedPack.weight_grams) || null : null
+    const price = money(selectedPack?.price ?? product.price)
+    const compare_price = money(selectedPack?.compare_price ?? product.compare_price)
     if (!price) throw new Error(`Current pricing is unavailable for ${product.name}.`)
-    return { name: product.name, pack_label: effectivePackLabel, price, compare_price, is_sale: compare_price > price, quantity }
+    return { name: product.name, pack_label: effectivePackLabel, pack_weight_grams: packWeight, price, compare_price, is_sale: compare_price > price, quantity }
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)

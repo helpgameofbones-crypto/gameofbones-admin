@@ -3,7 +3,7 @@ import { revealLegacyPii } from '@/app/lib/pii-crypto'
 import { couponCard, emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
 import { marketingUnsubscribeUrl } from '@/app/lib/marketing-unsubscribe'
 
-type OrderItem = { product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown; pack_label?: unknown; pack_price?: unknown; price?: unknown }
+type OrderItem = { product_name?: unknown; name?: unknown; quantity?: unknown; qty?: unknown; pack_label?: unknown; pack_weight_grams?: unknown; weight_grams?: unknown; pack_price?: unknown; price?: unknown }
 type CustomerOrder = {
   customer_email?: unknown; customer_name?: unknown; pii_email_ciphertext?: unknown; pii_name_ciphertext?: unknown
   ref?: unknown; grand_total?: unknown; subtotal?: unknown; total_amount?: unknown; discount?: unknown; packaging?: unknown
@@ -50,7 +50,9 @@ function orderSummary(order: CustomerOrder): string {
   const itemLines = items.map((item) => {
     const quantity = Math.max(1, Number(item.quantity ?? item.qty ?? 1) || 1)
     const unitPrice = money(item.pack_price ?? item.price)
-    const label = item.pack_label ? ` <span style="color:#665f53">(${escapeHtml(item.pack_label)})</span>` : ''
+    const grams = Number(item.pack_weight_grams ?? item.weight_grams)
+    const packParts = [String(item.pack_label || '').trim(), Number.isFinite(grams) && grams > 0 ? `${grams} g` : ''].filter(Boolean)
+    const label = packParts.length ? ` <span style="color:#665f53">(${escapeHtml(packParts.join(' · '))})</span>` : ''
     const lineTotal = unitPrice ? `<td align="right" style="padding:8px 0;border-bottom:1px solid #eadfca;white-space:nowrap">${rupees(unitPrice * quantity)}</td>` : '<td style="padding:8px 0;border-bottom:1px solid #eadfca"></td>'
     return `<tr><td style="padding:8px 8px 8px 0;border-bottom:1px solid #eadfca">${escapeHtml(item.product_name || item.name || 'Treat')}${label} × ${quantity}</td>${lineTotal}</tr>`
   }).join('') || '<tr><td style="padding:8px 0;color:#665f53">Your Game of Bones treats</td><td></td></tr>'

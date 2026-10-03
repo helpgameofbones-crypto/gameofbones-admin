@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
   }
   const webhookPlaceholder = Boolean(existing && !existing.customer_id)
-  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
+  const storedItems = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_weight_grams: item.pack_weight_grams, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
   const address = revealLegacyPiiValue(order.shipping_address)
   const addressDetails = order.address_details && typeof order.address_details === 'object' ? order.address_details as Record<string, unknown> : {}
   const structuredAddress = Object.keys(addressDetails).length ? addressDetails : address
