@@ -222,12 +222,18 @@ export default function CampaignsPage() {
     name: '', subject: '', body: '', coupon: '', segment: 'all'
   })
   const [saleAudience, setSaleAudience] = useState<{ buyers:number; prospects:number; total:number } | null>(null)
+  const [allBuyersAudience, setAllBuyersAudience] = useState<{ buyers:number } | null>(null)
 
-  useEffect(() => { fetchData(); previewSaleAudience() }, [])
+  useEffect(() => { fetchData(); previewSaleAudience(); previewAllBuyersAudience() }, [])
 
   async function previewSaleAudience() {
     const response = await authedFetch('/api/admin/sale-campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ send: false }) })
     if (response.ok) setSaleAudience(await response.json())
+  }
+
+  async function previewAllBuyersAudience() {
+    const response = await authedFetch('/api/admin/sale-campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ send: false, includeAllOrderCustomers: true }) })
+    if (response.ok) setAllBuyersAudience(await response.json())
   }
 
   async function sendSaleCampaign() {
@@ -243,6 +249,14 @@ export default function CampaignsPage() {
     const response = await authedFetch('/api/admin/sale-campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ send: true, audience: 'prospects' }) })
     const result = await response.json().catch(() => ({}))
     setMsg(response.ok ? `WELCOME15 sale email sent to ${result.sent || 0}; ${result.failed || 0} failed.` : (result.error || 'Sale email failed.'))
+    setSending(null)
+  }
+
+  async function sendAllBuyersSaleCampaign() {
+    setSending('sale-buyers')
+    const response = await authedFetch('/api/admin/sale-campaign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ send: true, audience: 'buyers', includeAllOrderCustomers: true }) })
+    const result = await response.json().catch(() => ({}))
+    setMsg(response.ok ? `GOBFAMILY10 sale email sent to ${result.sent || 0}; ${result.failed || 0} failed.` : (result.error || 'Sale email failed.'))
     setSending(null)
   }
 
@@ -465,6 +479,7 @@ export default function CampaignsPage() {
       <div className="mx-6 mb-5 rounded-xl border p-4 flex flex-wrap items-center justify-between gap-4" style={{ background:'#fff9e7', borderColor:'#e8c76d' }}>
         <div><div className="font-bold" style={{ color:'#1a1008' }}>Current sale email</div><div className="text-sm" style={{ color:'#665f53' }}>{saleAudience ? `${saleAudience.buyers} buyers: GOBFAMILY10 (10%) · ${saleAudience.prospects} prospects: WELCOME15 (15%) · ₹30 extra off online` : 'Loading opted-in audience…'}</div></div>
         <div className="flex flex-wrap gap-2">
+          <button onClick={sendAllBuyersSaleCampaign} disabled={sending === 'sale-buyers' || !allBuyersAudience?.buyers} className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50" style={{ background:'#6e4b17' }}>{sending === 'sale-buyers' ? 'Sending…' : `Send GOBFAMILY10 to all buyers (${allBuyersAudience?.buyers || 0})`}</button>
           <button onClick={sendSaleProspectsCampaign} disabled={sending === 'sale-prospects' || !saleAudience?.prospects} className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50" style={{ background:'#173c2d' }}>{sending === 'sale-prospects' ? 'Sending…' : `Send WELCOME15 to prospects (${saleAudience?.prospects || 0})`}</button>
           <button onClick={sendSaleCampaign} disabled={sending === 'sale' || !saleAudience?.total} className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50" style={{ background:'#b57618' }}>{sending === 'sale' ? 'Sending…' : `Send sale email (${saleAudience?.total || 0})`}</button>
         </div>
