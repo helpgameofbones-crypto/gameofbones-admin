@@ -17,6 +17,7 @@ const SECTIONS = [
     { name: 'Orders', href: '/orders', icon: ShoppingCart, desc: 'One queue for customer and order work' },
     { name: 'Fulfilment', href: '/delhivery', icon: Truck, desc: 'Dispatch, shipping and delivery operations' },
     { name: 'Products', href: '/products', icon: PackageCheck, desc: 'Catalog, stock and product performance' },
+    { name: 'Production batches', href: '/production', icon: Boxes, desc: 'Log batches: cost, yield, run time and profit' },
     { name: 'Customers', href: '/customers', icon: Users, desc: 'Profiles, loyalty and retention' },
   ]},
   { title: 'GROWTH', color: '#f97316', items: [
@@ -41,7 +42,7 @@ const SECTIONS = [
     { name: 'Manual Order', href: '/manual-order', icon: ClipboardList, desc: 'Phone, walk-in and offline orders' },
     { name: 'COD & Exceptions', href: '/cod-tracker', icon: ClipboardList, desc: 'COD, cancellations and duplicates' },
     { name: 'Returns & RTO', href: '/returns', icon: Truck, desc: 'Returns, refunds and RTO recovery' },
-    { name: 'Inventory & Production', href: '/inventory', icon: Boxes, desc: 'Stock, batches and production work' },
+    { name: 'Inventory & stock', href: '/inventory', icon: Boxes, desc: 'Stock levels and reorder alerts' },
     { name: 'Loyalty & Recovery', href: '/gamification', icon: HeartHandshake, desc: 'Rewards, birthdays, carts and referrals' },
     { name: 'Detailed reports', href: '/cohort-analysis', icon: BarChart3, desc: 'Cohorts, city and hour analysis' },
     { name: 'Customer intelligence', href: '/customer-intelligence', icon: Users, desc: 'Segments, repeat rate and customer value' },
