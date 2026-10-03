@@ -2,6 +2,14 @@
 import { useEffect, useState } from 'react';
 import { authedFetch } from '@/app/lib/authedFetch';
 
+type CustomerOrder = {
+  ref?: string;
+  grand_total?: number;
+  total_amount?: number;
+  created_at?: string;
+  status?: string;
+};
+
 type Customer = {
   phone: string;
   name: string;
@@ -9,9 +17,10 @@ type Customer = {
   totalOrders: number;
   totalValue: number;
   lastOrderDate: string;
-  orders: any[];
+  orders: CustomerOrder[];
   couponsUsed: string[];
   avgOrderValue: number;
+  needsPhoneReview: boolean;
 };
 
 export default function CustomersPage() {
@@ -104,7 +113,7 @@ export default function CustomersPage() {
                     style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selected && selected.phone === c.phone ? '#fffbeb' : '' }}>
                     <td style={{ padding: 12 }}>
                       <div style={{ fontWeight: 600 }}>{c.name || 'Unknown'}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>📱 {c.phone}</div>
+                      <div style={{ fontSize: 11, color: c.needsPhoneReview ? '#b45309' : '#6b7280' }}>📱 {c.needsPhoneReview ? 'Phone needs correction' : c.phone}</div>
                       {c.email && <div style={{ fontSize: 11, color: '#9ca3af' }}>{c.email}</div>}
                     </td>
                     <td style={{ padding: 12, textAlign: 'center', fontWeight: 700 }}>{c.totalOrders}</td>
@@ -142,9 +151,9 @@ export default function CustomersPage() {
 
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Contact</div>
-                <div style={{ fontSize: 13 }}>📱 {selected.phone}</div>
+                <div style={{ fontSize: 13, color: selected.needsPhoneReview ? '#b45309' : undefined }}>📱 {selected.needsPhoneReview ? 'Phone needs correction' : selected.phone}</div>
                 {selected.email && <div style={{ fontSize: 13 }}>📧 {selected.email}</div>}
-                <a href={`https://wa.me/91${selected.phone}`} target="_blank" style={{ fontSize: 12, color: '#25d366', fontWeight: 600, display: 'inline-block', marginTop: 8 }}>WhatsApp →</a>
+                {!selected.needsPhoneReview && <a href={`https://wa.me/91${selected.phone}`} target="_blank" style={{ fontSize: 12, color: '#25d366', fontWeight: 600, display: 'inline-block', marginTop: 8 }}>WhatsApp →</a>}
               </div>
 
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Order History</div>
@@ -152,7 +161,7 @@ export default function CustomersPage() {
                 <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>#{o.ref} — ₹{(o.grand_total || o.total_amount || 0).toLocaleString('en-IN')}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280' }}>{new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>{o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date unavailable'}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase',
                     background: o.status === 'delivered' ? '#dcfce7' : o.status === 'cancelled' ? '#fee2e2' : '#fef3c7',
