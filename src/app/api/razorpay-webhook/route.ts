@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { metaSignalsFromNotes, sendMetaPurchase } from '@/app/lib/meta-capi'
+import { SPIN_GIFT_MIN_ORDER, claimSpinGift, findSpinGift } from '@/app/lib/spin-gifts'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 
 export const maxDuration = 20
@@ -180,6 +181,18 @@ export async function POST(req: NextRequest) {
         const notesText = recovered
           ? `Auto-recovered from Razorpay webhook; checkout details sourced from ${source || 'payment data'}.`
           : 'Auto-recovered from Razorpay webhook; item details were not available. Verify with the customer before shipping.'
+        // The customer paid but the browser never saved the order, so apply the
+        // spin-wheel free treat here the same way checkout would.
+        if (recovered && subtotal >= SPIN_GIFT_MIN_ORDER) {
+          try {
+            const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null })
+            if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
+              items = [...items, { product_name: eligibleGift.gift.product_name, pack_label: eligibleGift.gift.pack_label, pack_price: 0, quantity: eligibleGift.gift.quantity, is_gift: true, gift_code: eligibleGift.code } as (typeof items)[number]]
+            }
+          } catch (giftError) {
+            console.error('[razorpay-webhook] spin gift lookup failed', giftError)
+          }
+        }
         const { data: insertedOrder, error } = await supabase.from('orders').insert({
           ref,
           pii_name_ciphertext: name ? encryptPii(name) : null,
