@@ -1,10 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
+import { revealLegacyPii } from '@/app/lib/pii-crypto'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 
 type Customer = { phone: string; name: string; email: string; totalOrders: number; totalValue: number; lastOrderDate: string; orders: Record<string, unknown>[]; couponsUsed: string[]; avgOrderValue: number; needsPhoneReview: boolean }
-type CustomerProfile = { name: string | null; email: string | null; phone: string | null }
+type CustomerProfile = {
+  id: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  pii_name_ciphertext: string | null
+  pii_email_ciphertext: string | null
+  pii_phone_ciphertext: string | null
+}
 
 const phoneDigits = (value: unknown) => String(value || '').replace(/\D/g, '').slice(-10)
 const isFullIndianMobile = (value: string) => /^\d{10}$/.test(value)
@@ -15,6 +24,15 @@ function uniqueProfile(profiles: CustomerProfile[]): CustomerProfile | null {
   return profiles.length === 1 && isFullIndianMobile(phoneDigits(profiles[0].phone)) ? profiles[0] : null
 }
 
+function revealProfile(profile: CustomerProfile): CustomerProfile {
+  return {
+    ...profile,
+    name: revealLegacyPii(profile.pii_name_ciphertext || profile.name),
+    email: revealLegacyPii(profile.pii_email_ciphertext || profile.email),
+    phone: revealLegacyPii(profile.pii_phone_ciphertext || profile.phone),
+  }
+}
+
 export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request)
   if (authError) return authError
@@ -22,7 +40,7 @@ export async function GET(request: NextRequest) {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
   const [{ data, error }, { data: profiles, error: profilesError }] = await Promise.all([
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(1000),
-    supabase.from('customers').select('name,email,phone').limit(1000),
+    supabase.from('customers').select('id,name,email,phone,pii_name_ciphertext,pii_email_ciphertext,pii_phone_ciphertext').limit(1000),
   ])
   if (error) return NextResponse.json({ error: 'Unable to load customers.' }, { status: 500 })
   if (profilesError) return NextResponse.json({ error: 'Unable to reconcile customer contacts.' }, { status: 500 })
@@ -30,9 +48,12 @@ export async function GET(request: NextRequest) {
   try {
     const profilesByEmail = new Map<string, CustomerProfile[]>()
     const profilesByName = new Map<string, CustomerProfile[]>()
-    for (const profile of profiles || []) {
+    const profilesById = new Map<string, CustomerProfile>()
+    for (const rawProfile of profiles || []) {
+      const profile = revealProfile(rawProfile as CustomerProfile)
       const email = normalizedEmail(profile.email)
       const name = normalizedName(profile.name)
+      profilesById.set(profile.id, profile)
       if (email) profilesByEmail.set(email, [...(profilesByEmail.get(email) || []), profile])
       if (name) profilesByName.set(name, [...(profilesByName.get(name) || []), profile])
     }
@@ -44,7 +65,11 @@ export async function GET(request: NextRequest) {
       const orderEmail = normalizedEmail(order.customer_email)
       const orderName = normalizedName(order.customer_name)
       const profile = !isFullIndianMobile(orderPhone)
-        ? uniqueProfile(profilesByEmail.get(orderEmail) || []) || uniqueProfile(profilesByName.get(orderName) || [])
+        ? (() => {
+            const linked = typeof rawOrder.customer_id === 'string' ? profilesById.get(rawOrder.customer_id) : null
+            if (linked && isFullIndianMobile(phoneDigits(linked.phone))) return linked
+            return uniqueProfile(profilesByEmail.get(orderEmail) || []) || uniqueProfile(profilesByName.get(orderName) || [])
+          })()
         : null
       const phone = profile ? phoneDigits(profile.phone) : orderPhone
       const key = isFullIndianMobile(phone) ? phone : `needs-review:${String(order.id || order.ref || `${orderName}:${orderEmail}:${order.created_at || ''}`)}`
