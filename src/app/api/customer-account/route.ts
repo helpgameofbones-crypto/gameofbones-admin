@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const session = customerSessionFromRequest(request); if (!session) return unauthorized(request)
   try {
     const phone = session.phone
-    const [profileResult, addressesResult, dogsResult, rewardsResult, referralResult, ordersResult, activityResult] = await Promise.all([
+    const [profileResult, addressesResult, dogsResult, rewardsResult, referralResult, ordersResult, activityResult, balanceResult] = await Promise.all([
       supabase.rpc('get_customer_profile', { p_phone: phone }),
       supabase.rpc('get_customer_addresses', { p_phone: phone }),
       supabase.rpc('get_customer_dogs', { p_phone: phone }),
@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
         .eq('customer_phone', phone)
         .order('created_at', { ascending: false })
         .limit(20),
+      // The points balance lives on the customer record. Read it directly:
+      // get_customer_rewards only returns it alongside reward rows, so a
+      // customer whose points were added in admin (no reward rows) saw 0.
+      supabase.from('customers').select('loyalty_points').eq('phone', phone).maybeSingle(),
     ])
     if (profileResult.error || addressesResult.error || dogsResult.error || rewardsResult.error || referralResult.error || ordersResult.error || activityResult.error) throw new Error('Account data unavailable')
     const rewards = (rewardsResult.data || []) as Array<{ loyalty_points?: number; reward_id?: string; description?: string; coupon_code?: string }>
@@ -39,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       profile: first(profileResult.data), addresses: addressesResult.data || [], dogs: dogsResult.data || [], orders,
       rewards, referral: first(referralResult.data), reward_activity: activityResult.data || [],
-      points: { available: Number(first(rewards)?.loyalty_points || 0), redeemed: pointsRedeemed, earnWays: ['Earn 1 point for every ₹10 spent', 'Earn 300 points when a referred friend completes their first order', 'Earn points when you leave a verified review'] },
+      points: { available: Number(balanceResult.data?.loyalty_points ?? first(rewards)?.loyalty_points ?? 0) || 0, redeemed: pointsRedeemed, earnWays: ['Earn 1 point for every ₹10 spent', 'Earn 300 points when a referred friend completes their first order', 'Earn points when you leave a verified review'] },
     }, { headers })
   } catch (error) { console.error('Customer account load failed', error); return NextResponse.json({ error: 'Unable to load your account.' }, { status: 500, headers }) }
 }
