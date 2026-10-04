@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
       .update({ used_at: new Date().toISOString() }).eq('id', otp.id).is('used_at', null).select('id').maybeSingle()
     if (consumeError) throw consumeError
     if (!consumed) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
+    await supabase.from('customer_registration_otps').update({ used_at: new Date().toISOString() })
+      .eq('email_hash', emailHash).eq('phone_hash', phoneHash).is('used_at', null)
 
     // Recheck after consuming the code so two concurrent registrations cannot
     // create accounts with an already-claimed email or mobile number.
