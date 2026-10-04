@@ -30,11 +30,10 @@ export async function POST(request: NextRequest) {
     // account-enumeration oracle.
     if (error || !identity || !/^\d{3,13}$/.test(phone)) return NextResponse.json({ ok: true }, { status: 202, headers })
     const code = String(randomInt(100000, 1000000))
-    // A later code supersedes every earlier code for the same customer. This
-    // keeps only the most recently delivered email usable.
-    const now = new Date().toISOString()
-    const { error: invalidateError } = await supabase.from('customer_email_otps').update({ used_at: now }).eq('phone', phone).is('used_at', null)
-    if (invalidateError) throw invalidateError
+    // Earlier unexpired codes stay valid: emails can arrive out of order or
+    // late, and a customer who taps "resend" must still be able to use the
+    // first code. Every code is single-use, expires in 10 minutes, guesses are
+    // rate-limited, and a successful sign-in cancels all other codes.
     const { error: saveError } = await supabase.from('customer_email_otps').insert({ phone, code_hash: customerOtpHash(phone, code), expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() })
     if (saveError) throw saveError
     try {
