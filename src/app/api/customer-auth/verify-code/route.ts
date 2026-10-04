@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     const { data: consumed, error: consumeError } = await supabase.from('customer_email_otps').update({ used_at: new Date().toISOString() }).eq('id', otp.id).is('used_at', null).select('id').maybeSingle()
     if (consumeError) throw consumeError
     if (!consumed) return NextResponse.json({ error: 'That code is invalid or has expired.' }, { status: 401, headers })
+    // Signed in: cancel any other codes still outstanding for this customer.
+    await supabase.from('customer_email_otps').update({ used_at: new Date().toISOString() }).eq('phone', phone).is('used_at', null)
     return NextResponse.json({ token: createCustomerSession(phone) }, { headers })
   } catch (error) {
     console.error('Customer OTP verification failed', error)
