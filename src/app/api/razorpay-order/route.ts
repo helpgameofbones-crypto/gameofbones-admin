@@ -6,6 +6,7 @@ import { checkoutQuote } from '@/app/lib/checkout-pricing'
 import { createClient } from '@supabase/supabase-js'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { clientIpFromRequest } from '@/app/lib/meta-capi'
+import { normalizePhoneForHash } from '@/app/lib/pii-crypto'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -35,6 +36,14 @@ export async function POST(req: NextRequest) {
     const limitError = await rateLimit(req, 'razorpay-order', 5, 10 * 60 * 1000)
     if (limitError) return limitError
     const { items, payment_method, coupon_code, loyalty_points_redeemed, receipt, notes } = await req.json()
+    // Points are tied to the signed-in account's mobile number. Check before
+    // payment so the amount charged always matches the order that is saved.
+    if (Math.floor(Number(loyalty_points_redeemed) || 0) > 0) {
+      const session = customerSessionFromRequest(req)
+      const checkoutPhone = notes && typeof notes === 'object' && typeof (notes as Record<string, unknown>).customer_phone === 'string' ? String((notes as Record<string, unknown>).customer_phone) : ''
+      if (!session) return NextResponse.json({ error: 'Please log in again to use your reward points.' }, { status: 400, headers })
+      if (normalizePhoneForHash(session.phone) !== normalizePhoneForHash(checkoutPhone)) return NextResponse.json({ error: 'Reward points can only be used with the mobile number on your account. Enter that number at checkout, or set reward points to 0.' }, { status: 400, headers })
+    }
     const customer = await customerCheckoutState(req)
     const quote = await checkoutQuote(database, items, payment_method === 'online' ? 'online' : '', coupon_code, customer.welcomeEligible, customer.availablePoints, loyalty_points_redeemed)
     const order = await razorpay.orders.create({
