@@ -19,9 +19,13 @@ async function customerCheckoutState(req: NextRequest) {
   if (!session) return { welcomeEligible: false, availablePoints: 0 }
   const [history, customer] = await Promise.all([
     database.rpc('get_customer_order_history', { p_phone: session.phone }),
-    database.from('customers').select('loyalty_points').eq('phone', session.phone).maybeSingle(),
+    // get_customer_profile matches older encoded phone formats too. An exact
+    // phone match found no customer for them, so points were dropped and the
+    // payment amount was higher than the checkout total.
+    database.rpc('get_customer_profile', { p_phone: session.phone }),
   ])
-  return { welcomeEligible: !history.error && Array.isArray(history.data) && history.data.length === 0, availablePoints: Number(customer.data?.loyalty_points || 0) }
+  const profile = Array.isArray(customer.data) ? customer.data[0] : null
+  return { welcomeEligible: !history.error && Array.isArray(history.data) && history.data.length === 0, availablePoints: Number(profile?.loyalty_points || 0) }
 }
 
 export async function OPTIONS(req: NextRequest) {
