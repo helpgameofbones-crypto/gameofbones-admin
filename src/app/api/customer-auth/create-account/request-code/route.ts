@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString()
     const { error: invalidateError } = await supabase.from('customer_registration_otps')
       .update({ used_at: now })
-      .or(`email_hash.eq.${emailHash},phone_hash.eq.${phoneHash}`)
+      // Codes for the same email + mobile stay valid (late emails, resends);
+      // codes sent for a different pairing of either detail are cancelled.
+      .or(`and(email_hash.eq.${emailHash},phone_hash.neq.${phoneHash}),and(email_hash.neq.${emailHash},phone_hash.eq.${phoneHash})`)
       .is('used_at', null)
     if (invalidateError) throw invalidateError
     const { error: saveError } = await supabase.from('customer_registration_otps').insert({
