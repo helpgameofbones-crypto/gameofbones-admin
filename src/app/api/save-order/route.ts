@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
     canUseWelcome = !history.error && Array.isArray(history.data) && history.data.length === 0
   }
   const canRedeemPoints = Boolean(session && normalizePhoneForHash(session.phone) === normalizePhoneForHash(phone))
+  // COD orders are saved before any payment, so tell the customer instead of silently dropping their points.
+  if (order.payment_method === 'cod' && Math.floor(Number(order.loyalty_points_redeemed) || 0) > 0 && !canRedeemPoints) {
+    return NextResponse.json({ error: session ? 'Reward points can only be used with the mobile number on your account. Enter that number at checkout, or set reward points to 0.' : 'Please log in again to use your reward points.' }, { status: 400, headers })
+  }
   const quote = await checkoutQuote(supabase, order.items, order.payment_method, order.coupon_code, canUseWelcome, canRedeemPoints ? Number(customerRecord.loyalty_points || 0) : 0, order.loyalty_points_redeemed)
   const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id,items').eq('ref',order.ref).limit(1)
   const transactionId = typeof order.transaction_id === 'string' ? order.transaction_id.trim() : ''
