@@ -34,7 +34,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const name = cleanText(body.name, 100), email = normalizeEmailForHash(cleanText(body.email, 254)), phone = normalizePhoneForHash(cleanText(body.phone, 20))
     if (!name || !emailPattern.test(email) || !/^\d{10}$/.test(phone)) return NextResponse.json({ error: 'Enter a name, valid email, and 10-digit mobile number.' }, { status: 400, headers })
-    if (body.marketing_consent !== true) return NextResponse.json({ error: 'Please agree to receive your free treat details by email.' }, { status: 400, headers })
+    // Claims made from the game ask for email consent. A prize that is applied
+    // automatically during checkout is part of the order, so it needs no
+    // marketing consent and sends no separate email.
+    const viaCheckout = body.via === 'checkout'
+    const consent = body.marketing_consent === true
+    if (!viaCheckout && !consent) return NextResponse.json({ error: 'Please agree to receive your free treat details by email.' }, { status: 400, headers })
 
     const score = Math.floor(Number(body.score))
     const runMs = Math.floor(Number(body.run_ms))
@@ -58,6 +63,7 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10)
     const expires = new Date(Date.now() + SPIN_GIFT_VALID_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const sendEmail = async (couponCode: string, prize: string, captureId: string) => {
+      if (viaCheckout) return
       try {
         await sendWheelWelcomeEmail({ name, email, couponCode, prize, gift: true, game: 'bone_run', score })
         await supabase.from('email_captures').update({ welcome_email_sent_at: new Date().toISOString() }).eq('id', captureId)
@@ -93,7 +99,7 @@ export async function POST(req: NextRequest) {
     const couponCode = couponCodeFor()
     const couponInsert = await supabase.from('coupons').insert({ code: couponCode, type: 'free', value: 0, min_order: SPIN_GIFT_MIN_ORDER, max_uses: 1, uses_count: 0, valid_from: today, valid_until: expires, is_active: true })
     if (couponInsert.error) throw couponInsert.error
-    const insert = await supabase.from('email_captures').insert({ source: 'bone_run', status: 'active', prize: tier.label, coupon_code: couponCode, marketing_consent: true, marketing_consent_at: new Date().toISOString(), pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
+    const insert = await supabase.from('email_captures').insert({ source: 'bone_run', status: 'active', prize: tier.label, coupon_code: couponCode, marketing_consent: consent, marketing_consent_at: consent ? new Date().toISOString() : null, pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
     if (insert.error) throw insert.error
     await sendEmail(couponCode, tier.label, insert.data.id)
     return NextResponse.json({ status: 'created', prize: tier.label, coupon_code: couponCode, min_order: SPIN_GIFT_MIN_ORDER, valid_until: expires }, { status: 201, headers })
