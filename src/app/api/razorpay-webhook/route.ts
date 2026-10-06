@@ -92,7 +92,7 @@ async function checkoutMetaSignals(payment: { notes?: Record<string, unknown>; o
 async function matchingAttempt(ref: string): Promise<Attempt | null> {
   for (const delay of [0, 1500, 2500]) {
     if (delay) await sleep(delay)
-    const { data } = await supabase.from('order_attempts').select('items, subtotal, shipping_address').eq('ref', ref).limit(1).maybeSingle()
+    const { data } = await supabase.from('order_attempts').select('items, subtotal, shipping_address, coupon_code').eq('ref', ref).limit(1).maybeSingle()
     if (data) return data
   }
   return null
@@ -183,7 +183,9 @@ export async function POST(req: NextRequest) {
           : 'Auto-recovered from Razorpay webhook; item details were not available. Verify with the customer before shipping.'
         // The customer paid but the browser never saved the order, so apply the
         // spin-wheel free treat here the same way checkout would.
-        if (recovered && subtotal >= SPIN_GIFT_MIN_ORDER) {
+        // Offers are not stackable: no free gift when a coupon code was used.
+        const couponUsed = Boolean(String((attempt as { coupon_code?: unknown } | null)?.coupon_code || notes?.coupon_code || '').trim())
+        if (recovered && !couponUsed && subtotal >= SPIN_GIFT_MIN_ORDER) {
           try {
             const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null })
             if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
