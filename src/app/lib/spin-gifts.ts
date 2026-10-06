@@ -23,8 +23,8 @@ export const spinGifts: SpinGift[] = [
 // Bone Run milestones. The customer keeps the highest one they reach.
 export const BONE_RUN_MAX_SCORE = 5000
 export const boneRunTiers: Array<SpinGift & { at: number }> = [
-  { at: 800, label: '1 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '1 piece · free gift', quantity: 1, rank: 1 },
-  { at: 2500, label: '1 free pack of Chicken Feet (70 g)', product_name: 'Chicken Feet', pack_label: '70g · free gift', quantity: 1, rank: 2 },
+  { at: 800, label: '2 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '2 Pieces · free gift', quantity: 1, rank: 1.5 },
+  { at: 2500, label: '1 free pack of Chicken Feet (70 g)', product_name: 'Chicken Feet', pack_label: '70g · free gift', quantity: 1, rank: 2.5 },
   { at: 5000, label: '1 free pack of Mackerel Fillet (60 g)', product_name: 'Mackerel Fillet', pack_label: '60g · free gift', quantity: 1, rank: 3 },
 ]
 export const boneRunTierForScore = (score: number) => [...boneRunTiers].reverse().find(tier => score >= tier.at) || null
