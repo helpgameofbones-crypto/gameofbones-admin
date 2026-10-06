@@ -1,25 +1,35 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Spin-to-win free gifts. Each spin wins exactly one gift, stored as a
- * single-use `free` coupon (shown as "Free item" in Admin → Coupons).
- * The gift is added automatically to the customer's next order of
- * ₹SPIN_GIFT_MIN_ORDER or more placed with the same mobile number or email.
- * Offers are not stackable: the gift is skipped on orders that use a coupon
- * code (it stays available for a later order). Reward points are fine.
+ * Free-gift prizes (Bone Run game, and the older spin-to-win wheel). Each
+ * customer holds at most one gift, stored as a single-use `free` coupon
+ * (shown as "Free item" in Admin → Coupons). The gift is added automatically
+ * to the customer's next order of ₹SPIN_GIFT_MIN_ORDER or more placed with the
+ * same mobile number or email. It is a free item, not a discount, so it
+ * stacks with coupon codes and reward points.
  */
 export const SPIN_GIFT_MIN_ORDER = 499
 export const SPIN_GIFT_VALID_DAYS = 7
 
-export type SpinGift = { label: string; product_name: string; pack_label: string; quantity: number }
+export type SpinGift = { label: string; product_name: string; pack_label: string; quantity: number; rank: number }
 
+// Legacy spin-wheel prizes (kept so gifts already won are still honoured).
 export const spinGifts: SpinGift[] = [
-  { label: '2 free Chicken Wings', product_name: 'Chicken Wings', pack_label: '2 pieces · free gift', quantity: 1 },
-  { label: '1 free pack of Chicken Feet', product_name: 'Chicken Feet', pack_label: '1 pack · free gift', quantity: 1 },
-  { label: '1 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '1 piece · free gift', quantity: 1 },
+  { label: '2 free Chicken Wings', product_name: 'Chicken Wings', pack_label: '2 pieces · free gift', quantity: 1, rank: 1 },
+  { label: '1 free pack of Chicken Feet', product_name: 'Chicken Feet', pack_label: '1 pack · free gift', quantity: 1, rank: 2 },
+  { label: '1 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '1 piece · free gift', quantity: 1, rank: 1 },
 ]
 
-export const giftForLabel = (label: unknown) => spinGifts.find(gift => gift.label === label) || null
+// Bone Run milestones. The customer keeps the highest one they reach.
+export const BONE_RUN_MAX_SCORE = 5000
+export const boneRunTiers: Array<SpinGift & { at: number }> = [
+  { at: 800, label: '1 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '1 piece · free gift', quantity: 1, rank: 1 },
+  { at: 2500, label: '1 free pack of Chicken Feet (70 g)', product_name: 'Chicken Feet', pack_label: '70g · free gift', quantity: 1, rank: 2 },
+  { at: 5000, label: '1 free pack of Mackerel Fillet (60 g)', product_name: 'Mackerel Fillet', pack_label: '60g · free gift', quantity: 1, rank: 3 },
+]
+export const boneRunTierForScore = (score: number) => [...boneRunTiers].reverse().find(tier => score >= tier.at) || null
+
+export const giftForLabel = (label: unknown) => boneRunTiers.find(gift => gift.label === label) || spinGifts.find(gift => gift.label === label) || null
 
 export type EligibleSpinGift = { couponId: string; code: string; gift: SpinGift }
 
@@ -29,7 +39,7 @@ export async function findSpinGift(supabase: SupabaseClient, input: { phoneHash:
   if (!filters.length) return null
   const { data: capture, error } = await supabase.from('email_captures')
     .select('prize,coupon_code')
-    .eq('source', 'spin_to_win')
+    .in('source', ['spin_to_win', 'bone_run'])
     .or(filters.join(','))
     .order('created_at', { ascending: false })
     .limit(1)

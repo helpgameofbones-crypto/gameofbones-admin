@@ -76,7 +76,8 @@ function orderSummary(order: CustomerOrder): string {
   return emailCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="color:#082f26;font-size:14px;text-align:left"><tr><td style="padding-bottom:12px;color:#dc650b;font-size:11px;font-weight:700;letter-spacing:1.2px">ORDER ${escapeHtml(order.ref)}</td><td align="right" style="padding-bottom:12px;color:#dc650b;font-size:11px;font-weight:700;letter-spacing:1.2px">ORDER DETAILS</td></tr>${itemLines}<tr><td colspan="2" style="padding-top:2px"></td></tr>${rows}<tr><td style="padding:13px 0 0;border-top:1px solid #d5c3a7;font-size:18px;font-weight:700">Total charged</td><td align="right" style="padding:13px 0 0;border-top:1px solid #d5c3a7;font-size:18px;font-weight:700">${rupees(total)}</td></tr></table>`, 'left')
 }
 
-export async function sendWheelWelcomeEmail(input: { name: string; email: string; couponCode: string; prize: string; gift?: boolean }) {
+export async function sendWheelWelcomeEmail(input: { name: string; email: string; couponCode: string; prize: string; gift?: boolean; game?: 'bone_run'; score?: number }) {
+  const boneRun = input.game === 'bone_run'
   const firstName = escapeHtml(input.name.split(' ')[0] || 'there')
   const coupon = escapeHtml(input.couponCode)
   const prize = escapeHtml(input.prize)
@@ -85,14 +86,14 @@ export async function sendWheelWelcomeEmail(input: { name: string; email: string
     subject: `Your Game of Bones reward: ${input.couponCode}`,
     html: lifecycleEmailTemplate({
       eyebrow: 'Welcome to the pack',
-      title: `You spun ${prize}!`,
+      title: boneRun ? `You won ${prize}!` : `You spun ${prize}!`,
       introHtml: input.gift
         ? `Good things happen to good pups.<br>No code needed: your free treat is added to your order automatically<br>when you check out with this email or mobile number on an order of ₹499 or more.<br>It works together with your reward points and other coupons.`
         : `Good things happen to good pups.<br>Use your exclusive code at checkout and<br>treat your furry friend today.`,
       detailHtml: couponCard(coupon),
       ctaLabel: 'Shop treats',
       ctaUrl: 'https://gameofbones.in/products',
-      noteHtml: `Hi ${firstName}, one spin per person. Your reward is valid for seven days and will be checked at checkout.<br><br><a href="${marketingUnsubscribeUrl(input.email)}" style="color:#254a42;text-decoration:underline">Unsubscribe from marketing emails</a>`,
+      noteHtml: `Hi ${firstName}, ${boneRun ? `you scored ${Math.max(0, Math.floor(Number(input.score) || 0)).toLocaleString('en-IN')} in Bone Run. One prize per person: play again any time to upgrade it` : 'one spin per person'}. Your reward is valid for seven days and will be checked at checkout.<br><br><a href="${marketingUnsubscribeUrl(input.email)}" style="color:#254a42;text-decoration:underline">Unsubscribe from marketing emails</a>`,
     }),
   })
 }
