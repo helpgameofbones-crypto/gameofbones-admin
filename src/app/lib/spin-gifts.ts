@@ -5,7 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * single-use `free` coupon (shown as "Free item" in Admin → Coupons).
  * The gift is added automatically to the customer's next order of
  * ₹SPIN_GIFT_MIN_ORDER or more placed with the same mobile number or email.
- * It is not a discount, so it stacks with reward points and any coupon code.
+ * Offers are not stackable: the gift is skipped on orders that use a coupon
+ * code (it stays available for a later order). Reward points are fine.
  */
 export const SPIN_GIFT_MIN_ORDER = 499
 export const SPIN_GIFT_VALID_DAYS = 7
