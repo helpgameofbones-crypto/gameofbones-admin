@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, type CSSProperties } from 'react';
 import { authedFetch } from '@/app/lib/authedFetch'
+import { addressStreet } from '@/app/lib/format-address'
 
 const LOGO_URL = 'https://syuostlqzzinigqwjzap.supabase.co/storage/v1/object/public/product-images/logo.jpeg';
 
@@ -34,7 +35,7 @@ function formatAddress(addr: any): string[] | null {
   if (!addr) return null;
   if (typeof addr === 'string') { try { addr = JSON.parse(addr); } catch { return null; } }
   if (typeof addr !== 'object') return null;
-  const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || '';
+  const streetRaw = addressStreet(addr);
   const street = streetRaw;
   const parts = [street, addr.city, addr.state, addr.pincode].filter(Boolean);
   return parts.length ? parts : null;
