@@ -133,6 +133,7 @@ export default function EmailCaptures() {
           >
             <option value="all">All Sources</option>
             <option value="spin_to_win">Spin to Win</option>
+            <option value="bone_run">Bone Run game</option>
             <option value="spin_wheel">Legacy Spin Wheel</option>
             <option value="newsletter">Newsletter</option>
             <option value="dog_birthday">Dog Birthday Club</option>
