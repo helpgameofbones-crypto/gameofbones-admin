@@ -1,19 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import nodemailer from 'nodemailer'
 import { emailCard, lifecycleEmailTemplate } from '@/app/lib/lifecycle-email-template'
+import { resend } from '@/app/lib/emailClient'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-})
+
+// A shopper who goes on to order (often within minutes) must never get a
+// "you left treats in your cart" email. The orders trigger marks such carts
+// recovered, but we also re-check here right before sending.
+async function hasOrderedSince(cart: { abandoned_at?: string; pii_phone_hash?: string | null; pii_email_hash?: string | null }): Promise<boolean> {
+  const hashes = [
+    cart.pii_phone_hash ? `pii_phone_hash.eq.${cart.pii_phone_hash}` : '',
+    cart.pii_email_hash ? `pii_email_hash.eq.${cart.pii_email_hash}` : '',
+  ].filter(Boolean)
+  if (!hashes.length) return false
+  const since = new Date(new Date(cart.abandoned_at || Date.now()).getTime() - 15 * 60 * 1000).toISOString()
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,status')
+    .or(hashes.join(','))
+    .gte('created_at', since)
+    .limit(10)
+  // If we cannot check, err on the side of not emailing.
+  if (error) return true
+  return (data || []).some((o: { status?: string | null }) => {
+    const status = String(o.status || '')
+    return status !== 'pending_payment' && !/^cancel/i.test(status)
+  })
+}
 
 type CartItem = {
   name?: unknown
@@ -101,6 +118,10 @@ export async function GET(req: NextRequest) {
 
   let sent = 0
   for (const cart of carts || []) {
+    if (await hasOrderedSince(cart)) {
+      await supabase.from('abandoned_carts').update({ recovered: true }).eq('id', cart.id)
+      continue
+    }
     const items = Array.isArray(cart.items) ? cart.items as CartItem[] : []
     // Resolve images from the current, admin-managed catalogue. Cart payloads
     // can be old or user-controlled, so we never render their image URL.
@@ -130,12 +151,17 @@ export async function GET(req: NextRequest) {
       ctaUrl: recoveryUrl,
     })
 
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER,
+    // Sent through Resend (verified domain); emailClient falls back to Gmail
+    // only if Resend is not configured.
+    const result = await resend.emails.send({
       to: cart.customer_email,
       subject: `${cart.customer_name?.split(' ')[0] || 'Hey'}, your dog treats are waiting! 🐾`,
       html,
-    })
+    }) as { error?: unknown } | undefined
+    if (result && result.error) {
+      console.error('abandoned-cart-followup: send failed', cart.id, result.error)
+      continue
+    }
 
     // Mark sent immediately so a second cron run (retry, or the query
     // matching the same row twice due to clock drift) never double-emails.
