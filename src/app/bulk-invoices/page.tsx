@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { authedFetch } from '@/app/lib/authedFetch'
 import { Download, FileText, Calendar, Loader } from 'lucide-react'
+import { addressStreet } from '@/app/lib/format-address'
 
 
 export default function BulkInvoicesPage() {
@@ -33,7 +34,7 @@ export default function BulkInvoicesPage() {
   function generateInvoiceHTML(order: any) {
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
     const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address || {}
-    const streetRaw = addr.street || addr.address || addr.line1 || addr.address_line1 || ''
+    const streetRaw = addressStreet(addr)
     const street = streetRaw
     const subtotal = parseFloat(order.subtotal) || items.reduce((s: number, i: any) => s + (i.price || 0) * (i.quantity || i.qty || 1), 0)
     const discount = parseFloat(order.discount) || 0
