@@ -34,12 +34,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const name = cleanText(body.name, 100), email = normalizeEmailForHash(cleanText(body.email, 254)), phone = normalizePhoneForHash(cleanText(body.phone, 20))
     if (!name || !emailPattern.test(email) || !/^\d{10}$/.test(phone)) return NextResponse.json({ error: 'Enter a name, valid email, and 10-digit mobile number.' }, { status: 400, headers })
-    // Claims made from the game ask for email consent. A prize that is applied
-    // automatically during checkout is part of the order, so it needs no
-    // marketing consent and sends no separate email.
-    const viaCheckout = body.via === 'checkout'
+    // A prize is only claimed through the game's claim form (with consent).
     const consent = body.marketing_consent === true
-    if (!viaCheckout && !consent) return NextResponse.json({ error: 'Please agree to receive your free treat details by email.' }, { status: 400, headers })
+    if (!consent) return NextResponse.json({ error: 'Please agree to receive your free treat details by email.' }, { status: 400, headers })
 
     const score = Math.floor(Number(body.score))
     const runMs = Math.floor(Number(body.run_ms))
@@ -63,7 +60,6 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().slice(0, 10)
     const expires = new Date(Date.now() + SPIN_GIFT_VALID_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const sendEmail = async (couponCode: string, prize: string, captureId: string) => {
-      if (viaCheckout) return
       try {
         await sendWheelWelcomeEmail({ name, email, couponCode, prize, gift: true, game: 'bone_run', score })
         await supabase.from('email_captures').update({ welcome_email_sent_at: new Date().toISOString() }).eq('id', captureId)
