@@ -16,6 +16,82 @@ interface EmailCapture {
   coupon_code: string | null;
 }
 
+type GameStats = {
+  players: number; games: number; finished: number; top_score: number;
+  won_tier1: number; won_tier2: number; won_tier3: number; winners: number;
+  forms: number; forms_by_prize: Record<string, number>;
+  redeemed: number; redeemed_by_prize: Record<string, number>;
+};
+
+const PRIZES = [
+  { key: 'won_tier1' as const, label: '2 free Goat Trachea', points: '800', icon: '🦴' },
+  { key: 'won_tier2' as const, label: '1 free pack of Chicken Feet (70 g)', points: '2,500', icon: '🐾' },
+  { key: 'won_tier3' as const, label: '1 free pack of Mackerel Fillet (60 g)', points: '5,000', icon: '🐟' },
+];
+
+function GameStatsPanel() {
+  const [days, setDays] = useState(0);
+  const [stats, setStats] = useState<GameStats | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authedFetch(`/api/admin/game-stats${days ? `?days=${days}` : ''}`);
+        if (!res.ok) throw new Error('Could not load game stats');
+        const data = await res.json();
+        if (!cancelled) { setStats(data.stats); setErr(''); }
+      } catch (e) { if (!cancelled) setErr(e instanceof Error ? e.message : 'Could not load game stats'); }
+    })();
+    return () => { cancelled = true; };
+  }, [days]);
+  const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '—');
+  const card = (label: string, value: string | number, sub?: string) => (
+    <div style={{ background: '#fff', border: '1px solid #e7dcc4', borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: '#8a7350' }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: '#102c22', marginTop: 4, fontFamily: 'Georgia, serif' }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: '#7a6a55', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+  return (
+    <section style={{ background: '#fbf7ee', border: '1px solid #e7dcc4', borderRadius: 16, padding: 18, marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#9a6514' }}>Bone Run game</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#102c22' }}>Players → winners → claims → rewards used</div>
+        </div>
+        <select value={days} onChange={e => setDays(Number(e.target.value))} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #d9ccae' }}>
+          <option value={0}>All time</option><option value={1}>Last 24 hours</option><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option>
+        </select>
+      </div>
+      {err && <div style={{ color: '#b23a2e', fontSize: 13, marginBottom: 10 }}>{err}</div>}
+      {stats && (<>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 }}>
+          {card('People who played', stats.players, `${stats.games} games played · top score ${Number(stats.top_score).toLocaleString('en-IN')}`)}
+          {card('Won a prize', stats.winners, `${pct(stats.winners, stats.players)} of players reached 800+`)}
+          {card('Filled the claim form', stats.forms, `${pct(stats.forms, stats.winners)} of winners`)}
+          {card('Reward used on an order', stats.redeemed, `${pct(stats.redeemed, stats.forms)} of claims`)}
+        </div>
+        <table style={{ width: '100%', marginTop: 14, borderCollapse: 'collapse', background: '#fff', borderRadius: 12, overflow: 'hidden', fontSize: 13 }}>
+          <thead><tr style={{ background: '#102c22', color: '#f6efe2', textAlign: 'left' }}>
+            <th style={{ padding: '10px 12px' }}>Prize</th><th style={{ padding: '10px 12px' }}>Points</th><th style={{ padding: '10px 12px' }}>Won (best run)</th><th style={{ padding: '10px 12px' }}>Form filled</th><th style={{ padding: '10px 12px' }}>Used on order</th>
+          </tr></thead>
+          <tbody>{PRIZES.map(p => (
+            <tr key={p.key} style={{ borderTop: '1px solid #eee4d0' }}>
+              <td style={{ padding: '10px 12px', fontWeight: 700 }}>{p.icon} {p.label}</td>
+              <td style={{ padding: '10px 12px' }}>{p.points}</td>
+              <td style={{ padding: '10px 12px' }}>{stats[p.key]}</td>
+              <td style={{ padding: '10px 12px' }}>{stats.forms_by_prize?.[p.label] || 0}</td>
+              <td style={{ padding: '10px 12px' }}>{stats.redeemed_by_prize?.[p.label] || 0}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <div style={{ fontSize: 11.5, color: '#7a6a55', marginTop: 8 }}>Players are counted per device. &ldquo;Won&rdquo; counts each player once at their highest prize. Play tracking started on 7 Oct 2026.</div>
+      </>)}
+    </section>
+  );
+}
+
 export default function EmailCaptures() {
   const [emails, setEmails] = useState<EmailCapture[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +187,9 @@ export default function EmailCaptures() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>📧 Email Captures Dashboard</h1>
+      <h1 style={styles.title}>🎮 Game Leads</h1>
+
+      <GameStatsPanel />
 
       {error && (
         <div style={styles.error}>
@@ -133,7 +211,7 @@ export default function EmailCaptures() {
           >
             <option value="all">All Sources</option>
             <option value="spin_to_win">Spin to Win</option>
-            <option value="bone_run">Bone Run game</option>
+            <option value="bone_run">Bone Run game (form filled)</option>
             <option value="spin_wheel">Legacy Spin Wheel</option>
             <option value="newsletter">Newsletter</option>
             <option value="dog_birthday">Dog Birthday Club</option>
