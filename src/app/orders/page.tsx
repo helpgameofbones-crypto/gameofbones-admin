@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { authedFetch } from '@/app/lib/authedFetch';
+import { formatShippingAddress } from '@/app/lib/format-address'
 
 const ALL_STATUSES = ['placed', 'confirmed', 'dispatched', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
 
@@ -627,8 +628,7 @@ export default function OrdersPage() {
                 <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Shipping Address</div>
                   <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
-                    {typeof selected.shipping_address === 'string' ? selected.shipping_address :
-                      [selected.shipping_address.street, selected.shipping_address.city, selected.shipping_address.state, selected.shipping_address.pincode].filter(Boolean).join(', ')}
+                    {formatShippingAddress(selected.shipping_address)}
                   </div>
                 </div>
               )}
