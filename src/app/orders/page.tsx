@@ -42,6 +42,9 @@ function parseItems(items: any): string[] {
       const weight = Number.isFinite(grams) && grams > 0 ? `${grams} g` : ''
       const pack = [label, weight].filter(Boolean).join(' · ')
       const quantity = Number(it.quantity ?? it.qty ?? 1)
+      // Free prize lines (Bone Run game / spin wheel) are added at ₹0 by the
+      // server. Flag them clearly so they are packed with the order.
+      if (name && it.is_gift) return `🎁 FREE PRIZE: ${name}${pack ? ' (' + pack.replace(/\s*·\s*free gift/i, '') + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}${it.gift_code ? ' · ' + it.gift_code : ''}`;
       if (name) return `${name}${pack ? ' (' + pack + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}`;
       if (it.product) return it.product;
       // Never expose raw JSON in the workspace. A small number of historic
@@ -491,12 +494,15 @@ export default function OrdersPage() {
 
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Items Ordered</div>
-                {parseItems(selected.items).map((item, i) => (
-                  <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #e5e7eb', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>🦴</span>
-                    <span style={{ fontWeight: 500 }}>{item}</span>
-                  </div>
-                ))}
+                {parseItems(selected.items).map((item, i) => {
+                  const prize = item.startsWith('🎁 FREE PRIZE:')
+                  return (
+                    <div key={i} style={{ padding: '6px 8px', margin: prize ? '6px -8px 0' : 0, borderBottom: '1px solid #e5e7eb', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: prize ? '#fef3c7' : 'transparent', borderRadius: prize ? 6 : 0 }}>
+                      <span style={{ fontSize: 16 }}>{prize ? '🎁' : '🦴'}</span>
+                      <span style={{ fontWeight: prize ? 700 : 500, color: prize ? '#92400e' : undefined }}>{prize ? item.replace('🎁 ', '') + ' — pack this free (₹0)' : item}</span>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Order Notes, added inline so there's no need to jump to a
