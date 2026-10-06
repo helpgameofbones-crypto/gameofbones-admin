@@ -183,9 +183,8 @@ export async function POST(req: NextRequest) {
           : 'Auto-recovered from Razorpay webhook; item details were not available. Verify with the customer before shipping.'
         // The customer paid but the browser never saved the order, so apply the
         // spin-wheel free treat here the same way checkout would.
-        // Offers are not stackable: no free gift when a coupon code was used.
-        const couponUsed = Boolean(String((attempt as { coupon_code?: unknown } | null)?.coupon_code || notes?.coupon_code || '').trim())
-        if (recovered && !couponUsed && subtotal >= SPIN_GIFT_MIN_ORDER) {
+        // Free gifts stack with coupon codes, so apply it whenever eligible.
+        if (recovered && subtotal >= SPIN_GIFT_MIN_ORDER) {
           try {
             const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null })
             if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
