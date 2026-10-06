@@ -86,10 +86,11 @@ export async function POST(req: NextRequest) {
   const webhookPlaceholder = Boolean(existing && !existing.customer_id)
   const storedItems: Array<Record<string, unknown>> = quote.items.map(item => ({ product_name: item.name, pack_label: item.pack_label || null, pack_weight_grams: item.pack_weight_grams, pack_price: item.price, compare_price: item.compare_price || null, is_sale: item.is_sale, quantity: item.quantity }))
   // Spin-to-win free gift: added at ₹0 to a new order of ₹499+ placed with the
-  // same mobile number or email. It is not a discount, so it stacks with any
-  // coupon code and reward points. Claimed atomically so it is used once.
+  // same mobile number or email. Offers are not stackable: the gift is only
+  // added when no coupon code is used on the order (reward points are fine).
+  // Claimed atomically so it is used once; an unused gift stays available.
   let claimedGift: { couponId: string; label: string } | null = null
-  if ((!existing || webhookPlaceholder) && quote.subtotal >= SPIN_GIFT_MIN_ORDER) {
+  if ((!existing || webhookPlaceholder) && !quote.coupon_code && quote.subtotal >= SPIN_GIFT_MIN_ORDER) {
     try {
       const eligibleGift = await findSpinGift(supabase, { phoneHash, emailHash: piiHash(normalizeEmailForHash(email)) })
       if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
