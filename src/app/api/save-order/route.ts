@@ -4,6 +4,7 @@ import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
 import { CheckoutError, checkoutQuote } from '@/app/lib/checkout-pricing'
+import { welcomeEligibleFor } from '@/app/lib/welcome-offer'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
     const history = await supabase.rpc('get_customer_order_history', { p_phone: session.phone })
     canUseWelcome = !history.error && Array.isArray(history.data) && history.data.length === 0
   }
+  // No login needed: first order for this mobile number and email (this order's own ref excluded).
+  if (!canUseWelcome && String(order.coupon_code || '').toUpperCase() === 'WELCOME15') canUseWelcome = await welcomeEligibleFor(supabase, phone, email, String(order.ref || ''))
   const canRedeemPoints = Boolean(session && normalizePhoneForHash(session.phone) === normalizePhoneForHash(phone))
   // COD orders are saved before any payment, so tell the customer instead of silently dropping their points.
   if (order.payment_method === 'cod' && Math.floor(Number(order.loyalty_points_redeemed) || 0) > 0 && !canRedeemPoints) {
