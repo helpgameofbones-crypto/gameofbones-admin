@@ -26,8 +26,8 @@ type GameStats = {
 const PRIZES = [
   { key: 'won_tier1' as const, label: '2 free Goat Trachea', points: '800', icon: '🦴' },
   { key: 'won_tier2' as const, label: '1 free pack of Chicken Feet (70 g)', points: '2,500', icon: '🐾' },
-  { key: 'won_tier3' as const, label: '1 free pack of Mackerel Fillet (60 g)', points: '5,000', icon: '🐟' },
-  { key: 'won_tier4' as const, label: 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel Fillet 60 g', points: '20,000', icon: '🏆' },
+  { key: 'won_tier3' as const, label: '1 free pack of Mackerel (60 g)', points: '5,000', icon: '🐟' },
+  { key: 'won_tier4' as const, label: 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel 60 g', points: '20,000', icon: '🏆' },
 ];
 
 function GameStatsPanel() {
