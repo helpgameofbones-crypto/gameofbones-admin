@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash, revealLegacyPii, revealLegacyPiiValue } from '@/app/lib/pii-crypto'
-import { checkoutQuote } from '@/app/lib/checkout-pricing'
+import { CheckoutError, checkoutQuote } from '@/app/lib/checkout-pricing'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
@@ -216,5 +216,5 @@ export async function POST(req: NextRequest) {
     }
   }
   return NextResponse.json({ success:true, profile_created: customerCreated, order:data, free_gift: claimedGift?.label || null }, { status:201, headers })
- } catch (e: unknown) { console.error('[save-order] unexpected failure', e); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:500, headers }) }
+ } catch (e: unknown) { if (e instanceof CheckoutError) return NextResponse.json({ error: e.message, code: 'checkout' }, { status:400, headers }); console.error('[save-order] unexpected failure', e); return NextResponse.json({ error:'Unable to save your order. Please try again.' }, { status:500, headers }) }
 }
