@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { metaSignalsFromNotes, sendMetaPurchase } from '@/app/lib/meta-capi'
-import { claimSpinGift, findSpinGift } from '@/app/lib/spin-gifts'
+import { claimSpinGift, findSpinGift, giftLines } from '@/app/lib/spin-gifts'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 
 export const maxDuration = 20
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
           try {
             const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null, subtotal })
             if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
-              items = [...items, { product_name: eligibleGift.gift.product_name, pack_label: eligibleGift.gift.pack_label, pack_price: 0, quantity: eligibleGift.gift.quantity, is_gift: true, gift_code: eligibleGift.code } as (typeof items)[number]]
+              items = [...items, ...giftLines(eligibleGift.gift).map(line => ({ product_name: line.product_name, pack_label: line.pack_label, pack_price: 0, quantity: line.quantity, is_gift: true, gift_code: eligibleGift.code } as (typeof items)[number]))]
             }
           } catch (giftError) {
             console.error('[razorpay-webhook] spin gift lookup failed', giftError)
