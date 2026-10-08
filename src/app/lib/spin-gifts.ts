@@ -35,9 +35,9 @@ export const BONE_RUN_GRAND_PRIZE_MIN = 2500
 export const boneRunTiers: Array<SpinGift & { at: number }> = [
   { at: 800, label: '2 free Goat Trachea', product_name: 'Goat Trachea', pack_label: '2 Pieces · free gift', quantity: 1, rank: 1.5, min_order: 0 },
   { at: 2500, label: '1 free pack of Chicken Feet (70 g)', product_name: 'Chicken Feet', pack_label: '70g · free gift', quantity: 1, rank: 2.5, min_order: SPIN_GIFT_MIN_ORDER },
-  { at: 5000, label: '1 free pack of Mackerel Fillet (60 g)', product_name: 'Mackerel Fillet', pack_label: '60g · free gift', quantity: 1, rank: 3, min_order: SPIN_GIFT_MIN_ORDER },
+  { at: 5000, label: '1 free pack of Mackerel (60 g)', product_name: 'Mackerel Fillet', pack_label: '60g · free gift', quantity: 1, rank: 3, min_order: SPIN_GIFT_MIN_ORDER },
   // Grand prize: all three treats free on an order of ₹2,500+ (after coupon discounts).
-  { at: 20000, label: 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel Fillet 60 g', product_name: 'Goat Trachea', pack_label: '2 Pieces · free gift', quantity: 1, rank: 4, min_order: BONE_RUN_GRAND_PRIZE_MIN, min_after_discount: true,
+  { at: 20000, label: 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel 60 g', product_name: 'Goat Trachea', pack_label: '2 Pieces · free gift', quantity: 1, rank: 4, min_order: BONE_RUN_GRAND_PRIZE_MIN, min_after_discount: true,
     items: [
       { product_name: 'Goat Trachea', pack_label: '2 Pieces · free gift', quantity: 1 },
       { product_name: 'Chicken Feet', pack_label: '70g · free gift', quantity: 1 },
@@ -46,7 +46,15 @@ export const boneRunTiers: Array<SpinGift & { at: number }> = [
 ]
 export const boneRunTierForScore = (score: number) => [...boneRunTiers].reverse().find(tier => score >= tier.at) || null
 
-export const giftForLabel = (label: unknown) => boneRunTiers.find(gift => gift.label === label) || spinGifts.find(gift => gift.label === label) || null
+// Older prize names, kept so prizes claimed before a rename still redeem.
+const LEGACY_LABELS: Record<string, string> = {
+  '1 free pack of Mackerel Fillet (60 g)': '1 free pack of Mackerel (60 g)',
+  'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel Fillet 60 g': 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel 60 g',
+}
+export const giftForLabel = (label: unknown) => {
+  const name = typeof label === 'string' ? (LEGACY_LABELS[label] || label) : label
+  return boneRunTiers.find(gift => gift.label === name) || spinGifts.find(gift => gift.label === name) || null
+}
 
 export type EligibleSpinGift = { couponId: string; code: string; gift: SpinGift }
 
