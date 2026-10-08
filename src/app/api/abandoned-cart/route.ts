@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
  try {
   const originError = rejectUnexpectedOrigin(req); if (originError) return originError
   const limitError = await rateLimit(req, 'abandoned-cart', 10, 60 * 60 * 1000); if (limitError) return limitError
-  const { phone, email, name, items, total, cart_token: incomingCartToken } = await req.json()
+  const { phone, email, name, items, total, cart_token: incomingCartToken, whatsapp_opt_in: whatsappOptIn, cart_lines: rawCartLines } = await req.json()
   const normalizedPhone = cleanText(phone,20).replace(/^\+?91/, ''), normalizedEmail=cleanText(email,254).toLowerCase(), normalizedName=cleanText(name,100)
   const cartToken = validCartToken(incomingCartToken) ? cleanText(incomingCartToken,90) : ''
   const hasPhone = /^\d{10}$/.test(normalizedPhone)
@@ -50,7 +50,17 @@ export async function POST(req: NextRequest) {
       price: Math.max(0, Math.min(100000, Number(line.price || 0) || 0)),
     }
   })
-  const payload = { customer_phone:hasPhone?normalizedPhone:null, customer_email:hasEmail?normalizedEmail:null, customer_name:hasContact?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasEmail?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasContact&&normalizedName?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasEmail?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasContact?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
+  // Exact browser bag lines, used only to rebuild the bag from a WhatsApp
+  // reminder link. Prices are re-checked server-side at checkout.
+  const cartLines = Array.isArray(rawCartLines) ? rawCartLines.slice(0, 25).map((entry: unknown) => {
+    const line = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {}
+    const product = line.product && typeof line.product === 'object' ? line.product as Record<string, unknown> : null
+    const id = cleanText(line.id, 120)
+    if (!id) return null
+    return { id, quantity: Math.max(1, Math.min(99, Math.floor(Number(line.quantity) || 1))), product: product ? { name: cleanText(product.name, 160), price: Math.max(0, Math.min(100000, Number(product.price) || 0)), packLabel: cleanText(product.packLabel, 80), tag: cleanText(product.tag, 120), catalog_slug: cleanText(product.catalog_slug, 120), image: /^https:\/\//i.test(cleanText(product.image, 400)) || /^\/?assets\//.test(cleanText(product.image, 400)) ? cleanText(product.image, 400) : '' } : null }
+  }).filter(Boolean) : null
+  const optIn = whatsappOptIn === true && hasPhone
+  const payload = { ...(cartLines && cartLines.length ? { cart_lines: cartLines } : {}), ...(optIn ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString() } : {}), customer_phone:hasPhone?normalizedPhone:null, customer_email:hasEmail?normalizedEmail:null, customer_name:hasContact?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasEmail?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasContact&&normalizedName?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasEmail?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasContact?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
   const result = existing ? await supabase.from('abandoned_carts').update(payload).eq('id',existing.id) : await supabase.from('abandoned_carts').insert(payload)
   if (result.error) throw result.error
   return NextResponse.json({ ok:true, coupon_code:couponCode }, { headers })
