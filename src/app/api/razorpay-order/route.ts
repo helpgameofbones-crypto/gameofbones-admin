@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
 import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
-import { checkoutQuote } from '@/app/lib/checkout-pricing'
+import { CheckoutError, checkoutQuote } from '@/app/lib/checkout-pricing'
 import { createClient } from '@supabase/supabase-js'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { clientIpFromRequest } from '@/app/lib/meta-capi'
@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
       order_id: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID, quote,
     }, { headers })
   } catch (error: unknown) {
+    // Fixable problems (offer code, pack, bag) are shown to the shopper.
+    if (error instanceof CheckoutError) return NextResponse.json({ error: error.message, code: 'checkout' }, { status: 400, headers })
     console.error('[razorpay-order] failed to create payment order', error)
     return NextResponse.json({ error: 'Unable to start payment. Please try again.' }, { status: 500, headers })
   }
