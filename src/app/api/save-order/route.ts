@@ -8,7 +8,7 @@ import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { clientIpFromRequest, sendMetaPurchase, type MetaBrowserSignals } from '@/app/lib/meta-capi'
-import { SPIN_GIFT_MIN_ORDER, claimSpinGift, findSpinGift, releaseSpinGift } from '@/app/lib/spin-gifts'
+import { claimSpinGift, findSpinGift, releaseSpinGift } from '@/app/lib/spin-gifts'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const REF_RE = /^[A-Za-z0-9-]{3,40}$/, PHONE_RE = /^\+?\d{10,13}$/
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
@@ -90,9 +90,9 @@ export async function POST(req: NextRequest) {
   // discount, so it stacks with coupon codes and reward points. Claimed
   // atomically so it is used once.
   let claimedGift: { couponId: string; label: string } | null = null
-  if ((!existing || webhookPlaceholder) && quote.subtotal >= SPIN_GIFT_MIN_ORDER) {
+  if ((!existing || webhookPlaceholder) && quote.subtotal > 0) {
     try {
-      const eligibleGift = await findSpinGift(supabase, { phoneHash, emailHash: piiHash(normalizeEmailForHash(email)) })
+      const eligibleGift = await findSpinGift(supabase, { phoneHash, emailHash: piiHash(normalizeEmailForHash(email)), subtotal: quote.subtotal })
       if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
         claimedGift = { couponId: eligibleGift.couponId, label: eligibleGift.gift.label }
         storedItems.push({ product_name: eligibleGift.gift.product_name, pack_label: eligibleGift.gift.pack_label, pack_weight_grams: null, pack_price: 0, compare_price: null, is_sale: false, is_gift: true, gift_code: eligibleGift.code, quantity: eligibleGift.gift.quantity })
