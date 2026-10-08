@@ -18,7 +18,7 @@ interface EmailCapture {
 
 type GameStats = {
   players: number; games: number; finished: number; top_score: number;
-  won_tier1: number; won_tier2: number; won_tier3: number; winners: number;
+  won_tier1: number; won_tier2: number; won_tier3: number; won_tier4?: number; winners: number;
   forms: number; forms_by_prize: Record<string, number>;
   redeemed: number; redeemed_by_prize: Record<string, number>;
 };
@@ -27,6 +27,7 @@ const PRIZES = [
   { key: 'won_tier1' as const, label: '2 free Goat Trachea', points: '800', icon: '🦴' },
   { key: 'won_tier2' as const, label: '1 free pack of Chicken Feet (70 g)', points: '2,500', icon: '🐾' },
   { key: 'won_tier3' as const, label: '1 free pack of Mackerel Fillet (60 g)', points: '5,000', icon: '🐟' },
+  { key: 'won_tier4' as const, label: 'All 3 treats free: 2 Goat Trachea, Chicken Feet 70 g & Mackerel Fillet 60 g', points: '20,000', icon: '🏆' },
 ];
 
 function GameStatsPanel() {
@@ -80,7 +81,7 @@ function GameStatsPanel() {
             <tr key={p.key} style={{ borderTop: '1px solid #eee4d0' }}>
               <td style={{ padding: '10px 12px', fontWeight: 700 }}>{p.icon} {p.label}</td>
               <td style={{ padding: '10px 12px' }}>{p.points}</td>
-              <td style={{ padding: '10px 12px' }}>{stats[p.key]}</td>
+              <td style={{ padding: '10px 12px' }}>{stats[p.key] ?? 0}</td>
               <td style={{ padding: '10px 12px' }}>{stats.forms_by_prize?.[p.label] || 0}</td>
               <td style={{ padding: '10px 12px' }}>{stats.redeemed_by_prize?.[p.label] || 0}</td>
             </tr>
