@@ -17,9 +17,9 @@ import { BONE_RUN_MAX_SCORE, SPIN_GIFT_MIN_ORDER, SPIN_GIFT_VALID_DAYS, boneRunT
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const couponCodeFor = () => `RUN${randomBytes(5).toString('hex').toUpperCase()}`
-// Fastest possible scoring in the game is ~84 points/s from distance plus
-// ~22 points/s from bones. Anything quicker than this was not really played.
-const MAX_POINTS_PER_SECOND = 115
+// Fastest possible scoring: ~84 points/s from distance plus bones with combo
+// multipliers and golden bones (~70/s at best). Anything quicker was not played.
+const MAX_POINTS_PER_SECOND = 200
 const MAX_RUN_MS = 30 * 60 * 1000
 
 type Coupon = { id: string; code: string; uses_count: number | null; max_uses: number | null; is_active: boolean | null; valid_until: string | null }
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const expires = new Date(Date.now() + SPIN_GIFT_VALID_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const sendEmail = async (couponCode: string, prize: string, captureId: string) => {
       try {
-        await sendWheelWelcomeEmail({ name, email, couponCode, prize, gift: true, game: 'bone_run', score })
+        await sendWheelWelcomeEmail({ name, email, couponCode, prize, gift: true, game: 'bone_run', score, minOrder: giftForLabel(prize)?.min_order })
         await supabase.from('email_captures').update({ welcome_email_sent_at: new Date().toISOString() }).eq('id', captureId)
       } catch (emailError) {
         // A prize must never be lost because the mail provider is unavailable.
@@ -79,26 +79,26 @@ export async function POST(req: NextRequest) {
       const current = giftForLabel(prior.data.prize)
       const expired = !coupon || coupon.is_active !== true || (coupon.valid_until && String(coupon.valid_until).slice(0, 10) < today)
       if (coupon && !expired && current && current.rank >= tier.rank) {
-        return NextResponse.json({ status: 'kept', prize: prior.data.prize, coupon_code: coupon.code, min_order: SPIN_GIFT_MIN_ORDER, valid_until: coupon.valid_until }, { headers })
+        return NextResponse.json({ status: 'kept', prize: prior.data.prize, coupon_code: coupon.code, min_order: current?.min_order ?? SPIN_GIFT_MIN_ORDER, valid_until: coupon.valid_until }, { headers })
       }
       if (coupon) {
         // Upgrade (or renew an expired, never-used gift) in place: same code.
-        const { error: couponError } = await supabase.from('coupons').update({ is_active: true, valid_from: today, valid_until: expires, min_order: SPIN_GIFT_MIN_ORDER }).eq('id', coupon.id).eq('uses_count', 0)
+        const { error: couponError } = await supabase.from('coupons').update({ is_active: true, valid_from: today, valid_until: expires, min_order: tier.min_order }).eq('id', coupon.id).eq('uses_count', 0)
         if (couponError) throw couponError
         const { error: captureError } = await supabase.from('email_captures').update({ prize: tier.label, source: 'bone_run' }).eq('id', prior.data.id)
         if (captureError) throw captureError
         await sendEmail(coupon.code, tier.label, prior.data.id)
-        return NextResponse.json({ status: current && current.rank < tier.rank ? 'upgraded' : 'renewed', prize: tier.label, coupon_code: coupon.code, min_order: SPIN_GIFT_MIN_ORDER, valid_until: expires }, { headers })
+        return NextResponse.json({ status: current && current.rank < tier.rank ? 'upgraded' : 'renewed', prize: tier.label, coupon_code: coupon.code, min_order: tier.min_order, valid_until: expires }, { headers })
       }
     }
 
     const couponCode = couponCodeFor()
-    const couponInsert = await supabase.from('coupons').insert({ code: couponCode, type: 'free', value: 0, min_order: SPIN_GIFT_MIN_ORDER, max_uses: 1, uses_count: 0, valid_from: today, valid_until: expires, is_active: true })
+    const couponInsert = await supabase.from('coupons').insert({ code: couponCode, type: 'free', value: 0, min_order: tier.min_order, max_uses: 1, uses_count: 0, valid_from: today, valid_until: expires, is_active: true })
     if (couponInsert.error) throw couponInsert.error
     const insert = await supabase.from('email_captures').insert({ source: 'bone_run', status: 'active', prize: tier.label, coupon_code: couponCode, marketing_consent: consent, marketing_consent_at: consent ? new Date().toISOString() : null, pii_email_ciphertext: encryptPii(email), pii_name_ciphertext: encryptPii(name), pii_phone_ciphertext: encryptPii(phone), pii_email_hash: emailHash, pii_phone_hash: phoneHash, pii_key_version: 1 }).select('id').single()
     if (insert.error) throw insert.error
     await sendEmail(couponCode, tier.label, insert.data.id)
-    return NextResponse.json({ status: 'created', prize: tier.label, coupon_code: couponCode, min_order: SPIN_GIFT_MIN_ORDER, valid_until: expires }, { status: 201, headers })
+    return NextResponse.json({ status: 'created', prize: tier.label, coupon_code: couponCode, min_order: tier.min_order, valid_until: expires }, { status: 201, headers })
   } catch (error) {
     console.error('[bone-run] claim failed', error)
     return NextResponse.json({ error: 'Unable to save your prize right now. Please try again.' }, { status: 500, headers })
