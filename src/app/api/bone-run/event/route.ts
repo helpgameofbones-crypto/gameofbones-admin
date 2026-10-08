@@ -8,7 +8,7 @@ import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
  * Game Leads dashboard. Stores no personal data: only a random per-device id.
  */
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const tierFor = (score: number) => (score >= 5000 ? 3 : score >= 2500 ? 2 : score >= 800 ? 1 : 0)
+const tierFor = (score: number) => (score >= 20000 ? 4 : score >= 5000 ? 3 : score >= 2500 ? 2 : score >= 800 ? 1 : 0)
 
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!/^[a-z0-9-]{8,64}$/i.test(playerId) || !['start', 'end'].includes(event)) {
       return NextResponse.json({ ok: false }, { status: 400, headers })
     }
-    const score = event === 'end' ? Math.max(0, Math.min(5000, Math.floor(Number(body.score) || 0))) : null
+    const score = event === 'end' ? Math.max(0, Math.min(20000, Math.floor(Number(body.score) || 0))) : null
     const { error } = await supabase.from('game_events').insert({ game: 'bone_run', player_id: playerId, event, score, tier: score === null ? null : tierFor(score) })
     if (error) throw error
     return NextResponse.json({ ok: true }, { headers })
