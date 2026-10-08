@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { clientIpFromRequest } from '@/app/lib/meta-capi'
 import { normalizePhoneForHash } from '@/app/lib/pii-crypto'
+import { welcomeEligibleFor } from '@/app/lib/welcome-offer'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -49,6 +50,11 @@ export async function POST(req: NextRequest) {
       if (normalizePhoneForHash(session.phone) !== normalizePhoneForHash(checkoutPhone)) return NextResponse.json({ error: 'Reward points can only be used with the mobile number on your account. Enter that number at checkout, or set reward points to 0.' }, { status: 400, headers })
     }
     const customer = await customerCheckoutState(req)
+    // WELCOME15 works without logging in: check this mobile/email has no earlier order.
+    if (!customer.welcomeEligible && String(coupon_code || '').trim().toUpperCase() === 'WELCOME15') {
+      const n = notes && typeof notes === 'object' ? notes as Record<string, unknown> : {}
+      customer.welcomeEligible = await welcomeEligibleFor(database, n.customer_phone, n.customer_email, typeof n.ref === 'string' ? n.ref : null)
+    }
     const quote = await checkoutQuote(database, items, payment_method === 'online' ? 'online' : '', coupon_code, customer.welcomeEligible, customer.availablePoints, loyalty_points_redeemed)
     const order = await razorpay.orders.create({
       amount: quote.grand_total * 100,
