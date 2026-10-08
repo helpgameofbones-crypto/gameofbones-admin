@@ -56,6 +56,7 @@ const groups: ToolGroup[] = [
     { name: 'Campaign hub', href: '/campaigns-hub', description: 'Seasonal and operational campaigns' },
     { name: 'Coupons', href: '/coupons', description: 'Create, manage and audit coupons' },
     { name: 'Cart recovery', href: '/abandoned-carts', description: 'Abandoned carts and recovery workflow' },
+    { name: 'WhatsApp', href: '/whatsapp', description: 'WhatsApp setup, cart reminders, order updates, replies and costs' },
     { name: 'Prospects', href: '/prospects', description: 'Captured contacts that have not purchased' },
     { name: 'Influencers', href: '/influencers', description: 'Influencer marketing activity' },
   ] },
