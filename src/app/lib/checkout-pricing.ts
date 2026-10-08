@@ -109,7 +109,7 @@ export async function checkoutQuote(
       && (!singleUseCoupon?.valid_until || String(singleUseCoupon.valid_until) >= today)
       && (singleUseCoupon?.max_uses == null || Number(singleUseCoupon.uses_count || 0) < Number(singleUseCoupon.max_uses))
     if (!valid) {
-      if (coupon === 'WELCOME15') throw new CheckoutError('WELCOME15 works only on your first order after you log in with the email code. Log in, or remove the code to pay now.')
+      if (coupon === 'WELCOME15') throw new CheckoutError('WELCOME15 is for first orders only, and this mobile number or email has ordered with us before. Remove the code to pay now, or try MEGA20 on orders of ₹2,199+.')
       if (coupon === 'MEGA20') throw new CheckoutError('MEGA20 needs a treat subtotal of ₹2,199 or more. Add a little more, or remove the code to pay now.')
       throw new CheckoutError(`The code ${coupon} is invalid, expired or not valid for this bag. Remove the code to pay now.`)
     }
