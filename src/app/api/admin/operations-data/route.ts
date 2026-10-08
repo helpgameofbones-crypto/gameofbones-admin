@@ -20,8 +20,16 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null) || {}) as Record<string, unknown>; const db = database()
   if (body.action === 'production') {
     const date = text(body.date, 10), batchName = text(body.batch_name, 300); if (!batchName || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'Batch name and date are required.' }, { status: 400 })
-    const { error } = await db.from('production_batches').insert({ batch_name: batchName, batch_id: text(body.batch_id, 100), start_time: text(body.start_time, 20), end_time: text(body.end_time, 20), price_per_kg: number(body.price_per_kg), total_kg: number(body.total_kg), transportation: number(body.transportation), notes: text(body.notes), date, price: number(body.price), total_cost: number(body.total_cost), run_time_hours: number(body.run_time_hours, 48), run_time: text(body.run_time, 50), total_grams: number(body.total_grams), yield_g: number(body.yield_g), yield_pct: number(body.yield_pct, 100) })
+    const row = { batch_name: batchName, batch_id: text(body.batch_id, 100), start_time: text(body.start_time, 20), end_time: text(body.end_time, 20), price_per_kg: number(body.price_per_kg), total_kg: number(body.total_kg), transportation: number(body.transportation), notes: text(body.notes), date, price: number(body.price), total_cost: number(body.total_cost), run_time_hours: number(body.run_time_hours, 48), run_time: text(body.run_time, 50), total_grams: number(body.total_grams), yield_g: number(body.yield_g), yield_pct: number(body.yield_pct, 100) }
+    // Editing an existing batch (e.g. adding the yield once the batch finishes).
+    const id = text(body.id, 64)
+    const { error } = id ? await db.from('production_batches').update(row).eq('id', id) : await db.from('production_batches').insert(row)
     if (error) return NextResponse.json({ error: 'Unable to save production batch.' }, { status: 500 }); return NextResponse.json({ ok: true })
+  }
+  if (body.action === 'production_delete') {
+    const id = text(body.id, 64); if (!id) return NextResponse.json({ error: 'Batch id is required.' }, { status: 400 })
+    const { error } = await db.from('production_batches').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: 'Unable to delete production batch.' }, { status: 500 }); return NextResponse.json({ ok: true })
   }
   if (body.action === 'influencer') {
     const name = text(body.name, 200), instagram = text(body.instagram_handle, 200).replace(/^@/, ''); if (!name || !instagram) return NextResponse.json({ error: 'Name and Instagram handle are required.' }, { status: 400 })
