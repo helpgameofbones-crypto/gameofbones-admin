@@ -1,7 +1,7 @@
-﻿'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { authedFetch } from '@/app/lib/authedFetch'
-import { Plus, X, ChevronDown, ChevronUp, Download, BarChart2, Clock, TrendingUp, Package } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, BarChart2, Clock, Package, Pencil, Trash2 } from 'lucide-react'
 
 export default function ProductionPage() {
   const [batches, setBatches] = useState<any[]>([])
@@ -9,11 +9,34 @@ export default function ProductionPage() {
   const [showForm, setShowForm] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [monthFilter, setMonthFilter] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [form, setForm] = useState({
     batch_name: '', batch_id: '', start_time: '', end_time: '',
-    price_per_kg: '', total_kg: '', transportation: '', notes: '',
+    price_per_kg: '', total_kg: '', transportation: '', notes: '', yield_g: '',
     date: new Date().toISOString().split('T')[0],
   })
+  const emptyForm = () => ({ batch_name: '', batch_id: '', start_time: '', end_time: '', price_per_kg: '', total_kg: '', transportation: '', notes: '', yield_g: '', date: new Date().toISOString().split('T')[0] })
+
+  function openNew() { setEditingId(null); setForm(emptyForm()); setFormError(''); setShowForm(true) }
+  function openEdit(batch: any) {
+    const v = (x: unknown) => (x === null || x === undefined || Number(x) === 0 && typeof x === 'number' ? '' : String(x))
+    setEditingId(String(batch.id))
+    setForm({
+      batch_name: batch.batch_name || '', batch_id: batch.batch_id || '',
+      start_time: batch.start_time || '', end_time: batch.end_time || '',
+      price_per_kg: v(batch.price_per_kg), total_kg: v(batch.total_kg), transportation: v(batch.transportation),
+      notes: batch.notes || '', yield_g: v(batch.yield_g),
+      date: String(batch.date || '').slice(0, 10) || new Date().toISOString().split('T')[0],
+    })
+    setFormError(''); setShowForm(true)
+  }
+  async function deleteBatch(batch: any) {
+    if (!confirm(`Delete batch ${batch.batch_id || batch.batch_name}? This cannot be undone.`)) return
+    const response = await authedFetch('/api/admin/operations-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'production_delete', id: batch.id }) })
+    if (response.ok) { setExpanded(null); fetchBatches() } else alert('Could not delete this batch. Please try again.')
+  }
 
   useEffect(() => { fetchBatches() }, [])
 
@@ -45,11 +68,13 @@ export default function ProductionPage() {
 
   async function submitBatch() {
     const c = calcBatch(form)
-    const yield_g = parseFloat((form as any).yield_g) || 0
+    setSaving(true); setFormError('')
+    const yield_g = parseFloat(form.yield_g) || 0
     const yield_pct = c.total_kg > 0 ? Math.round((yield_g / (c.total_kg * 1000)) * 100) : 0
     const run_time = `${Math.floor(c.run_time_hours)}h ${Math.round((c.run_time_hours % 1) * 60)}m`
 
     const response = await authedFetch('/api/admin/operations-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'production',
+      ...(editingId ? { id: editingId } : {}),
       ...form,
       price: c.price,
       total_cost: c.total_cost,
@@ -59,10 +84,15 @@ export default function ProductionPage() {
       yield_g,
       yield_pct,
     }) })
+    setSaving(false)
     if (response.ok) {
       setShowForm(false)
-      setForm({ batch_name: '', batch_id: '', start_time: '', end_time: '', price_per_kg: '', total_kg: '', transportation: '', notes: '', date: new Date().toISOString().split('T')[0] })
+      setEditingId(null)
+      setForm(emptyForm())
       fetchBatches()
+    } else {
+      const payload = await response.json().catch(() => ({}))
+      setFormError(payload.error || 'Could not save this batch. Please try again.')
     }
   }
 
@@ -78,13 +108,15 @@ export default function ProductionPage() {
       total_kg: mb.reduce((s, b) => s + (parseFloat(b.total_kg) || 0), 0),
       total_cost: mb.reduce((s, b) => s + (b.total_cost || 0), 0),
       total_yield_g: mb.reduce((s, b) => s + (b.yield_g || 0), 0),
-      avg_yield_pct: mb.length > 0 ? Math.round(mb.reduce((s, b) => s + (b.yield_pct || 0), 0) / mb.length) : 0,
+      pending: mb.filter(b => !(b.yield_g > 0)).length,
+      // Batches still drying have no yield yet; leave them out of the average.
+      avg_yield_pct: (() => { const done = mb.filter(b => b.yield_g > 0); return done.length ? Math.round(done.reduce((s, b) => s + (b.yield_pct || 0), 0) / done.length) : 0 })(),
       run_hours: mb.reduce((s, b) => s + (b.run_time_hours || 0), 0),
     }
   })
 
   const live = calcBatch(form)
-  const liveYieldG = parseFloat((form as any).yield_g) || 0
+  const liveYieldG = parseFloat(form.yield_g) || 0
   const liveYieldPct = live.total_kg > 0 ? Math.round((liveYieldG / (live.total_kg * 1000)) * 100) : 0
 
   const currentMonth = new Date().toISOString().slice(0, 7)
@@ -100,9 +132,9 @@ export default function ProductionPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Production Tracker</h1>
-          <p className="text-sm text-gray-500 mt-1">Track every batch  cost, yield, time and profitability</p>
+          <p className="text-sm text-gray-500 mt-1">Track every batch: cost, yield, time and profitability</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors">
+        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors">
           <Plus size={16} /> Log Batch
         </button>
       </div>
@@ -110,14 +142,14 @@ export default function ProductionPage() {
       {/* This Month Summary */}
       {thisMonth && (
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-5 mb-6 text-white">
-          <div className="text-sm font-medium opacity-80 mb-3">This Month  {formatMonth(currentMonth)}</div>
+          <div className="text-sm font-medium opacity-80 mb-3">This month · {formatMonth(currentMonth)}</div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: 'Batches Run', value: thisMonth.batches },
               { label: 'Raw Material', value: `${thisMonth.total_kg.toFixed(1)} kg` },
-              { label: 'Total Cost', value: `${thisMonth.total_cost.toLocaleString('en-IN')}` },
+              { label: 'Total Cost', value: `₹${thisMonth.total_cost.toLocaleString('en-IN')}` },
               { label: 'Total Yield', value: `${(thisMonth.total_yield_g / 1000).toFixed(2)} kg` },
-              { label: 'Avg Yield %', value: `${thisMonth.avg_yield_pct}%` },
+              { label: thisMonth.pending ? `Avg Yield % · ${thisMonth.pending} drying` : 'Avg Yield %', value: thisMonth.total_yield_g > 0 ? `${thisMonth.avg_yield_pct}%` : '—' },
             ].map(s => (
               <div key={s.label}>
                 <div className="text-2xl font-bold">{s.value}</div>
@@ -149,7 +181,7 @@ export default function ProductionPage() {
                   <td className="px-4 py-3 font-medium text-gray-900">{formatMonth(m.month)}</td>
                   <td className="px-4 py-3 text-gray-700">{m.batches}</td>
                   <td className="px-4 py-3 text-gray-700">{m.total_kg.toFixed(1)}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{m.total_cost.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-900">₹{m.total_cost.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-gray-700">{m.total_yield_g.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${m.avg_yield_pct >= 60 ? 'bg-green-100 text-green-700' : m.avg_yield_pct >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
@@ -192,7 +224,7 @@ export default function ProductionPage() {
                 <div className="p-4 flex flex-wrap items-center justify-between gap-3 cursor-pointer" onClick={() => setExpanded(isExp ? null : batch.id)}>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-sm shrink-0">
-                      #{batch.batch_id || ''}
+                      #{batch.batch_id || '—'}
                     </div>
                     <div>
                       <div className="font-semibold text-gray-900">{batch.batch_name}</div>
@@ -205,9 +237,10 @@ export default function ProductionPage() {
                       <div className="text-xs text-gray-400">Raw</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-red-600">{(batch.total_cost || 0).toLocaleString('en-IN')}</div>
+                      <div className="font-bold text-red-600">₹{(batch.total_cost || 0).toLocaleString('en-IN')}</div>
                       <div className="text-xs text-gray-400">Total Cost</div>
                     </div>
+                    {batch.yield_g > 0 ? (<>
                     <div className="text-center">
                       <div className="font-bold text-green-700">{(batch.yield_g || 0).toLocaleString('en-IN')} g</div>
                       <div className="text-xs text-gray-400">Yield</div>
@@ -218,6 +251,17 @@ export default function ProductionPage() {
                       </span>
                       <div className="text-xs text-gray-400 mt-0.5">Yield %</div>
                     </div>
+                    {batch.yield_g > 0 && batch.total_cost > 0 && (
+                      <div className="text-center">
+                        <div className="font-bold text-gray-800">₹{Math.round(batch.total_cost / (batch.yield_g / 1000)).toLocaleString('en-IN')}</div>
+                        <div className="text-xs text-gray-400">Cost / kg made</div>
+                      </div>
+                    )}
+                    </>) : (
+                      <button onClick={e => { e.stopPropagation(); openEdit(batch) }} className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200">
+                        Drying · add yield
+                      </button>
+                    )}
                     <div className="text-center">
                       <div className="font-bold text-gray-700">{batch.run_time || ''}</div>
                       <div className="text-xs text-gray-400">Run Time</div>
@@ -234,9 +278,9 @@ export default function ProductionPage() {
                         { label: 'Start Time', value: batch.start_time || '' },
                         { label: 'End Time', value: batch.end_time || '' },
                         { label: 'Run Time', value: batch.run_time || '' },
-                        { label: 'Price/kg', value: `${batch.price_per_kg || 0}` },
-                        { label: 'Raw Material Cost', value: `${(batch.price || 0).toLocaleString('en-IN')}` },
-                        { label: 'Transportation', value: `${(batch.transportation || 0).toLocaleString('en-IN')}` },
+                        { label: 'Price/kg', value: `₹${batch.price_per_kg || 0}` },
+                        { label: 'Raw Material Cost', value: `₹${(batch.price || 0).toLocaleString('en-IN')}` },
+                        { label: 'Transportation', value: `₹${(batch.transportation || 0).toLocaleString('en-IN')}` },
                         { label: 'Total Grams', value: `${((batch.total_kg || 0) * 1000).toLocaleString('en-IN')} g` },
                       ].map(d => (
                         <div key={d.label} className="bg-white rounded-lg p-2.5 border border-gray-100">
@@ -247,9 +291,17 @@ export default function ProductionPage() {
                     </div>
                     {batch.notes && (
                       <div className="bg-white rounded-lg p-3 border border-gray-100 text-sm text-gray-600">
-                         {batch.notes}
+                        {batch.notes}
                       </div>
                     )}
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => openEdit(batch)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600">
+                        <Pencil size={14} /> Edit batch{batch.yield_g > 0 ? '' : ' / add yield'}
+                      </button>
+                      <button onClick={() => deleteBatch(batch)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-red-50 hover:text-red-700">
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -263,7 +315,7 @@ export default function ProductionPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl my-4">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">Log Production Batch</h2>
+              <h2 className="text-lg font-bold text-gray-900">{editingId ? 'Edit Production Batch' : 'Log Production Batch'}</h2>
               <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
             </div>
             <div className="space-y-4">
@@ -311,7 +363,7 @@ export default function ProductionPage() {
               {/* Cost */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 block mb-1">Price per kg () *</label>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Price per kg (₹) *</label>
                   <input type="number" value={form.price_per_kg} onChange={e => setForm(f => ({ ...f, price_per_kg: e.target.value }))}
                     placeholder="0" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
                 </div>
@@ -321,7 +373,7 @@ export default function ProductionPage() {
                     placeholder="0" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 block mb-1">Transportation ()</label>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Transportation (₹)</label>
                   <input type="number" value={form.transportation} onChange={e => setForm(f => ({ ...f, transportation: e.target.value }))}
                     placeholder="0" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
                 </div>
@@ -329,8 +381,8 @@ export default function ProductionPage() {
 
               {/* Yield */}
               <div>
-                <label className="text-xs font-semibold text-gray-600 block mb-1">Yield (grams after dehydration) *</label>
-                <input type="number" value={(form as any).yield_g || ''} onChange={e => setForm(f => ({ ...f, yield_g: e.target.value } as any))}
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Yield (grams after dehydration) <span className="font-normal text-gray-400">· leave empty while the batch is drying, add it later with Edit</span></label>
+                <input type="number" value={form.yield_g} onChange={e => setForm(f => ({ ...f, yield_g: e.target.value }))}
                   placeholder="e.g. 4500" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
               </div>
 
@@ -338,10 +390,10 @@ export default function ProductionPage() {
               {(live.total_kg > 0 || live.price > 0) && (
                 <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: 'Raw Material Cost', value: `${live.price.toLocaleString('en-IN')}` },
-                    { label: 'Transportation', value: `${live.transportation.toLocaleString('en-IN')}` },
-                    { label: 'Total Cost', value: `${live.total_cost.toLocaleString('en-IN')}`, bold: true },
-                    { label: 'Yield %', value: `${liveYieldPct}%`, bold: true },
+                    { label: 'Raw Material Cost', value: `₹${live.price.toLocaleString('en-IN')}` },
+                    { label: 'Transportation', value: `₹${live.transportation.toLocaleString('en-IN')}` },
+                    { label: 'Total Cost', value: `₹${live.total_cost.toLocaleString('en-IN')}`, bold: true },
+                    { label: liveYieldG > 0 ? 'Yield %' : 'Yield % (add later)', value: liveYieldG > 0 ? `${liveYieldPct}%` : '—', bold: true },
                   ].map(d => (
                     <div key={d.label} className="text-center">
                       <div className={`text-lg ${d.bold ? 'font-bold text-orange-700' : 'font-semibold text-gray-800'}`}>{d.value}</div>
@@ -358,10 +410,11 @@ export default function ProductionPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400 resize-none" />
               </div>
 
+              {formError && <div className="text-sm text-red-600">{formError}</div>}
               <div className="flex gap-3 pt-2">
-                <button onClick={submitBatch} disabled={!form.batch_name || !form.total_kg || !form.price_per_kg}
+                <button onClick={submitBatch} disabled={saving || !form.batch_name || !form.total_kg || !form.price_per_kg}
                   className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors">
-                  Save Batch
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Batch'}
                 </button>
                 <button onClick={() => setShowForm(false)} className="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200">Cancel</button>
               </div>
