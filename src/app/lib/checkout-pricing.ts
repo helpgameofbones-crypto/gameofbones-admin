@@ -1,7 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
 type Product = { name: string; price: unknown; compare_price: unknown; sizes: unknown; is_active: unknown }
-type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown }
+type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown; pack_price?: unknown; price?: unknown }
+
+/** A problem the shopper can fix (bag, pack or offer code). Its message is safe to show at checkout. */
+export class CheckoutError extends Error {}
 
 const cleanName = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : ''
 const cleanLabel = (value: unknown) => typeof value === 'string' ? value.trim().slice(0, 100) : ''
@@ -39,19 +42,25 @@ export async function checkoutQuote(
   availablePoints = 0,
   requestedPoints = 0,
 ): Promise<CheckoutQuote> {
-  if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new Error('Your bag is empty or invalid.')
+  if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new CheckoutError('Your bag is empty or invalid. Please refresh your bag.')
   const { data, error } = await database.from('products').select('name,price,compare_price,sizes,is_active').eq('is_active', true).limit(2000)
   if (error) throw new Error('Unable to verify current product pricing.')
   const products = new Map((data || []).map((product: Product) => [cleanName(product.name), product]))
   const items = (requestedItems as RequestedLine[]).map(line => {
     const name = cleanName(line?.name), product = products.get(name)
     const quantity = Math.min(Math.max(Math.floor(Number(line?.quantity) || 0), 1), 99)
-    if (!product || !name) throw new Error('One or more treats in your bag are no longer available. Please refresh your bag.')
+    if (!product || !name) throw new CheckoutError('One or more treats in your bag are no longer available. Please refresh your bag.')
     const packLabel = cleanLabel(line?.pack_label)
     const packs = Array.isArray(product.sizes)
       ? product.sizes.filter((pack: unknown): pack is Record<string, unknown> => Boolean(pack) && typeof pack === 'object')
       : []
+    // Match the pack by its label. Older carts sent a generic label such as
+    // "Pack" for piece-based packs (e.g. Whole Quail 4 pieces), so fall back to
+    // the catalogue pack whose current price equals the price shown in the bag.
+    // The price charged still comes from the database pack, never the browser.
+    const shownPrice = money(line?.pack_price ?? line?.price)
     const matchedPack = packs.find(pack => cleanName(pack.label) === cleanName(packLabel))
+      || (shownPrice ? packs.find(pack => money(pack.price) === shownPrice) : undefined)
     // Browser carts can retain a pack label from an older catalogue version.
     // Never trust that label or its price; fall back to the current base
     // product when the label no longer exists instead of blocking checkout.
@@ -62,7 +71,7 @@ export async function checkoutQuote(
     const packWeight = selectedPack ? money(selectedPack.weight_grams) || null : null
     const price = money(selectedPack?.price ?? product.price)
     const compare_price = money(selectedPack?.compare_price ?? product.compare_price)
-    if (!price) throw new Error(`Current pricing is unavailable for ${product.name}.`)
+    if (!price) throw new CheckoutError(`Current pricing is unavailable for ${product.name}. Please remove it and add it again.`)
     return { name: product.name, pack_label: effectivePackLabel, pack_weight_grams: packWeight, price, compare_price, is_sale: compare_price > price, quantity }
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
@@ -99,7 +108,11 @@ export async function checkoutQuote(
       && (!singleUseCoupon?.valid_from || String(singleUseCoupon.valid_from) <= today)
       && (!singleUseCoupon?.valid_until || String(singleUseCoupon.valid_until) >= today)
       && (singleUseCoupon?.max_uses == null || Number(singleUseCoupon.uses_count || 0) < Number(singleUseCoupon.max_uses))
-    if (!valid) throw new Error('This offer is invalid, expired, fully redeemed, or not valid for this treat subtotal.')
+    if (!valid) {
+      if (coupon === 'WELCOME15') throw new CheckoutError('WELCOME15 works only on your first order after you log in with the email code. Log in, or remove the code to pay now.')
+      if (coupon === 'MEGA20') throw new CheckoutError('MEGA20 needs a treat subtotal of ₹2,199 or more. Add a little more, or remove the code to pay now.')
+      throw new CheckoutError(`The code ${coupon} is invalid, expired or not valid for this bag. Remove the code to pay now.`)
+    }
     couponRate = Number(singleUseCoupon?.value) / 100
     const perCustomer = Number(singleUseCoupon?.usagepercustomer)
     couponUsesPerCustomer = Number.isInteger(perCustomer) && perCustomer > 0 ? perCustomer : null
