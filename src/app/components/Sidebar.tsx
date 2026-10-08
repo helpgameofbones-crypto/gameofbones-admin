@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3, Boxes, ClipboardList, FileText, HeartHandshake, LayoutDashboard,
-  Mail, Megaphone, PackageCheck, Search, Settings2, ShieldCheck, ShoppingCart, Ticket, Truck, Users, WalletCards,
+  Mail, Megaphone, MessageCircle, PackageCheck, Search, Settings2, ShieldCheck, ShoppingCart, Ticket, Truck, Users, WalletCards,
 } from 'lucide-react';
 
 const SECTIONS = [
@@ -24,6 +24,7 @@ const SECTIONS = [
     { name: 'Marketing & Ad Spend', href: '/marketing', icon: Megaphone, desc: 'Meta spend, ROAS, pixels and tracking links' },
     { name: 'Campaign setup', href: '/campaigns', icon: Megaphone, desc: 'Build audiences and send campaigns' },
     { name: 'Cart Recovery', href: '/abandoned-carts', icon: ShoppingCart, desc: 'Abandoned carts and revenue at risk' },
+    { name: 'WhatsApp', href: '/whatsapp', icon: MessageCircle, desc: 'Cart reminders, order updates and customer replies' },
     { name: 'Prospects', href: '/prospects', icon: Users, desc: 'Captured contacts without a purchase' },
     { name: 'Coupons', href: '/coupons', icon: Ticket, desc: 'Create and manage customer offers' },
     { name: 'Game Leads', href: '/email-captures', icon: Mail, desc: 'Bone Run players, winners, claims and leads' },
