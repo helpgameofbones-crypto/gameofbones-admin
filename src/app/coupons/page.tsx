@@ -25,6 +25,7 @@ function discountLabel(c: Coupon) {
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [showPersonal, setShowPersonal] = useState(false);
   // Live usage counts, keyed by coupon code — computed from actual orders
   // rather than trusting a stored counter, since nothing in this codebase
   // ever incremented one. This also matches how the storefront's checkout
@@ -107,9 +108,17 @@ export default function CouponsPage() {
   // support history, rather than being destructively deleted.
   const today = new Date().toISOString().slice(0, 10);
   const isLive = (coupon: Coupon) => Boolean(coupon.is_active) && (!coupon.valid_until || coupon.valid_until >= today);
+  // One-off codes the system creates for a single shopper: a 10% code for
+  // each shopper who saves their bag (SAVE10-XXXXX, expires in 7 days) and
+  // Bone Run prizes (RUN…). They are tucked away so store-wide offers stay visible.
+  const personalKind = (coupon: Coupon) => /^SAVE10-[A-Z0-9]{5}$/.test(coupon.code) ? 'cart' : /^RUN[0-9A-F]{6,}$/.test(coupon.code) ? 'game' : null;
   const liveCoupons = coupons.filter(isLive);
   const archivedCoupons = coupons.filter(coupon => !isLive(coupon));
-  const couponRows = showArchived ? archivedCoupons : liveCoupons;
+  const personalLive = liveCoupons.filter(c => personalKind(c));
+  const offerLive = liveCoupons.filter(c => !personalKind(c));
+  const couponRows = showArchived ? archivedCoupons : offerLive;
+  const cartCodes = personalLive.filter(c => personalKind(c) === 'cart').length;
+  const gameCodes = personalLive.length - cartCodes;
 
   return (
     <div style={{ padding: '40px', background: '#faf6f0', minHeight: '100vh' }}>
@@ -125,7 +134,7 @@ export default function CouponsPage() {
         </div>
       </div>
 
-      <p style={{ margin: '-10px 0 20px', color: '#6b6259', fontSize: 14 }}>{showArchived ? 'Inactive and expired codes are kept here for record-keeping only.' : 'Only coupons customers can use now are shown below.'}</p>
+      <p style={{ margin: '-10px 0 20px', color: '#6b6259', fontSize: 14 }}>{showArchived ? 'Inactive and expired codes are kept here for record-keeping only.' : 'Store-wide offers customers can use now. Personal one-off codes are grouped at the bottom.'}</p>
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -190,10 +199,11 @@ export default function CouponsPage() {
         ))}
       </div>
 
+      {!showArchived && !couponRows.length && <p style={{ color: '#6b6259', fontSize: 14 }}>No store-wide offers are running right now.</p>}
       <div style={{ display: 'grid', gap: '12px' }}>
-        {couponRows.map((coupon) => (
+        {(showArchived ? couponRows : [...couponRows, ...(showPersonal ? personalLive : [])]).map((coupon) => (
           <div key={coupon.id} style={{ background: '#fff', border: '1px solid #ede5d8', padding: '16px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', alignItems: 'center' }}>
-            <div><p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{coupon.code}</p></div>
+            <div><p style={{ color: '#1a1008', fontWeight: '600', margin: 0 }}>{coupon.code}</p>{personalKind(coupon) && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9a8a74' }}>{personalKind(coupon) === 'cart' ? 'Saved-bag code · 1 shopper' : 'Bone Run prize · 1 shopper'}</p>}</div>
             <div><p style={{ color: '#c8973a', fontWeight: '600', margin: 0 }}>{discountLabel(coupon)}</p></div>
             <div><p style={{ color: '#1a1008', margin: 0 }}>{coupon.min_order ? `₹${coupon.min_order}` : '—'}</p></div>
             <div>
@@ -208,6 +218,12 @@ export default function CouponsPage() {
           </div>
         ))}
       </div>
+      {!showArchived && personalLive.length > 0 && (
+        <button onClick={() => setShowPersonal(v => !v)} style={{ marginTop: 18, width: '100%', textAlign: 'left', padding: '14px 16px', background: '#f3ece1', border: '1px dashed #d8cdbd', cursor: 'pointer', fontSize: 13, color: '#3a3028' }}>
+          <strong>{showPersonal ? '▾ Hide' : '▸ Show'} {personalLive.length} personal codes</strong> created automatically for single shoppers
+          <span style={{ display: 'block', marginTop: 4, color: '#6b6259' }}>{cartCodes} saved-bag codes (10% off, one shopper each, expire after 7 days) · {gameCodes} Bone Run prizes. They switch off by themselves, so there is nothing to clean up.</span>
+        </button>
+      )}
     </div>
   );
 }
