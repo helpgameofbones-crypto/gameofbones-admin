@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 import { createDelhiveryShipment } from '@/app/lib/delhivery-shipment'
 import { metaSignalsFromNotes, sendMetaPurchase } from '@/app/lib/meta-capi'
-import { SPIN_GIFT_MIN_ORDER, claimSpinGift, findSpinGift } from '@/app/lib/spin-gifts'
+import { claimSpinGift, findSpinGift } from '@/app/lib/spin-gifts'
 import { sendOrderPlacedEmail } from '@/app/lib/lifecycle-emails'
 
 export const maxDuration = 20
@@ -184,9 +184,9 @@ export async function POST(req: NextRequest) {
         // The customer paid but the browser never saved the order, so apply the
         // spin-wheel free treat here the same way checkout would.
         // Free gifts stack with coupon codes, so apply it whenever eligible.
-        if (recovered && subtotal >= SPIN_GIFT_MIN_ORDER) {
+        if (recovered && subtotal > 0) {
           try {
-            const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null })
+            const eligibleGift = await findSpinGift(supabase, { phoneHash: phone ? piiHash(normalizePhoneForHash(phone)) : null, emailHash: payment.email ? piiHash(normalizeEmailForHash(String(payment.email))) : null, subtotal })
             if (eligibleGift && await claimSpinGift(supabase, eligibleGift.couponId)) {
               items = [...items, { product_name: eligibleGift.gift.product_name, pack_label: eligibleGift.gift.pack_label, pack_price: 0, quantity: eligibleGift.gift.quantity, is_gift: true, gift_code: eligibleGift.code } as (typeof items)[number]]
             }
