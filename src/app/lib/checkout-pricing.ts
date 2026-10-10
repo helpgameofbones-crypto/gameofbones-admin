@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
-type Product = { name: string; price: unknown; compare_price: unknown; sizes: unknown; is_active: unknown }
+type Product = { name: string; price: unknown; compare_price: unknown; sizes: unknown; is_active: unknown; stock?: unknown }
 type RequestedLine = { name?: unknown; quantity?: unknown; pack_label?: unknown; pack_price?: unknown; price?: unknown }
 
 /** A problem the shopper can fix (bag, pack or offer code). Its message is safe to show at checkout. */
@@ -43,9 +43,10 @@ export async function checkoutQuote(
   requestedPoints = 0,
 ): Promise<CheckoutQuote> {
   if (!Array.isArray(requestedItems) || !requestedItems.length || requestedItems.length > 50) throw new CheckoutError('Your bag is empty or invalid. Please refresh your bag.')
-  const { data, error } = await database.from('products').select('name,price,compare_price,sizes,is_active').eq('is_active', true).limit(2000)
+  const { data, error } = await database.from('products').select('name,price,compare_price,sizes,is_active,stock').eq('is_active', true).limit(2000)
   if (error) throw new Error('Unable to verify current product pricing.')
   const products = new Map((data || []).map((product: Product) => [cleanName(product.name), product]))
+  const stockUse = new Map<string, number>()
   const items = (requestedItems as RequestedLine[]).map(line => {
     const name = cleanName(line?.name), product = products.get(name)
     const quantity = Math.min(Math.max(Math.floor(Number(line?.quantity) || 0), 1), 99)
@@ -72,7 +73,17 @@ export async function checkoutQuote(
     const price = money(selectedPack?.price ?? product.price)
     const compare_price = money(selectedPack?.compare_price ?? product.compare_price)
     if (!price) throw new CheckoutError(`Current pricing is unavailable for ${product.name}. Please remove it and add it again.`)
+    // Stock is counted in base pouches: the Nth pack option uses N pouches.
+    const packIndex = selectedPack ? packs.indexOf(selectedPack) : 0
+    stockUse.set(product.name, (stockUse.get(product.name) || 0) + quantity * (packIndex + 1))
     return { name: product.name, pack_label: effectivePackLabel, pack_weight_grams: packWeight, price, compare_price, is_sale: compare_price > price, quantity }
+  })
+  stockUse.forEach((needed, productName) => {
+    const raw = products.get(cleanName(productName))?.stock
+    if (raw === null || raw === undefined || raw === '') return
+    const available = Math.max(0, Math.floor(Number(raw) || 0))
+    if (available <= 0) throw new CheckoutError(`Sorry, ${productName} is out of stock. Please remove it from your bag.`)
+    if (needed > available) throw new CheckoutError(`Only ${available} ${available === 1 ? 'pouch' : 'pouches'} of ${productName} left. Please reduce it in your bag.`)
   })
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)
