@@ -28,13 +28,22 @@ const packList = (value: unknown) => Array.isArray(value)
   }).filter(pack => pack.label)
   : []
 
+const LOW_STOCK_THRESHOLD = 10
+// Products without a stock number stay sellable (older records / bundles).
+const stockSignal = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return { in_stock: true, stock_left: null }
+  const count = Math.max(0, Math.floor(Number(value) || 0))
+  return { in_stock: count > 0, stock_left: count <= LOW_STOCK_THRESHOLD ? count : null }
+}
+
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(request) })
 }
 
 // This is intentionally separate from the administrator route. It is a
-// read-only, storefront-safe catalogue that contains no inventory, cost, or
-// supplier information. The admin product editor remains the source of truth.
+// read-only, storefront-safe catalogue that contains no cost or supplier
+// information. Inventory is reduced to an in-stock flag plus the exact count
+// only when 10 or fewer pouches remain (for "Only N left" badges). The admin product editor remains the source of truth.
 export async function GET(request: NextRequest) {
   const originError = rejectUnexpectedOrigin(request)
   if (originError) return originError
@@ -45,7 +54,7 @@ export async function GET(request: NextRequest) {
   const client = database()
   let { data, error }: { data: Array<Record<string, any>> | null; error: any } = await client
     .from('products')
-    .select('id,name,image_url,images,videos,price,compare_price,sizes,is_active,is_bestseller')
+    .select('id,name,image_url,images,videos,price,compare_price,sizes,is_active,is_bestseller,stock')
     .order('name')
     .limit(2000)
 
@@ -54,7 +63,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     const fallback = await client
       .from('products')
-      .select('id,name,image_url,images,price,compare_price,sizes,is_active')
+      .select('id,name,image_url,images,price,compare_price,sizes,is_active,stock')
       .order('name')
       .limit(2000)
     data = fallback.data
@@ -78,6 +87,7 @@ export async function GET(request: NextRequest) {
       is_active: Boolean(product.is_active),
       sizes,
       is_bestseller: Boolean(product.is_bestseller),
+      ...stockSignal(product.stock),
     }
   }).filter(product => product.id && product.name)
 
