@@ -21,6 +21,7 @@ export type CheckoutQuote = {
   subtotal: number
   discount: number
   packaging: number
+  shipping: number
   grand_total: number
   coupon_code: string | null
   sale_items_present: boolean
@@ -141,5 +142,9 @@ export async function checkoutQuote(
   const cod = paymentMethod === 'cod'
   const packaging = cod ? 40 : 0
   const onlineSaving = cod ? 0 : 30
-  return { items, subtotal, discount, packaging, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
+  // Trial boxes: ₹50 delivery when the order has trial packs and the treat
+  // subtotal is under ₹300. Everything else ships free.
+  const hasTrialPacks = items.some(item => /^trial\b/i.test(item.pack_label))
+  const shipping = hasTrialPacks && subtotal < 300 ? 50 : 0
+  return { items, subtotal, discount, packaging, shipping, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging + shipping - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
 }
