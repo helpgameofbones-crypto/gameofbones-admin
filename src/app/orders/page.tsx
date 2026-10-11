@@ -30,31 +30,52 @@ function OrderProgress({ status }: { status: string }) {
   </div>;
 }
 
-function parseItems(items: any): string[] {
+type ItemRow = { name: string; pack: string; qty: number; gift: boolean; giftCode: string }
+
+// "60 g" (label) and 60 (grams) describe the same pack. Show the weight only
+// when it adds information, e.g. "Pack of 2" + "120 g".
+const squashPack = (value: string) => value.toLowerCase().replace(/\s+/g, '').replace(/gms?$|grams?$/, 'g')
+function packText(label: string, weight: string) {
+  const cleanLabel = label.replace(/\s*·\s*free gift/i, '').trim()
+  if (!weight) return cleanLabel
+  if (!cleanLabel) return weight
+  return squashPack(cleanLabel) === squashPack(weight) ? cleanLabel : `${cleanLabel} · ${weight}`
+}
+
+function parseItemRows(items: any): ItemRow[] {
   if (!items) return [];
-  if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return [items]; } }
+  if (typeof items === 'string') { try { items = JSON.parse(items); } catch { return [{ name: items, pack: '', qty: 1, gift: false, giftCode: '' }]; } }
   if (Array.isArray(items)) {
-    return items.map((it: any) => {
-      if (typeof it === 'string') return it;
-      const name = it.product_name || it.name
+    return items.map((it: any): ItemRow => {
+      if (typeof it === 'string') return { name: it, pack: '', qty: 1, gift: false, giftCode: '' }
+      const name = it.product_name || it.name || it.product || ''
       const label = String(it.pack_label || it.packLabel || it.sizeLabel || it.size || '').trim()
       const grams = Number(it.pack_weight_grams ?? it.weight_grams)
       const weight = Number.isFinite(grams) && grams > 0 ? `${grams} g` : ''
-      const pack = [label, weight].filter(Boolean).join(' · ')
-      const quantity = Number(it.quantity ?? it.qty ?? 1)
+      const qty = Math.max(1, Number(it.quantity ?? it.qty ?? 1) || 1)
       // Free prize lines (Bone Run game / spin wheel) are added at ₹0 by the
       // server. Flag them clearly so they are packed with the order.
-      if (name && it.is_gift) return `🎁 FREE PRIZE: ${name}${pack ? ' (' + pack.replace(/\s*·\s*free gift/i, '') + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}${it.gift_code ? ' · ' + it.gift_code : ''}`;
-      if (name) return `${name}${pack ? ' (' + pack + ')' : ''}${quantity > 1 ? ' x' + quantity : ''}`;
-      if (it.product) return it.product;
+      const gift = Boolean(it.is_gift) || /free gift/i.test(label)
       // Never expose raw JSON in the workspace. A small number of historic
       // Razorpay recovery records contain only pack metadata, so there is no
       // trustworthy product name to show.
-      return 'Product details unavailable — verify payment record';
+      return { name: name || 'Product details unavailable — verify payment record', pack: packText(label, weight), qty, gift, giftCode: String(it.gift_code || '') }
     });
   }
-  if (typeof items === 'object') return Object.entries(items).map(([k, v]) => `${k}: ${v}`);
-  return [String(items)];
+  if (typeof items === 'object') return Object.entries(items).map(([k, v]) => ({ name: `${k}: ${v}`, pack: '', qty: 1, gift: false, giftCode: '' }));
+  return [{ name: String(items), pack: '', qty: 1, gift: false, giftCode: '' }];
+}
+
+function parseItems(items: any): string[] {
+  return parseItemRows(items).map(row => row.gift
+    ? `🎁 FREE PRIZE: ${row.name}${row.pack ? ' (' + row.pack + ')' : ''}${row.qty > 1 ? ' x' + row.qty : ''}${row.giftCode ? ' · ' + row.giftCode : ''}`
+    : `${row.name}${row.pack ? ' (' + row.pack + ')' : ''}${row.qty > 1 ? ' x' + row.qty : ''}`)
+}
+
+// Prize codes from the Bone Run game / spin wheel travel on the gift line,
+// not in coupon_code, so collect them for the order summary.
+function prizeCodes(items: any): string[] {
+  return [...new Set(parseItemRows(items).filter(row => row.gift && row.giftCode).map(row => row.giftCode))]
 }
 
 // Split the free-text `notes` field (pipe-separated: coupon / loyalty points /
@@ -73,6 +94,8 @@ function parseOrderNoteLines(notes: string | null | undefined, couponCode: strin
     notes.split('|').map(s => s.trim()).filter(Boolean).forEach(l => {
       if (l.startsWith('Customer note:')) {
         customerNoteLines.push(l.replace(/^Customer note:\s*/, ''));
+      } else if (/^Auto-recovered from Razorpay/i.test(l) || /^Coupon\s+\S+\s+applied$/i.test(l)) {
+        // Internal recovery marker and a repeat of the coupon shown above.
       } else if (l.startsWith('COD handling charge')) {
         chargeLines.push(l);
       } else {
@@ -419,6 +442,12 @@ export default function OrdersPage() {
                       <td style={{ padding: '12px' }} onClick={() => setSelected(o)}>
                         <div style={{ fontWeight: 700, color: '#1a1008' }}>{o.ref}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>{o.payment_method || 'online'}</div>
+                        {(o.coupon_code || prizeCodes(o.items).length > 0) && (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                            {o.coupon_code && <code style={{ fontSize: 10, fontWeight: 700, color: '#92400e', background: '#fef3c7', padding: '1px 6px', borderRadius: 4 }}>{o.coupon_code}</code>}
+                            {prizeCodes(o.items).map((code: string) => <code key={code} style={{ fontSize: 10, fontWeight: 700, color: '#7c2d12', background: '#ffedd5', padding: '1px 6px', borderRadius: 4 }}>🎁 {code}</code>)}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '12px' }} onClick={() => setSelected(o)}>
                         <div style={{ fontWeight: 600 }}>{o.customer_name || '—'}</div>
@@ -494,15 +523,27 @@ export default function OrdersPage() {
 
               <div style={{ background: '#f9fafb', padding: 14, borderRadius: 6, marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 }}>Items Ordered</div>
-                {parseItems(selected.items).map((item, i) => {
-                  const prize = item.startsWith('🎁 FREE PRIZE:')
-                  return (
-                    <div key={i} style={{ padding: '6px 8px', margin: prize ? '6px -8px 0' : 0, borderBottom: '1px solid #e5e7eb', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: prize ? '#fef3c7' : 'transparent', borderRadius: prize ? 6 : 0 }}>
-                      <span style={{ fontSize: 16 }}>{prize ? '🎁' : '🦴'}</span>
-                      <span style={{ fontWeight: prize ? 700 : 500, color: prize ? '#92400e' : undefined }}>{prize ? item.replace('🎁 ', '') + ' — pack this free (₹0)' : item}</span>
-                    </div>
-                  )
-                })}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', color: '#6b7280', fontSize: 11, textTransform: 'uppercase' }}>
+                      <th style={{ padding: '4px 6px', fontWeight: 700 }}>Product</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 700 }}>Pack size</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 700, textAlign: 'right' }}>Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parseItemRows(selected.items).map((row, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #e5e7eb', background: row.gift ? '#fef3c7' : 'transparent' }}>
+                        <td style={{ padding: '7px 6px', fontWeight: row.gift ? 700 : 500, color: row.gift ? '#92400e' : '#1a1008' }}>
+                          {row.gift ? '🎁 ' : ''}{row.name}
+                          {row.gift && <div style={{ fontSize: 11, fontWeight: 600 }}>Free prize — pack this (₹0){row.giftCode ? ` · ${row.giftCode}` : ''}</div>}
+                        </td>
+                        <td style={{ padding: '7px 6px', color: '#374151' }}>{row.pack || '—'}</td>
+                        <td style={{ padding: '7px 6px', textAlign: 'right', fontWeight: 700 }}>{row.qty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {/* Order Notes, added inline so there's no need to jump to a
@@ -562,6 +603,12 @@ export default function OrdersPage() {
                     ? <code style={{ color: '#92400e', fontWeight: 700 }}>{orderSavings(selected).coupon}</code>
                     : <span style={{ color: '#9ca3af' }}>None</span>}
                 </div>
+                {prizeCodes(selected.items).length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                    <span style={{ color: '#374151' }}>Game prize code</span>
+                    <code style={{ color: '#92400e', fontWeight: 700 }}>{prizeCodes(selected.items).join(', ')}</code>
+                  </div>
+                )}
                 {orderSavings(selected).offerDiscount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#92400e' }}>
                     <span>Offer / coupon discount</span>
@@ -597,7 +644,13 @@ export default function OrdersPage() {
                     <span style={{ fontWeight: 600 }}>₹{selected.shipping.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                {parseOrderNoteLines(selected.notes, selected.coupon_code).chargeLines.map((line, i) => (
+                {moneyValue(selected.packaging) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6, color: '#1d4ed8' }}>
+                    <span>{String(selected.payment_method || '').toLowerCase() === 'cod' ? 'COD handling charge' : 'Packaging / handling'}</span>
+                    <span style={{ fontWeight: 700 }}>+₹{moneyValue(selected.packaging).toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {moneyValue(selected.packaging) === 0 && parseOrderNoteLines(selected.notes, selected.coupon_code).chargeLines.map((line, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: '#1d4ed8' }}>
                     <span>{line}</span>
                   </div>
