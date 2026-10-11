@@ -74,8 +74,10 @@ export async function checkoutQuote(
     const compare_price = money(selectedPack?.compare_price ?? product.compare_price)
     if (!price) throw new CheckoutError(`Current pricing is unavailable for ${product.name}. Please remove it and add it again.`)
     // Stock is counted in base pouches: the Nth pack option uses N pouches.
+    // Trial packs (label starting "Trial") always use a single pouch.
     const packIndex = selectedPack ? packs.indexOf(selectedPack) : 0
-    stockUse.set(product.name, (stockUse.get(product.name) || 0) + quantity * (packIndex + 1))
+    const packUnits = /^trial\b/i.test(effectivePackLabel) ? 1 : packIndex + 1
+    stockUse.set(product.name, (stockUse.get(product.name) || 0) + quantity * packUnits)
     return { name: product.name, pack_label: effectivePackLabel, pack_weight_grams: packWeight, price, compare_price, is_sale: compare_price > price, quantity }
   })
   stockUse.forEach((needed, productName) => {
