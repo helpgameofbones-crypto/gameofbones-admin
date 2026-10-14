@@ -5,7 +5,8 @@ import { normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib
  * WELCOME15 is for a customer's first order. No login needed: we check the
  * mobile number and email entered at checkout against past orders (matched by
  * their privacy-safe hashes). If either has a confirmed, non-cancelled order
- * already, or has used WELCOME15 before, the code is refused.
+ * already, or has used WELCOME15 or CART50 before, the code is refused.
+ * The ₹50 bag offer (CART50) uses the same first-order check.
  */
 export async function welcomeEligibleFor(db: SupabaseClient, phone: unknown, email: unknown, excludeRef?: string | null): Promise<boolean> {
   const phoneHash = piiHash(normalizePhoneForHash(String(phone || '')))
@@ -19,7 +20,7 @@ export async function welcomeEligibleFor(db: SupabaseClient, phone: unknown, ema
   if (error) return false // cannot verify → do not grant the discount
   return !(data || []).some(order => {
     const status = String(order.status || '')
-    if (String(order.coupon_code || '').toUpperCase() === 'WELCOME15') return true
+    if (['WELCOME15', 'CART50'].includes(String(order.coupon_code || '').toUpperCase())) return true
     return status !== 'pending_payment' && !/^cancel/i.test(status)
   })
 }

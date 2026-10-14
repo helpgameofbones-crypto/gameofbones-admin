@@ -11,6 +11,11 @@ const cleanLabel = (value: unknown) => typeof value === 'string' ? value.trim().
 const POINT_VALUE_RUPEES = .3
 const MAX_POINTS_DISCOUNT_RUPEES = 100
 const MAX_REDEMPTION_POINTS = Math.floor(MAX_POINTS_DISCOUNT_RUPEES / POINT_VALUE_RUPEES)
+/** Hidden first-order offer unlocked by sharing a WhatsApp number on the bag page. */
+export const CART_OFFER_CODE = 'CART50'
+export const CART_OFFER_AMOUNT = 50
+/** Codes that are only valid on a customer's first order (checked with welcomeEligibleFor). */
+export const FIRST_ORDER_CODES = ['WELCOME15', CART_OFFER_CODE]
 const money = (value: unknown) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0
@@ -99,13 +104,19 @@ export async function checkoutQuote(
   // Sale prices are the starting price, not an exclusion. A customer may
   // still apply an eligible code and redeem points against a sale basket.
   let couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
+  // CART50: a fixed ₹50 off the first order, unlocked on the bag page.
+  let fixedDiscount = 0
+  if (coupon === CART_OFFER_CODE) {
+    if (!welcomeEligible) throw new CheckoutError('The ₹50 bag offer is for first orders only, and this mobile number or email has ordered with us before. Remove the code to pay now.')
+    fixedDiscount = Math.min(CART_OFFER_AMOUNT, subtotal)
+  }
   let singleUseCouponId: string | null = null
   let couponUsesPerCustomer: number | null = null
   // Private offers are created in the admin coupon table and deliberately do
   // not need to be listed anywhere on the storefront.  Always validate the
   // entered code against that table instead of granting a discount merely
   // because its name matches a prefix.
-  if (!couponRate && coupon) {
+  if (!couponRate && !fixedDiscount && coupon) {
     const { data: singleUseCoupon, error: singleUseCouponError } = await database
       .from('coupons')
       .select('id,type,value,min_order,max_uses,uses_count,usagepercustomer,valid_from,valid_until,is_active')
@@ -134,7 +145,7 @@ export async function checkoutQuote(
     // Do not disable a normal private campaign code after its first order.
     if (Number(singleUseCoupon?.max_uses) === 1) singleUseCouponId = String(singleUseCoupon.id)
   }
-  const discount = Math.round(subtotal * Math.max(bulkRate, couponRate))
+  const discount = Math.max(Math.round(subtotal * Math.max(bulkRate, couponRate)), fixedDiscount)
   // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
   // which rounds to ₹100; the money cap below remains authoritative.
   const points_redeemed = Math.min(Math.max(Math.floor(Number(requestedPoints) || 0), 0), MAX_REDEMPTION_POINTS, Math.max(0, Math.floor(Number(availablePoints) || 0)))
@@ -146,5 +157,5 @@ export async function checkoutQuote(
   // subtotal is under ₹300. Everything else ships free.
   const hasTrialPacks = items.some(item => /^trial\b/i.test(item.pack_label))
   const shipping = hasTrialPacks && subtotal < 300 ? 50 : 0
-  return { items, subtotal, discount, packaging, shipping, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging + shipping - onlineSaving), coupon_code: couponRate ? coupon : null, sale_items_present }
+  return { items, subtotal, discount, packaging, shipping, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging + shipping - onlineSaving), coupon_code: couponRate || fixedDiscount ? coupon : null, sale_items_present }
 }
