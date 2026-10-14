@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
 import { corsHeaders } from '@/app/lib/cors'
 import { rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
-import { CheckoutError, checkoutQuote } from '@/app/lib/checkout-pricing'
+import { CheckoutError, checkoutQuote, FIRST_ORDER_CODES } from '@/app/lib/checkout-pricing'
 import { createClient } from '@supabase/supabase-js'
 import { customerSessionFromRequest } from '@/app/lib/customer-session'
 import { clientIpFromRequest } from '@/app/lib/meta-capi'
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
     const customer = await customerCheckoutState(req)
     // WELCOME15 works without logging in: check this mobile/email has no earlier order.
-    if (!customer.welcomeEligible && String(coupon_code || '').trim().toUpperCase() === 'WELCOME15') {
+    if (!customer.welcomeEligible && FIRST_ORDER_CODES.includes(String(coupon_code || '').trim().toUpperCase())) {
       const n = notes && typeof notes === 'object' ? notes as Record<string, unknown> : {}
       customer.welcomeEligible = await welcomeEligibleFor(database, n.customer_phone, n.customer_email, typeof n.ref === 'string' ? n.ref : null)
     }
