@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '@/app/lib/cors'
 import { cleanText, rateLimit, rejectUnexpectedOrigin } from '@/app/lib/public-request'
 import { encryptPii, normalizeEmailForHash, normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
+import { welcomeEligibleFor } from '@/app/lib/welcome-offer'
+import { CART_OFFER_CODE } from '@/app/lib/checkout-pricing'
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 export async function OPTIONS(req: NextRequest) { return NextResponse.json({}, { headers: corsHeaders(req) }) }
 function randomCode(len: number) { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let value = ''; for (let i = 0; i < len; i++) value += chars[Math.floor(Math.random() * chars.length)]; return value }
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
  try {
   const originError = rejectUnexpectedOrigin(req); if (originError) return originError
   const limitError = await rateLimit(req, 'abandoned-cart', 10, 60 * 60 * 1000); if (limitError) return limitError
-  const { phone, email, name, items, total, cart_token: incomingCartToken, whatsapp_opt_in: whatsappOptIn, cart_lines: rawCartLines } = await req.json()
+  const { phone, email, name, items, total, cart_token: incomingCartToken, whatsapp_opt_in: whatsappOptIn, cart_lines: rawCartLines, offer } = await req.json()
   const normalizedPhone = cleanText(phone,20).replace(/^\+?91/, ''), normalizedEmail=cleanText(email,254).toLowerCase(), normalizedName=cleanText(name,100)
   const cartToken = validCartToken(incomingCartToken) ? cleanText(incomingCartToken,90) : ''
   const hasPhone = /^\d{10}$/.test(normalizedPhone)
@@ -63,6 +65,12 @@ export async function POST(req: NextRequest) {
   const payload = { ...(cartLines && cartLines.length ? { cart_lines: cartLines } : {}), ...(optIn ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString() } : {}), customer_phone:hasPhone?normalizedPhone:null, customer_email:hasEmail?normalizedEmail:null, customer_name:hasContact?(normalizedName||null):null, pii_phone_ciphertext:hasPhone?encryptPii(normalizedPhone):null, pii_email_ciphertext:hasEmail?encryptPii(normalizedEmail):null, pii_name_ciphertext:hasContact&&normalizedName?encryptPii(normalizedName):null, pii_phone_hash:hasPhone?piiHash(normalizePhoneForHash(normalizedPhone)):null, pii_email_hash:hasEmail?piiHash(normalizeEmailForHash(normalizedEmail)):null, pii_key_version:hasContact?1:0, cart_token:cartToken||null, items:cartItems, total:Number(total), abandoned_at:new Date().toISOString(), recovered:false, coupon_code:couponCode }
   const result = existing ? await supabase.from('abandoned_carts').update(payload).eq('id',existing.id) : await supabase.from('abandoned_carts').insert(payload)
   if (result.error) throw result.error
+  // Bag-page offer: ₹50 off (CART50) for a mobile number that has never
+  // ordered. Checked again at payment, so this answer only drives the UI.
+  if (offer === CART_OFFER_CODE && hasPhone) {
+    const eligible = await welcomeEligibleFor(supabase, normalizedPhone, hasEmail ? normalizedEmail : '')
+    return NextResponse.json({ ok:true, coupon_code:couponCode, cart_offer:{ code:CART_OFFER_CODE, eligible } }, { headers })
+  }
   return NextResponse.json({ ok:true, coupon_code:couponCode }, { headers })
  } catch { return NextResponse.json({ ok:true }, { headers }) }
 }
