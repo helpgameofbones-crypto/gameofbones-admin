@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
       price: money(product.price),
       compare_price: money(product.compare_price),
       is_active: Boolean(product.is_active),
+      low_stock: Number(product.stock) < 10,
       sizes,
       is_bestseller: Boolean(product.is_bestseller),
       ...stockSignal(product.stock),
