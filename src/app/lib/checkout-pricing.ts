@@ -16,6 +16,8 @@ export const CART_OFFER_CODE = 'CART50'
 export const CART_OFFER_AMOUNT = 50
 /** Codes that are only valid on a customer's first order (checked with welcomeEligibleFor). */
 export const FIRST_ORDER_CODES = ['WELCOME15', CART_OFFER_CODE]
+/** Limited Buy 1 Get 1 promotion. It is deliberately exclusive of coupons and reward points. */
+const BOGO_PRODUCT_NAMES = new Set(['chicken feet', 'chicken neck'])
 const money = (value: unknown) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0
@@ -30,6 +32,8 @@ export type CheckoutQuote = {
   grand_total: number
   coupon_code: string | null
   sale_items_present: boolean
+  bogo_items_present: boolean
+  bogo_discount: number
   points_redeemed: number
   points_discount: number
   single_use_coupon_id: string | null
@@ -96,11 +100,16 @@ export async function checkoutQuote(
   const subtotal = items.reduce((total, line) => total + line.price * line.quantity, 0)
   const itemCount = items.reduce((total, line) => total + line.quantity, 0)
   const sale_items_present = items.some(item => item.is_sale)
+  const bogoItems = items.filter(item => BOGO_PRODUCT_NAMES.has(cleanName(item.name)))
+  const bogo_items_present = bogoItems.length > 0
+  const bogo_discount = bogoItems.reduce((total, item) => total + Math.floor(item.quantity / 2) * item.price, 0)
   // A marked-down price is final: it cannot stack with an offer code or the
   // automatic buy-more tiers. Reward points are deliberately handled below
   // and continue to work on sale baskets.
-  const bulkRate = sale_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
+  const bulkRate = sale_items_present || bogo_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
   const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
+  if (bogo_items_present && coupon) throw new CheckoutError('Buy 1 Get 1 on Chicken Feet and Chicken Neck cannot be combined with a coupon code. Remove the code to continue.')
+  if (bogo_items_present && Math.floor(Number(requestedPoints) || 0) > 0) throw new CheckoutError('Buy 1 Get 1 on Chicken Feet and Chicken Neck cannot be combined with reward points. Set reward points to 0 to continue.')
   // Sale prices are the starting price, not an exclusion. A customer may
   // still apply an eligible code and redeem points against a sale basket.
   let couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
@@ -145,7 +154,7 @@ export async function checkoutQuote(
     // Do not disable a normal private campaign code after its first order.
     if (Number(singleUseCoupon?.max_uses) === 1) singleUseCouponId = String(singleUseCoupon.id)
   }
-  const discount = Math.max(Math.round(subtotal * Math.max(bulkRate, couponRate)), fixedDiscount)
+  const discount = bogo_discount + Math.max(Math.round(subtotal * Math.max(bulkRate, couponRate)), fixedDiscount)
   // ₹100 is the maximum reward discount per order. 333 points is ₹99.90,
   // which rounds to ₹100; the money cap below remains authoritative.
   const points_redeemed = Math.min(Math.max(Math.floor(Number(requestedPoints) || 0), 0), MAX_REDEMPTION_POINTS, Math.max(0, Math.floor(Number(availablePoints) || 0)))
@@ -157,5 +166,5 @@ export async function checkoutQuote(
   // subtotal is under ₹300. Everything else ships free.
   const hasTrialPacks = items.some(item => /^trial\b/i.test(item.pack_label))
   const shipping = hasTrialPacks && subtotal < 300 ? 50 : 0
-  return { items, subtotal, discount, packaging, shipping, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging + shipping - onlineSaving), coupon_code: couponRate || fixedDiscount ? coupon : null, sale_items_present }
+  return { items, subtotal, discount, packaging, shipping, points_redeemed, points_discount, single_use_coupon_id: singleUseCouponId, coupon_uses_per_customer: couponUsesPerCustomer, grand_total: Math.max(1, subtotal - discount - points_discount + packaging + shipping - onlineSaving), coupon_code: couponRate || fixedDiscount ? coupon : null, sale_items_present, bogo_items_present, bogo_discount }
 }
