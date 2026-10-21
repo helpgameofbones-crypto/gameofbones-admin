@@ -1,4 +1,4 @@
-﻿import nodemailer from 'nodemailer'
+import nodemailer from 'nodemailer'
 
 import { Resend } from 'resend'
 
@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 
 export const resend = {
   emails: {
-    send: (opts: { from?: string; to: string | string[]; subject: string; html: string; text?: string }) => {
+    send: (opts: { from?: string; to: string | string[]; subject: string; html: string; text?: string; scheduledAt?: string }) => {
       const apiKey = process.env.RESEND_API_KEY
       const from = process.env.RESEND_FROM_EMAIL
 
@@ -22,6 +22,9 @@ export const resend = {
       if (apiKey && from) {
         return new Resend(apiKey).emails.send({ ...opts, from })
       }
+
+      // Scheduled sends are only possible through Resend; never send them immediately by mistake.
+      if (opts.scheduledAt) return Promise.resolve({ data: null, error: { message: 'Scheduled email needs Resend to be configured.' } })
 
       // Keep Gmail as a safe fallback until Resend is configured.
       return transporter.sendMail({
