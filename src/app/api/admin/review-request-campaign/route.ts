@@ -14,9 +14,9 @@ function normalize(value: string) { return value.trim().toLocaleLowerCase('en-IN
 function names(items: unknown) { return Array.isArray(items) ? [...new Set((items as Item[]).map(item => String(item.product_name || item.name || '').trim()).filter(Boolean))] : [] }
 type Recipient = { email: string; firstName: string; phone: string; products: Array<{ id: string; name: string }>; orderIds: string[] }
 
-async function eligibleRecipients() {
+async function eligibleRecipients(includePrevious = false) {
   const [ordersResult, productsResult] = await Promise.all([
-    db.from('orders').select('id,ref,customer_id,customer_phone,pii_phone_ciphertext,customer_name,customer_email,pii_name_ciphertext,pii_email_ciphertext,items').eq('status', 'delivered').or('grand_total.gt.0,total_amount.gt.0').is('review_request_sent_at', null).limit(1000),
+    (() => { const q = db.from('orders').select('id,ref,customer_id,customer_phone,pii_phone_ciphertext,customer_name,customer_email,pii_name_ciphertext,pii_email_ciphertext,items').eq('status', 'delivered').or('grand_total.gt.0,total_amount.gt.0'); return (includePrevious ? q : q.is('review_request_sent_at', null)).limit(1000) })(),
     db.from('products').select('id,name').limit(500),
   ])
   if (ordersResult.error) throw ordersResult.error
@@ -41,10 +41,14 @@ async function eligibleRecipients() {
   return { recipients, eligibleOrderCount: orders.length }
 }
 
+export const maxDuration = 60
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request); if (authError) return authError
   try {
-    const { recipients, eligibleOrderCount } = await eligibleRecipients()
+    const includePrevious = request.nextUrl.searchParams.get('include_previous') === '1'
+    const { recipients, eligibleOrderCount } = await eligibleRecipients(includePrevious)
     const preview = buildReviewRequestEmail({ firstName: 'Anjan', products: ['Chicken Wings', 'Goat Trotter'] })
     return NextResponse.json({ eligible_orders: eligibleOrderCount, recipients: recipients.length, preview })
   } catch (error) { console.error('Review campaign preview failed', error); return NextResponse.json({ error: 'Unable to prepare the review campaign preview.' }, { status: 500 }) }
@@ -52,17 +56,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const authError = await requireAdmin(request); if (authError) return authError
-  const body = await request.json().catch(() => ({})) as { confirm?: unknown }
+  const body = await request.json().catch(() => ({})) as { confirm?: unknown; scheduled_at?: unknown; include_previous?: unknown }
   if (body.confirm !== true) return NextResponse.json({ error: 'Explicit confirmation is required before emails are sent.' }, { status: 400 })
+  let scheduledAt: string | undefined
+  if (body.scheduled_at != null) {
+    const when = new Date(String(body.scheduled_at))
+    if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 60_000 || when.getTime() > Date.now() + 29 * 86_400_000) return NextResponse.json({ error: 'Pick a send time between 1 minute and 29 days from now.' }, { status: 400 })
+    scheduledAt = when.toISOString()
+  }
   try {
-    const { recipients } = await eligibleRecipients(); let sent = 0, failed = 0
+    const { recipients } = await eligibleRecipients(body.include_previous === true); let sent = 0, failed = 0
     for (const recipient of recipients) {
       const message = buildReviewRequestEmail({ firstName: recipient.firstName, products: recipient.products.map(product => product.name) })
-      const result = await resend.emails.send({ to: recipient.email, subject: message.subject, html: message.html })
-      if (result.error) { failed++; continue }
-      await db.from('orders').update({ review_request_sent_at: new Date().toISOString() }).in('id', recipient.orderIds)
+      const result = await resend.emails.send({ to: recipient.email, subject: message.subject, html: message.html, ...(scheduledAt ? { scheduledAt } : {}) }) as { error?: unknown }
+      if (result?.error) { failed++; console.error('Review invite failed', result.error); await sleep(550); continue }
+      await db.from('orders').update({ review_request_sent_at: scheduledAt || new Date().toISOString() }).in('id', recipient.orderIds)
       sent++
+      await sleep(550) // stay under Resend's 2 requests/second limit
     }
-    return NextResponse.json({ ok: true, recipients: recipients.length, emails_sent: sent, failed })
+    return NextResponse.json({ ok: true, recipients: recipients.length, emails_sent: sent, failed, scheduled_at: scheduledAt || null })
   } catch (error) { console.error('Review campaign send failed', error); return NextResponse.json({ error: 'Unable to send the review campaign.' }, { status: 500 }) }
 }
