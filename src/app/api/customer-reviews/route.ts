@@ -21,26 +21,36 @@ function itemNames(items: unknown) {
 }
 function publicImage(product: Product) { return cleanText(product.image_url, 1000) || (Array.isArray(product.images) ? cleanText(product.images[0], 1000) : '') }
 
-async function customerForPhone(phone: string) {
+// The same phone can belong to more than one customer row (e.g. a guest checkout and a later
+// account). Collect them all instead of failing when more than one matches.
+async function customersForPhone(phone: string) {
   const hash = piiHash(normalizePhoneForHash(phone))
-  const secure = hash ? await db.from('customers').select('id,name,phone').eq('pii_phone_hash', hash).maybeSingle() : { data: null, error: null }
-  if (secure.error) throw secure.error
-  if (secure.data) return secure.data
-  const legacy = await db.from('customers').select('id,name,phone').eq('phone', phone).maybeSingle()
+  const rows: Array<{ id: string; name: string | null; phone: string | null }> = []
+  if (hash) {
+    const secure = await db.from('customers').select('id,name,phone').eq('pii_phone_hash', hash).limit(20)
+    if (secure.error) throw secure.error
+    rows.push(...(secure.data || []))
+  }
+  const legacy = await db.from('customers').select('id,name,phone').eq('phone', phone).limit(20)
   if (legacy.error) throw legacy.error
-  return legacy.data
+  rows.push(...(legacy.data || []))
+  const unique = [...new Map(rows.map(row => [row.id, row])).values()]
+  const primary = unique.find(row => cleanText(row.name, 140)) || unique[0] || null
+  return { customer: primary, ids: unique.map(row => row.id) }
 }
 
 async function eligibleItems(phone: string) {
-  const customer = await customerForPhone(phone)
+  const { customer, ids } = await customersForPhone(phone)
   if (!customer) return { customer: null, items: [] as Array<{ product: Product; order: Order }> }
   const phoneHash = piiHash(normalizePhoneForHash(phone))
-  const orderOwnerFilters = [`customer_id.eq.${customer.id}`, `customer_phone.eq.${phone}`]
+  const orderOwnerFilters = [...ids.map(id => `customer_id.eq.${id}`), `customer_phone.eq.${phone}`]
   if (phoneHash) orderOwnerFilters.push(`pii_phone_hash.eq.${phoneHash}`)
-  const ordersResult = await db.from('orders').select('id,ref,items,delivered_at,updated_at')
-    .or(orderOwnerFilters.join(',')).eq('status', 'delivered').or('grand_total.gt.0,total_amount.gt.0').order('updated_at', { ascending: false }).limit(500)
+  const ordersResult = await db.from('orders').select('id,ref,items,delivered_at,updated_at,grand_total,total_amount')
+    .or(orderOwnerFilters.join(',')).eq('status', 'delivered').order('updated_at', { ascending: false }).limit(500)
   if (ordersResult.error) throw ordersResult.error
-  const orders = (ordersResult.data || []) as Order[]
+  // Paid orders only (free/prize orders are excluded) — filtered here so the query has a single OR group.
+  const orders = ((ordersResult.data || []) as Array<Order & { grand_total?: number | null; total_amount?: number | null }>)
+    .filter(order => Number(order.grand_total || 0) > 0 || Number(order.total_amount || 0) > 0)
   const names = [...new Set(orders.flatMap(order => itemNames(order.items)).map(normalizeName))]
   if (!names.length) return { customer, items: [] as Array<{ product: Product; order: Order }> }
   const productsResult = await db.from('products').select('id,name,image_url,images').limit(500)
