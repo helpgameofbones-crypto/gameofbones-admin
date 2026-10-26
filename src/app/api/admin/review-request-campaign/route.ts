@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/app/lib/requireAdmin'
 import { resend } from '@/app/lib/emailClient'
 import { customerEmail } from '@/app/lib/lifecycle-emails'
-import { normalizePhoneForHash, revealLegacyPii } from '@/app/lib/pii-crypto'
+import { decryptPii, normalizePhoneForHash, revealLegacyPii } from '@/app/lib/pii-crypto'
+import { createReviewLink } from '@/app/lib/review-link'
 import { buildReviewRequestEmail } from '@/app/lib/review-email'
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -28,7 +29,7 @@ async function eligibleRecipients(includePrevious = false) {
     const email = customerEmail(order.pii_email_ciphertext || order.customer_email); if (!email) continue
     const products = names(order.items).map(name => byName.get(normalize(name))).filter((product): product is Product => Boolean(product)); if (!products.length) continue
     const key = `${order.customer_id || order.customer_phone || email}:${email}`
-    const current = grouped.get(key) || { email, firstName: revealLegacyPii(order.pii_name_ciphertext || order.customer_name).split(' ')[0] || 'there', phone: normalizePhoneForHash(order.pii_phone_ciphertext || order.customer_phone || ''), products: [], orderIds: [] }
+    const current = grouped.get(key) || { email, firstName: revealLegacyPii(order.pii_name_ciphertext || order.customer_name).split(' ')[0] || 'there', phone: normalizePhoneForHash(decryptPii(String(order.pii_phone_ciphertext || '')) || revealLegacyPii(order.customer_phone)), products: [], orderIds: [] }
     current.products.push(...products); current.orderIds.push(order.id); grouped.set(key, current)
   }
   const pending = [...grouped.values()].map(row => ({ ...row, products: [...new Map(row.products.map(product => [product.id, product])).values()] }))
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
   try {
     const { recipients } = await eligibleRecipients(body.include_previous === true); let sent = 0, failed = 0
     for (const recipient of recipients) {
-      const message = buildReviewRequestEmail({ firstName: recipient.firstName, products: recipient.products.map(product => product.name) })
+      const message = buildReviewRequestEmail({ firstName: recipient.firstName, products: recipient.products.map(product => product.name), reviewUrl: await createReviewLink(recipient.phone) })
       const result = await resend.emails.send({ to: recipient.email, subject: message.subject, html: message.html, ...(scheduledAt ? { scheduledAt } : {}) }) as { error?: unknown }
       if (result?.error) { failed++; console.error('Review invite failed', result.error); await sleep(550); continue }
       await db.from('orders').update({ review_request_sent_at: scheduledAt || new Date().toISOString() }).in('id', recipient.orderIds)
