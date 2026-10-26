@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsHeaders } from '@/app/lib/cors'
-import { customerSessionFromRequest } from '@/app/lib/customer-session'
+import { reviewSessionFromRequest } from '@/app/lib/review-link'
 import { cleanText, rejectUnexpectedOrigin, rateLimit } from '@/app/lib/public-request'
 import { normalizePhoneForHash, piiHash } from '@/app/lib/pii-crypto'
 
@@ -71,7 +71,7 @@ export async function OPTIONS(request: NextRequest) { return NextResponse.json({
 export async function GET(request: NextRequest) {
   const headers = corsHeaders(request)
   if (rejectUnexpectedOrigin(request)) return NextResponse.json({ error: 'Untrusted origin' }, { status: 403, headers })
-  const session = customerSessionFromRequest(request); if (!session) return unauthorized(request)
+  const session = reviewSessionFromRequest(request); if (!session) return unauthorized(request)
   try {
     const { customer, items } = await eligibleItems(session.phone)
     if (!customer) return NextResponse.json({ reviews: [] }, { headers })
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const headers = corsHeaders(request)
   if (rejectUnexpectedOrigin(request)) return NextResponse.json({ error: 'Untrusted origin' }, { status: 403, headers })
-  const session = customerSessionFromRequest(request); if (!session) return unauthorized(request)
+  const session = reviewSessionFromRequest(request); if (!session) return unauthorized(request)
   const limited = await rateLimit(request, 'customer-review-submit', 5, 60 * 60 * 1000, session.phone); if (limited) return limited
   let uploadedPath = ''
   try {
