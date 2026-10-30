@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { fetchAllRows } from '@/app/lib/fetch-all'
 
 function database() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
 
@@ -9,8 +10,8 @@ export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request)
   if (authError) return authError
   const [customers, orders, subscriptions, products] = await Promise.all([
-    database().from('customers').select('*').order('total_spent', { ascending: false }).limit(5000),
-    database().from('orders').select('*').order('created_at', { ascending: false }).limit(1000),
+    fetchAllRows((a, b) => database().from('customers').select('*').order('total_spent', { ascending: false }).range(a, b)),
+    fetchAllRows((a, b) => database().from('orders').select('*').order('created_at', { ascending: false }).range(a, b)),
     database().from('subscriptions').select('*').order('created_at', { ascending: false }).limit(5000),
     database().from('products').select('id,name,price,product_sizes(*)').eq('is_active', true).order('name').limit(1000),
   ])
