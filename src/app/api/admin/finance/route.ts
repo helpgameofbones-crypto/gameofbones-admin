@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { revealOrderForAdmin } from '@/app/lib/admin-order-pii'
 import { requireAdmin } from '@/app/lib/requireAdmin'
+import { fetchAllRows } from '@/app/lib/fetch-all'
 
 export async function GET(request: NextRequest) {
   const authError = await requireAdmin(request)
@@ -9,10 +10,14 @@ export async function GET(request: NextRequest) {
 
   const from = request.nextUrl.searchParams.get('from')
   const database = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  let ordersQuery = database.from('orders').select('*').order('created_at', { ascending: false }).limit(2000)
-  if (from && !Number.isNaN(Date.parse(from))) ordersQuery = ordersQuery.gte('created_at', from)
+  const validFrom = from && !Number.isNaN(Date.parse(from)) ? from : null
+  const ordersPage = (start: number, end: number) => {
+    let q = database.from('orders').select('*').order('created_at', { ascending: false }).range(start, end)
+    if (validFrom) q = q.gte('created_at', validFrom)
+    return q
+  }
   const [{ data: orders, error: ordersError }, { data: products, error: productsError }] = await Promise.all([
-    ordersQuery,
+    fetchAllRows(ordersPage),
     database.from('products').select('*').eq('is_active', true).limit(1000),
   ])
   if (ordersError || productsError) return NextResponse.json({ error: 'Unable to load finance data.' }, { status: 500 })
