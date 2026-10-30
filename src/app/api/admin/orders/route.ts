@@ -31,8 +31,10 @@ async function reconcileReadyShipments() {
       if (order.payment_method === 'razorpay') {
         if (!order.transaction_id || !keyId || !keySecret) continue
         const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret })
-        const payment = await razorpay.payments.fetch(order.transaction_id) as { status?: string }
+        const payment = await razorpay.payments.fetch(order.transaction_id) as { status?: string; amount?: number | string }
         if (payment.status !== 'captured') continue
+        // A captured payment must also cover this order's total.
+        if (Number(payment.amount || 0) / 100 + 1 < Number(order.grand_total || 0)) continue
         const { data: paidOrder, error } = await db.from('orders')
           .update({ payment_status: 'paid', status: 'confirmed' })
           .eq('id', order.id).select('*').maybeSingle()
