@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: session ? 'Reward points can only be used with the mobile number on your account. Enter that number at checkout, or set reward points to 0.' : 'Please log in again to use your reward points.' }, { status: 400, headers })
   }
   const quote = await checkoutQuote(supabase, order.items, order.payment_method, order.coupon_code, canUseWelcome, canRedeemPoints ? Number(customerRecord.loyalty_points || 0) : 0, order.loyalty_points_redeemed)
-  const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id,items').eq('ref',order.ref).limit(1)
+  const { data: existingByRef } = await supabase.from('orders').select('id,ref,customer_id,items,grand_total,payment_status').eq('ref',order.ref).limit(1)
   const transactionId = typeof order.transaction_id === 'string' ? order.transaction_id.trim() : ''
   // If the webhook got there first under Razorpay's order ID, join that
   // placeholder to the browser's GOB reference instead of inserting a second
   // order for the exact same payment.
   const { data: existingByTransaction } = !existingByRef?.length && transactionId
-    ? await supabase.from('orders').select('id,ref,customer_id,items').eq('transaction_id', transactionId).limit(1)
-    : { data: [] as Array<{ id: string; ref: string; customer_id: string | null; items: unknown }> }
+    ? await supabase.from('orders').select('id,ref,customer_id,items,grand_total,payment_status').eq('transaction_id', transactionId).limit(1)
+    : { data: [] as Array<{ id: string; ref: string; customer_id: string | null; items: unknown; grand_total: number | null; payment_status: string | null }> }
   const existing = existingByRef?.[0] || existingByTransaction?.[0] || null
   // Coupons such as PAWTY25 are configured as one use per customer in the
   // admin table. Enforce that rule server-side at final checkout, rather than
@@ -210,7 +210,13 @@ export async function POST(req: NextRequest) {
   // Book delivery only after the order is safely persisted. A Delhivery
   // problem is recorded server-side but can never turn a paid checkout into a
   // failed order. COD follows the same confirmed-order workflow used by Admin.
-  if (shouldFinalizeOrder && data?.[0] && (order.payment_method === 'cod' || transactionId)) {
+  // Prepaid orders are booked by the signed Razorpay webhook. The only prepaid
+  // case booked here is when that webhook already recorded a verified payment
+  // for this order (it arrived before the browser) and the amount it captured
+  // covers this order's total. A transaction ID sent by the browser is never
+  // treated as proof of payment.
+  const webhookVerifiedPaid = Boolean(webhookPlaceholder && existing?.payment_status === 'paid' && Number(existing?.grand_total || 0) + 1 >= quote.grand_total)
+  if (shouldFinalizeOrder && data?.[0] && (order.payment_method === 'cod' || webhookVerifiedPaid)) {
     try {
       const shipment = await createDelhiveryShipment({ order: data[0], orderId: data[0].id, addressDetails })
       if (!shipment.ok) console.error('[checkout] Delhivery booking deferred', { orderId: data[0].id, error: shipment.error })
