@@ -135,14 +135,25 @@ export async function POST(req: NextRequest) {
       const ref = await checkoutReference(payment)
       if (!ref) return NextResponse.json({ received: true })
 
-      let existing: { id: string } | null = null
+      let existing: { id: string; grand_total: number | null } | null = null
       for (const delay of [0, 1000, 2000, 3000, 3000]) {
         if (delay) await sleep(delay)
-        const { data } = await supabase.from('orders').select('id').eq('ref', ref).limit(1).maybeSingle()
+        const { data } = await supabase.from('orders').select('id,grand_total').eq('ref', ref).limit(1).maybeSingle()
         if (data) { existing = data; break }
       }
 
       if (existing) {
+        // The order reference comes from notes the browser wrote, so check that
+        // the captured amount actually covers this order before confirming it.
+        const paidRupees = Number(payment.amount || 0) / 100
+        const dueRupees = Number(existing.grand_total || 0)
+        if (dueRupees > 0 && paidRupees + 1 < dueRupees) {
+          console.error('[razorpay-webhook] amount mismatch – order held', { orderId: existing.id, paid: paidRupees, due: dueRupees, payment: payment.id })
+          await supabase.from('orders')
+            .update({ payment_status: 'amount_mismatch', status: 'on_hold', transaction_id: payment.id, notes: `Payment ${payment.id} captured ₹${paidRupees} but the order total is ₹${dueRupees}. Held – check in Razorpay before shipping.` })
+            .eq('id', existing.id)
+          return NextResponse.json({ received: true })
+        }
         const { data: updatedOrder, error } = await supabase.from('orders')
           .update({ payment_status: 'paid', status: 'confirmed', transaction_id: payment.id })
           .eq('id', existing.id).select('*').maybeSingle()
