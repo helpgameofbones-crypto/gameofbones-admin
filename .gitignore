@@ -42,3 +42,10 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Never commit secrets (in addition to .env* above)
+*.key
+*.p12
+*credentials*.json
+*service-account*.json
+secrets/
