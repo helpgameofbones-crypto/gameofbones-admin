@@ -29,7 +29,36 @@ async function communityPhotos(request: NextRequest) {
   } catch (error) { console.error('Community photos failed', error); return NextResponse.json({ photos: [] }, { status: 200, headers: cacheHeaders }) }
 }
 
+// Shop cards and the homepage: rating per product plus a few recent written reviews.
+async function summary(request: NextRequest) {
+  const limited = await rateLimit(request, 'public-product-reviews', 120, 60 * 60 * 1000); if (limited) return limited
+  try {
+    const [rows, products] = await Promise.all([
+      db.from('product_reviews').select('customer_name,product_id,product_name,rating,review,created_at,order_id').eq('status', 'published').order('created_at', { ascending: false }).limit(1000),
+      db.from('products').select('id,name'),
+    ])
+    if (rows.error) throw rows.error
+    if (products.error) throw products.error
+    const nameById = new Map((products.data || []).map(p => [String(p.id), String(p.name)]))
+    const agg: Record<string, { count: number; total: number }> = {}
+    for (const r of rows.data || []) {
+      const name = nameById.get(String(r.product_id)) || cleanText(r.product_name, 120)
+      if (!name) continue
+      const a = agg[name] || (agg[name] = { count: 0, total: 0 }); a.count += 1; a.total += Number(r.rating) || 0
+    }
+    const productsOut = Object.fromEntries(Object.entries(agg).map(([n, a]) => [n, { count: a.count, average: Math.round(a.total / a.count * 10) / 10 }]))
+    const latest = (rows.data || []).filter(r => cleanText(r.review, 400).length >= 20 && Number(r.rating) >= 4).slice(0, 8).map(r => ({
+      name: displayName(r.customer_name, Boolean(r.order_id)), verified: Boolean(r.order_id),
+      product: nameById.get(String(r.product_id)) || cleanText(r.product_name, 120), rating: Number(r.rating), review: cleanText(r.review, 260), created_at: r.created_at,
+    }))
+    const all = rows.data || []
+    const overall = all.length ? { count: all.length, average: Math.round(all.reduce((s, r) => s + (Number(r.rating) || 0), 0) / all.length * 10) / 10 } : { count: 0, average: null }
+    return NextResponse.json({ overall, products: productsOut, latest }, { headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' } })
+  } catch (error) { console.error('Review summary failed', error); return NextResponse.json({ overall: { count: 0, average: null }, products: {}, latest: [] }, { status: 200, headers: cacheHeaders }) }
+}
+
 export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.get('summary') === '1') return summary(request)
   const product = cleanText(request.nextUrl.searchParams.get('product'), 140)
   if (!product && request.nextUrl.searchParams.get('photos') === '1') return communityPhotos(request)
   if (!product) return NextResponse.json({ error: 'Choose a product.' }, { status: 400, headers: cacheHeaders })
