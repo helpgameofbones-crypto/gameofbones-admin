@@ -47,7 +47,7 @@ async function summary(request: NextRequest) {
       const a = agg[name] || (agg[name] = { count: 0, total: 0 }); a.count += 1; a.total += Number(r.rating) || 0
     }
     const productsOut = Object.fromEntries(Object.entries(agg).map(([n, a]) => [n, { count: a.count, average: Math.round(a.total / a.count * 10) / 10 }]))
-    const latest = (rows.data || []).filter(r => cleanText(r.review, 400).length >= 20 && Number(r.rating) >= 4).slice(0, 8).map(r => ({
+    const latest = (rows.data || []).filter(r => cleanText(r.review, 400).length >= 20 && Number(r.rating) >= 4).slice(0, 24).map(r => ({
       name: displayName(r.customer_name, Boolean(r.order_id)), verified: Boolean(r.order_id),
       product: nameById.get(String(r.product_id)) || cleanText(r.product_name, 120), rating: Number(r.rating), review: cleanText(r.review, 260), created_at: r.created_at,
     }))
