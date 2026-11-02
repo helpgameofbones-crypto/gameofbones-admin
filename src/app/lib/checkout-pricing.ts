@@ -16,8 +16,9 @@ export const CART_OFFER_CODE = 'CART50'
 export const CART_OFFER_AMOUNT = 50
 /** Codes that are only valid on a customer's first order (checked with welcomeEligibleFor). */
 export const FIRST_ORDER_CODES = ['WELCOME15', CART_OFFER_CODE]
-/** Limited Buy 1 Get 1 promotion. It is deliberately exclusive of coupons and reward points. */
-const BOGO_PRODUCT_NAMES = new Set(['chicken feet', 'chicken neck'])
+/** Buy 1 Get 1 promotion. Ended 2 Nov 2026: the list is empty, so no basket qualifies.
+ * To run it again, add product names here (lower case). It is exclusive of coupons and points. */
+const BOGO_PRODUCT_NAMES = new Set<string>([])
 const money = (value: unknown) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0
@@ -107,18 +108,16 @@ export async function checkoutQuote(
   // automatic buy-more tiers. Reward points are deliberately handled below
   // and continue to work on sale baskets.
   const bulkRate = sale_items_present || bogo_items_present ? 0 : itemCount >= 10 ? .15 : itemCount >= 8 ? .12 : itemCount >= 5 ? .08 : itemCount >= 3 ? .05 : 0
-  const coupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
+  // One first-order offer: CART50 (from older bag-page links) now means WELCOME15.
+  const rawCoupon = typeof requestedCoupon === 'string' ? requestedCoupon.trim().toUpperCase() : ''
+  const coupon = rawCoupon === CART_OFFER_CODE ? 'WELCOME15' : rawCoupon
   if (bogo_items_present && coupon) throw new CheckoutError('Buy 1 Get 1 on Chicken Feet and Chicken Neck cannot be combined with a coupon code. Remove the code to continue.')
   if (bogo_items_present && Math.floor(Number(requestedPoints) || 0) > 0) throw new CheckoutError('Buy 1 Get 1 on Chicken Feet and Chicken Neck cannot be combined with reward points. Set reward points to 0 to continue.')
   // Sale prices are the starting price, not an exclusion. A customer may
   // still apply an eligible code and redeem points against a sale basket.
   let couponRate = coupon === 'WELCOME15' && welcomeEligible ? .15 : coupon === 'MEGA20' && subtotal >= 2199 ? .2 : 0
-  // CART50: a fixed ₹50 off the first order, unlocked on the bag page.
-  let fixedDiscount = 0
-  if (coupon === CART_OFFER_CODE) {
-    if (!welcomeEligible) throw new CheckoutError('The ₹50 bag offer is for first orders only, and this mobile number or email has ordered with us before. Remove the code to pay now.')
-    fixedDiscount = Math.min(CART_OFFER_AMOUNT, subtotal)
-  }
+  // CART50 is handled as WELCOME15 above; no fixed-amount first-order offer remains.
+  const fixedDiscount = 0
   let singleUseCouponId: string | null = null
   let couponUsesPerCustomer: number | null = null
   // Private offers are created in the admin coupon table and deliberately do
