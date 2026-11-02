@@ -17,6 +17,7 @@
             { "path": "/api/delhivery-sync",   "schedule": "0 14 * * *" },
       { "path": "/api/award-referral-points", "schedule": "0 14 * * *" },
       { "path": "/api/deduct-loyalty-points", "schedule": "0 13 * * *" },
-      { "path": "/api/migrate-legacy-pii", "schedule": "17 1 * * *" }
+      { "path": "/api/migrate-legacy-pii", "schedule": "17 1 * * *" },
+      { "path": "/api/weekly-backup", "schedule": "30 21 * * 6" }
   ]
 }
