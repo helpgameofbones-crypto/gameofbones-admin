@@ -23,6 +23,7 @@ const CRON_ROUTES = new Set([
   '/api/birthday-emails', '/api/care-library-drip', '/api/customer-segments', '/api/daily-report', '/api/daily-sales',
   '/api/deduct-loyalty-points', '/api/delhivery-sync', '/api/dog-birthday-notification', '/api/low-stock',
   '/api/meta-ads-sync', '/api/nps-survey', '/api/order-reminders', '/api/review-requests', '/api/sheets-sync',
+  '/api/weekly-backup',
 ])
 
 function cronAuthorized(header: string | null) {
